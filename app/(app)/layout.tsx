@@ -2,13 +2,13 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { isDemoMode } from "@/lib/config";
-import { getSessionUser } from "@/lib/services/portfolio";
-import { isSuperadmin } from "@/lib/auth/roles";
+import { getSessionContext } from "@/lib/auth/roles";
 import { Logo } from "@/components/logo";
 import { NavLinks } from "@/components/shell/nav-links";
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { GlobalSearch } from "@/components/shell/global-search";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
+import { NotificationBell } from "@/components/shell/notification-bell";
 import { UserMenu } from "@/components/shell/user-menu";
 import { DemoBanner } from "@/components/shell/demo-banner";
 import { DataDelayBadge } from "@/components/status-badges";
@@ -18,9 +18,9 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getSessionUser();
+  const { user, role } = await getSessionContext();
   if (!user) redirect("/login");
-  const showAdmin = await isSuperadmin();
+  const showAdmin = role === "superadmin";
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -58,6 +58,7 @@ export default async function AppLayout({
           <div className="flex flex-1 items-center">
             <GlobalSearch />
           </div>
+          <NotificationBell />
           <ThemeToggle />
           <UserMenu
             displayName={user.displayName}
