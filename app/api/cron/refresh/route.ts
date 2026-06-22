@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { config, isSupabaseAdminConfigured } from "@/lib/config";
 import { refreshMarketWatch } from "@/lib/services/prices";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isTradingDay } from "@/lib/psx/market-hours";
+import { isTradingDay, marketStatus } from "@/lib/psx/market-hours";
+import { getRedis } from "@/lib/cache/redis";
 import { psx } from "@/lib/psx/adapter";
 
 export const runtime = "nodejs";
@@ -99,7 +100,7 @@ export async function GET(request: Request) {
   try {
     const { data: alerts } = await admin
       .from("alerts")
-      .select("id, symbol, condition, target_price, is_active")
+      .select("id, user_id, symbol, condition, target_price, is_active")
       .eq("is_active", true);
     const triggered: string[] = [];
     for (const a of alerts ?? []) {
@@ -113,6 +114,14 @@ export async function GET(request: Request) {
           .from("alerts")
           .update({ last_triggered_at: new Date().toISOString(), is_active: false })
           .eq("id", a.id);
+        // Notify the alert's owner.
+        await admin.from("notifications").insert({
+          user_id: a.user_id,
+          type: "ALERT",
+          title: `${a.symbol} ${a.condition === "ABOVE" ? "rose above" : "fell below"} Rs ${money(a.target_price)}`,
+          body: `Your price alert triggered — now Rs ${money(q.price)}.`,
+          symbol: a.symbol,
+        });
         triggered.push(a.symbol as string);
       }
     }
@@ -121,7 +130,38 @@ export async function GET(request: Request) {
     result.alertError = String(err);
   }
 
+  // 4) Market open/close/status-change notifications (global, deduped).
+  try {
+    const redis = getRedis();
+    const status = marketStatus(startedAt);
+    const prev = redis ? await redis.get<string>("psx:marketstatus") : null;
+    if (prev && prev !== status.status) {
+      const titles: Record<string, string> = {
+        open: "📈 Market opened",
+        "pre-open": "Pre-open session started",
+        closed: "Market closed",
+        weekend: "Market closed for the weekend",
+        holiday: "Market closed for a holiday",
+      };
+      await admin.from("notifications").insert({
+        user_id: null,
+        type: "MARKET",
+        title: titles[status.status] ?? "Market status changed",
+        body: status.label,
+      });
+      result.marketEvent = `${prev} → ${status.status}`;
+    }
+    if (redis) await redis.set("psx:marketstatus", status.status);
+  } catch (err) {
+    result.marketStatusError = String(err);
+  }
+
   return NextResponse.json(result);
+}
+
+/** Format a number with grouping for notification text. */
+function money(n: number): string {
+  return Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 /** Today's date (YYYY-MM-DD) in Pakistan time. */

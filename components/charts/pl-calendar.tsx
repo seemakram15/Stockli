@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPKR, formatPercent } from "@/lib/format";
-import type { DayPL } from "@/lib/services/daily-pl";
+import type { CalendarDay } from "@/lib/services/daily-pl";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -14,56 +14,66 @@ const MONTHS = [
 ];
 
 /**
- * The large daily gain/loss calendar. Each day cell is tinted green/red by
- * that day's P/L for the position; intensity scales with the day's % move.
- * `perShare` toggles between position P/L and per-share change.
+ * Large daily gain/loss calendar. When the user holds the stock, each day is
+ * tinted by that day's position P/L (PKR); otherwise by the stock's daily move.
+ * Months are derived from the data, so a held stock only shows months from the
+ * first purchase onward.
  */
 export function PLCalendar({
   data,
   hasPosition,
 }: {
-  data: DayPL[];
+  data: CalendarDay[];
   hasPosition: boolean;
 }) {
   const byDate = React.useMemo(() => {
-    const m = new Map<string, DayPL>();
+    const m = new Map<string, CalendarDay>();
     for (const d of data) m.set(d.date, d);
     return m;
   }, [data]);
 
   const months = React.useMemo(() => {
     const set = new Set<string>();
-    for (const d of data) set.add(d.date.slice(0, 7)); // YYYY-MM
+    for (const d of data) set.add(d.date.slice(0, 7));
     return Array.from(set).sort();
   }, [data]);
 
   const [idx, setIdx] = React.useState(Math.max(0, months.length - 1));
-  const current = months[idx] ?? months[months.length - 1];
+  React.useEffect(() => {
+    setIdx(Math.max(0, months.length - 1));
+  }, [months.length]);
+
+  const current = months[Math.min(idx, months.length - 1)];
 
   if (!current) {
     return (
-      <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
-        No daily data available
+      <div className="flex h-64 items-center justify-center text-center text-sm text-muted-foreground">
+        {hasPosition
+          ? "No closing prices since your purchase yet — check back after the next session."
+          : "No daily data available."}
       </div>
     );
   }
 
-  const [year, month] = current.split("-").map(Number); // month: 1-12
+  const [year, month] = current.split("-").map(Number);
   const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
 
-  // Max absolute % move in this month → intensity scaling.
   const monthDays = data.filter((d) => d.date.startsWith(current));
-  const maxAbsPct = Math.max(0.5, ...monthDays.map((d) => Math.abs(d.changePct)));
+  const metric = (d: CalendarDay) => (hasPosition ? d.dayPL : d.changePct);
+  const maxAbs = Math.max(
+    hasPosition ? 1 : 0.5,
+    ...monthDays.map((d) => Math.abs(metric(d)))
+  );
   const monthTotal = monthDays.reduce((a, d) => a + d.dayPL, 0);
-  const upDays = monthDays.filter((d) => d.dayPL > 0).length;
-  const downDays = monthDays.filter((d) => d.dayPL < 0).length;
+  const upDays = monthDays.filter((d) => metric(d) > 0).length;
+  const downDays = monthDays.filter((d) => metric(d) < 0).length;
 
-  const cells: (DayPL | null)[] = [];
+  const cells: (CalendarDay | null | { date: string; empty: true })[] = [];
   for (let i = 0; i < firstWeekday; i++) cells.push(null);
   for (let day = 1; day <= daysInMonth; day++) {
     const ds = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    cells.push(byDate.get(ds) ?? ({ date: ds } as DayPL));
+    cells.push(byDate.get(ds) ?? { date: ds, empty: true });
   }
 
   return (
@@ -114,15 +124,17 @@ export function PLCalendar({
 
       <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
         {WEEKDAYS.map((w) => (
-          <div
-            key={w}
-            className="pb-1 text-center text-xs font-medium text-muted-foreground"
-          >
+          <div key={w} className="pb-1 text-center text-xs font-medium text-muted-foreground">
             {w}
           </div>
         ))}
         {cells.map((cell, i) => (
-          <DayCell key={i} cell={cell} maxAbsPct={maxAbsPct} hasPosition={hasPosition} />
+          <DayCell
+            key={i}
+            cell={cell}
+            maxAbs={maxAbs}
+            hasPosition={hasPosition}
+          />
         ))}
       </div>
 
@@ -141,51 +153,65 @@ export function PLCalendar({
 
 function DayCell({
   cell,
-  maxAbsPct,
+  maxAbs,
   hasPosition,
 }: {
-  cell: (DayPL & { dayPL?: number }) | null;
-  maxAbsPct: number;
+  cell: CalendarDay | null | { date: string; empty: true };
+  maxAbs: number;
   hasPosition: boolean;
 }) {
   if (!cell) return <div className="aspect-square" />;
   const day = Number(cell.date.slice(8, 10));
-  const hasData = cell.changePct !== undefined && !Number.isNaN(cell.changePct);
-  const up = (cell.dayPL ?? cell.changePct ?? 0) > 0;
-  const down = (cell.dayPL ?? cell.changePct ?? 0) < 0;
-  const intensity = hasData ? Math.min(1, Math.abs(cell.changePct) / maxAbsPct) : 0;
+  const hasData = !("empty" in cell);
+
+  if (!hasData) {
+    return (
+      <div className="flex aspect-square flex-col rounded-lg border border-border/60 bg-muted/20 p-1.5 sm:p-2">
+        <span className="text-xs font-medium text-muted-foreground/50">{day}</span>
+      </div>
+    );
+  }
+
+  const d = cell as CalendarDay;
+  const value = hasPosition ? d.dayPL : d.changePct;
+  const up = value > 0;
+  const down = value < 0;
+  const intensity = Math.min(1, Math.abs(value) / maxAbs);
+  const pctText = hasPosition ? formatPercent(d.dayPLPct) : formatPercent(d.changePct);
 
   return (
     <div
-      className={cn(
-        "group relative flex aspect-square flex-col rounded-lg border p-1.5 transition-colors sm:p-2",
-        hasData ? "border-transparent" : "border-border bg-muted/30"
-      )}
-      style={hasData ? tint(up ? "gain" : down ? "loss" : "muted", 0.18 + intensity * 0.6) : undefined}
-      title={
-        hasData
-          ? `${cell.date}: ${formatPercent(cell.changePct)}${hasPosition ? ` · ${formatPKR(cell.dayPL, { sign: true })}` : ""}`
-          : cell.date
-      }
+      className="group relative flex aspect-square flex-col rounded-lg border border-transparent p-1.5 transition-colors sm:p-2"
+      style={tint(up ? "gain" : down ? "loss" : "muted", 0.18 + intensity * 0.62)}
+      title={`${d.date}: ${pctText}${hasPosition ? ` · ${formatPKR(d.dayPL, { sign: true })}` : ""}`}
     >
       <span className="text-xs font-medium text-muted-foreground">{day}</span>
-      {hasData && (
-        <span className="mt-auto flex flex-col leading-tight">
+      <span className="mt-auto flex flex-col leading-tight">
+        {hasPosition ? (
+          <>
+            <span
+              className={cn(
+                "text-[11px] font-semibold tabular-nums sm:text-xs",
+                up ? "text-gain" : down ? "text-loss" : "text-muted-foreground"
+              )}
+            >
+              {formatPKR(d.dayPL, { sign: true }).replace("Rs ", "")}
+            </span>
+            <span className="hidden text-[10px] tabular-nums text-muted-foreground sm:block">
+              {pctText}
+            </span>
+          </>
+        ) : (
           <span
             className={cn(
               "text-[11px] font-semibold tabular-nums sm:text-xs",
               up ? "text-gain" : down ? "text-loss" : "text-muted-foreground"
             )}
           >
-            {formatPercent(cell.changePct)}
+            {formatPercent(d.changePct)}
           </span>
-          {hasPosition && (
-            <span className="hidden text-[10px] tabular-nums text-muted-foreground sm:block">
-              {formatPKR(cell.dayPL, { sign: true }).replace("Rs ", "")}
-            </span>
-          )}
-        </span>
-      )}
+        )}
+      </span>
     </div>
   );
 }
@@ -193,7 +219,5 @@ function DayCell({
 function tint(kind: "gain" | "loss" | "muted", amount: number): React.CSSProperties {
   if (kind === "muted") return { backgroundColor: "transparent" };
   const pct = Math.round(amount * 100);
-  return {
-    backgroundColor: `color-mix(in oklab, var(--${kind}) ${pct}%, transparent)`,
-  };
+  return { backgroundColor: `color-mix(in oklab, var(--${kind}) ${pct}%, transparent)` };
 }

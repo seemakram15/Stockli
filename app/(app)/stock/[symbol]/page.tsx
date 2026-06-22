@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, CalendarRange } from "lucide-react";
 import { getStockDetail } from "@/lib/services/stock";
-import { getDailyPL } from "@/lib/services/daily-pl";
-import { getPortfolios, getWatchlistSymbols } from "@/lib/services/portfolio";
+import { getStockCalendar } from "@/lib/services/daily-pl";
+import {
+  getPortfolios,
+  getWatchlistSymbols,
+  getTransactionsForSymbol,
+} from "@/lib/services/portfolio";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PriceChart } from "@/components/charts/price-chart";
@@ -13,7 +17,7 @@ import { WatchButton } from "@/components/watch-button";
 import { CreateAlertDialog } from "@/components/alerts/create-alert-dialog";
 import { AddTradeDialog } from "@/components/portfolio/add-trade-dialog";
 import { DataDelayBadge } from "@/components/status-badges";
-import { formatPKR, formatCompact, formatPercent, plColorClass } from "@/lib/format";
+import { formatPKR, formatCompact, formatPercent, formatDate, plColorClass } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -34,10 +38,11 @@ export default async function StockPage({
   const { symbol: symbolRaw } = await params;
   const symbol = symbolRaw.toUpperCase();
 
-  const [detail, portfolios, watched] = await Promise.all([
+  const [detail, portfolios, watched, symbolTxns] = await Promise.all([
     getStockDetail(symbol),
     getPortfolios(),
     getWatchlistSymbols(),
+    getTransactionsForSymbol(symbol),
   ]);
   const { ticker, quote, candles, intraday, holdings } = detail;
 
@@ -50,7 +55,7 @@ export default async function StockPage({
   const unrealizedPL = marketValue - costBasis;
   const unrealizedPLPct = costBasis ? (unrealizedPL / costBasis) * 100 : 0;
 
-  const dailyPL = await getDailyPL(symbol, hasPosition ? totalQty : 1);
+  const calendar = await getStockCalendar(symbol, symbolTxns);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -147,15 +152,15 @@ export default async function StockPage({
             <div>
               <CardTitle>Daily gain / loss calendar</CardTitle>
               <CardDescription>
-                {hasPosition
-                  ? "Each day is coloured by your position's P/L — green for gains, red for losses."
-                  : "Each day is coloured by the stock's daily move. Add a position to see your P/L per day."}
+                {calendar.hasPosition
+                  ? `Coloured by your position's daily P/L — green for gains, red for losses${calendar.firstDate ? `, from your first buy on ${formatDate(calendar.firstDate)}` : ""}.`
+                  : "Coloured by the stock's daily move. Add a position to track your P/L per day."}
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <PLCalendar data={dailyPL} hasPosition={hasPosition} />
+          <PLCalendar data={calendar.days} hasPosition={calendar.hasPosition} />
         </CardContent>
       </Card>
     </div>

@@ -1,5 +1,6 @@
 import type {
   Alert,
+  AppNotification,
   Holding,
   Portfolio,
   Ticker,
@@ -123,6 +124,45 @@ export const DEMO_ALERTS: Alert[] = [
     is_active: false,
     last_triggered_at: "2026-05-30T10:21:00Z",
     created_at: "2026-02-20T09:00:00Z",
+  },
+];
+
+export const DEMO_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: "demo-n-1",
+    user_id: DEMO_USER.id,
+    type: "ALERT",
+    title: "OGDC is approaching your alert",
+    body: "Target Rs 200.00 (rises above). Now Rs 178.45.",
+    symbol: "OGDC",
+    created_at: "2026-06-22T06:15:00.000Z",
+  },
+  {
+    id: "demo-n-2",
+    user_id: null,
+    type: "MARKET",
+    title: "Market opened",
+    body: "PSX trading session is now live (09:30 PKT).",
+    symbol: null,
+    created_at: "2026-06-22T04:30:00.000Z",
+  },
+  {
+    id: "demo-n-3",
+    user_id: DEMO_USER.id,
+    type: "ALERT",
+    title: "LUCK hit your target",
+    body: "Rose above Rs 1,200.00 — now Rs 1,205.30.",
+    symbol: "LUCK",
+    created_at: "2026-05-30T10:21:00.000Z",
+  },
+  {
+    id: "demo-n-4",
+    user_id: null,
+    type: "MARKET",
+    title: "Market closed",
+    body: "PSX session ended (15:30 PKT).",
+    symbol: null,
+    created_at: "2026-06-19T10:30:00.000Z",
   },
 ];
 

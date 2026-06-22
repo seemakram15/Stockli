@@ -163,6 +163,18 @@ export interface WatchlistItem {
   created_at: string;
 }
 
+export type NotificationType = "ALERT" | "MARKET" | "SYSTEM";
+
+export interface AppNotification {
+  id: string;
+  user_id: string | null; // null = global (e.g. market events)
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  symbol: string | null;
+  created_at: string;
+}
+
 export type AlertCondition = "ABOVE" | "BELOW";
 
 export interface Alert {

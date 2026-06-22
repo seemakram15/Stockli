@@ -141,6 +141,27 @@ export async function getTransactions(portfolioId?: string): Promise<Transaction
   return (data as Transaction[] | null) ?? [];
 }
 
+/** All BUY/SELL/etc. transactions for one symbol across the user's portfolios. */
+export async function getTransactionsForSymbol(symbol: string): Promise<Transaction[]> {
+  const sym = symbol.toUpperCase();
+  if (isDemoMode) {
+    return DEMO_TRANSACTIONS.filter((t) => t.symbol.toUpperCase() === sym).sort((a, b) =>
+      a.transacted_at.localeCompare(b.transacted_at)
+    );
+  }
+  const supabase = await createClient();
+  const { data: pfs } = await supabase.from("portfolios").select("id");
+  const ids = (pfs as { id: string }[] | null)?.map((p) => p.id) ?? [];
+  if (ids.length === 0) return [];
+  const { data } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("symbol", sym)
+    .in("portfolio_id", ids)
+    .order("transacted_at", { ascending: true });
+  return (data as Transaction[] | null) ?? [];
+}
+
 /** Enrich raw holdings with tickers + quotes + metrics. */
 export async function enrichHoldings(
   holdings: Holding[]
