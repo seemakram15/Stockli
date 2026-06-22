@@ -18,7 +18,7 @@ import { WatchButton } from "@/components/watch-button";
 import { CreateAlertDialog } from "@/components/alerts/create-alert-dialog";
 import { AddTradeDialog } from "@/components/portfolio/add-trade-dialog";
 import { DataDelayBadge } from "@/components/status-badges";
-import { effectiveQuotePrice } from "@/lib/services/metrics";
+import { computeHoldingMetrics } from "@/lib/services/metrics";
 import { formatPKR, formatCompact, formatPercent, formatDate, plColorClass } from "@/lib/format";
 import { normalizeSymbol } from "@/lib/security/validation";
 
@@ -50,13 +50,13 @@ export default async function StockPage({
   ]);
   const { ticker, quote, candles, intraday, holdings } = detail;
 
-  const totalQty = holdings.reduce((a, h) => a + h.quantity, 0);
+  const positionRows = holdings.map((h) => computeHoldingMetrics(h, ticker, quote));
+  const totalQty = positionRows.reduce((a, h) => a + h.quantity, 0);
   const hasPosition = totalQty > 0;
-  const costBasis = holdings.reduce((a, h) => a + h.quantity * h.avg_buy_price, 0);
+  const costBasis = positionRows.reduce((a, h) => a + h.costBasis, 0);
   const avgCost = hasPosition ? costBasis / totalQty : 0;
-  const price = effectiveQuotePrice(quote) ?? avgCost;
-  const marketValue = price * totalQty;
-  const unrealizedPL = marketValue - costBasis;
+  const marketValue = positionRows.reduce((a, h) => a + h.marketValue, 0);
+  const unrealizedPL = positionRows.reduce((a, h) => a + h.unrealizedPL, 0);
   const unrealizedPLPct = costBasis ? (unrealizedPL / costBasis) * 100 : 0;
 
   const calendar = await getStockCalendar(symbol, symbolTxns);

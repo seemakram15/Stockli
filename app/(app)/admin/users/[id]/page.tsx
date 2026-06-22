@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Shield, Wallet, TrendingUp, Coins, Bell, Star, Eye } from "lucide-react";
+import { Shield, Wallet, Bell, Star, Eye } from "lucide-react";
 import { getUserOverview } from "@/lib/services/admin";
 import { isDemoMode } from "@/lib/config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { SmartBackLink } from "@/components/smart-back-link";
-import { StatCard } from "@/components/stat-card";
-import { ChangeBadge } from "@/components/change-badge";
+import { LiveSummaryCards } from "@/components/live-summary-cards";
 import { HoldingsTable } from "@/components/holdings-table";
 import { TransactionsTable } from "@/components/transactions-table";
 import { AllocationChart } from "@/components/charts/allocation-chart";
@@ -63,23 +62,7 @@ export default async function AdminUserPage({
         description={email ?? profile.id}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total Value" value={formatPKR(summary.totalValue)} icon={<Wallet className="size-4" />} />
-        <StatCard
-          label="Total P/L"
-          value={formatPKR(summary.totalPL, { sign: true })}
-          tone={summary.totalPL > 0 ? "gain" : summary.totalPL < 0 ? "loss" : "default"}
-          icon={<TrendingUp className="size-4" />}
-          sub={<ChangeBadge pct={summary.totalPLPct} variant="pill" />}
-        />
-        <StatCard label="Invested" value={formatPKR(summary.totalInvested)} icon={<Coins className="size-4" />} />
-        <StatCard
-          label="Portfolios"
-          value={portfolios.length}
-          icon={<Wallet className="size-4" />}
-          sub={<span className="text-muted-foreground">{summary.holdingsCount} holdings</span>}
-        />
-      </div>
+      <LiveSummaryCards holdings={holdings} realizedPL={summary.realizedPL} />
 
       {holdings.length === 0 ? (
         <EmptyState icon={<Wallet className="size-6" />} title="This user has no holdings yet" />

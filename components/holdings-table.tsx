@@ -12,11 +12,10 @@ import {
 } from "@/components/ui/table";
 import { ChangeBadge } from "@/components/change-badge";
 import { HoldingRowActions } from "@/components/portfolio/holding-row-actions";
-import { usePrices } from "@/lib/hooks/use-prices";
-import { computeHoldingMetrics } from "@/lib/services/metrics";
+import { useLiveHoldings } from "@/lib/hooks/use-live-holdings";
 import { formatPKR, formatNumber, plColorClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { HoldingWithMetrics, Quote } from "@/lib/types";
+import type { HoldingWithMetrics } from "@/lib/types";
 
 export function HoldingsTable({
   holdings,
@@ -30,24 +29,7 @@ export function HoldingsTable({
   /** When set, renders per-row trade/remove actions. */
   rowActions?: { demo?: boolean };
 }) {
-  const symbols = React.useMemo(() => holdings.map((h) => h.symbol), [holdings]);
-  const initial = React.useMemo(
-    () => holdings.map((h) => h.quote).filter(Boolean) as Quote[],
-    [holdings]
-  );
-  const { quotes } = usePrices(symbols, initial);
-
-  // Recompute metrics from the freshest quote (falls back to server value).
-  const rows = React.useMemo(
-    () =>
-      holdings
-        .map((h) => {
-          const live = quotes.get(h.symbol.toUpperCase()) ?? h.quote;
-          return computeHoldingMetrics(h, h.ticker, live);
-        })
-        .sort((a, b) => b.marketValue - a.marketValue),
-    [holdings, quotes]
-  );
+  const { liveHoldings: rows } = useLiveHoldings(holdings);
 
   return (
     <>

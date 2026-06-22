@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Coins, TrendingUp, CalendarClock, Wallet } from "lucide-react";
+import { CalendarClock, Wallet } from "lucide-react";
 import { getPortfolio, getPortfolioView } from "@/lib/services/portfolio";
 import { getPortfolioCalendar } from "@/lib/services/daily-pl";
 import { isDemoMode } from "@/lib/config";
@@ -8,8 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/page-header";
 import { SmartBackLink } from "@/components/smart-back-link";
-import { StatCard } from "@/components/stat-card";
-import { ChangeBadge } from "@/components/change-badge";
+import { LiveSummaryCards } from "@/components/live-summary-cards";
 import { HoldingsTable } from "@/components/holdings-table";
 import { TransactionsPanel } from "@/components/portfolio/transactions-panel";
 import { AllocationExplorer } from "@/components/dashboard/allocation-explorer";
@@ -17,7 +16,6 @@ import { PLCalendar } from "@/components/charts/pl-calendar";
 import { EmptyState } from "@/components/empty-state";
 import { AddTradeDialog } from "@/components/portfolio/add-trade-dialog";
 import { PortfolioSettings } from "@/components/portfolio/portfolio-settings";
-import { formatPKR } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -64,33 +62,7 @@ export default async function PortfolioDetailPage({
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Value" value={formatPKR(summary.totalValue)} icon={<Wallet className="size-4" />} />
-        <StatCard
-          label="Total P/L"
-          value={formatPKR(summary.totalPL, { sign: true })}
-          tone={summary.totalPL > 0 ? "gain" : summary.totalPL < 0 ? "loss" : "default"}
-          icon={<TrendingUp className="size-4" />}
-          sub={<ChangeBadge pct={summary.totalPLPct} variant="pill" />}
-        />
-        <StatCard
-          label="Day's P/L"
-          value={formatPKR(summary.dayPL, { sign: true })}
-          tone={summary.dayPL > 0 ? "gain" : summary.dayPL < 0 ? "loss" : "default"}
-          icon={<CalendarClock className="size-4" />}
-          sub={<ChangeBadge pct={summary.dayPLPct} variant="pill" />}
-        />
-        <StatCard
-          label="Invested"
-          value={formatPKR(summary.totalInvested)}
-          icon={<Coins className="size-4" />}
-          sub={
-            <span className="text-muted-foreground">
-              Realized {formatPKR(summary.realizedPL, { sign: true })}
-            </span>
-          }
-        />
-      </div>
+      <LiveSummaryCards holdings={holdings} realizedPL={summary.realizedPL} valueLabel="Value" />
 
       {holdings.length === 0 ? (
         <EmptyState

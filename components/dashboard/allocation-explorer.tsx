@@ -22,14 +22,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AllocationChart } from "@/components/charts/allocation-chart";
 import { HoldingsTable } from "@/components/holdings-table";
-import { usePrices } from "@/lib/hooks/use-prices";
-import {
-  allocationBySector,
-  computeHoldingMetrics,
-  computeSummary,
-} from "@/lib/services/metrics";
+import { useLiveHoldings } from "@/lib/hooks/use-live-holdings";
+import { allocationBySector, computeSummary } from "@/lib/services/metrics";
 import { formatPKR, formatPercent, plColorClass } from "@/lib/format";
-import type { HoldingWithMetrics, Portfolio, Quote } from "@/lib/types";
+import type { HoldingWithMetrics, Portfolio } from "@/lib/types";
 
 type PortfolioOption = Pick<Portfolio, "id" | "name">;
 type AllocationMode = "sector" | "holding";
@@ -53,7 +49,7 @@ export function AllocationExplorer({
 }) {
   const [portfolioId, setPortfolioId] = React.useState(defaultPortfolioId);
   const [mode, setMode] = React.useState<AllocationMode>(defaultMode);
-  const liveHoldings = useLiveHoldings(holdings);
+  const { liveHoldings } = useLiveHoldings(holdings);
   const portfolioNames = React.useMemo(
     () => Object.fromEntries(portfolios.map((p) => [p.id, p.name])),
     [portfolios]
@@ -161,23 +157,6 @@ export function AllocationExplorer({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function useLiveHoldings(holdings: HoldingWithMetrics[]) {
-  const symbols = React.useMemo(() => holdings.map((h) => h.symbol), [holdings]);
-  const initial = React.useMemo(
-    () => holdings.map((h) => h.quote).filter(Boolean) as Quote[],
-    [holdings]
-  );
-  const { quotes } = usePrices(symbols, initial);
-
-  return React.useMemo(
-    () =>
-      holdings
-        .map((h) => computeHoldingMetrics(h, h.ticker, quotes.get(h.symbol.toUpperCase()) ?? h.quote))
-        .sort((a, b) => b.marketValue - a.marketValue),
-    [holdings, quotes]
   );
 }
 

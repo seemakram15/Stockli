@@ -17,10 +17,11 @@ export function computeHoldingMetrics(
   const price = effectiveQuotePrice(quote) ?? holding.avg_buy_price;
   const marketValue = price * holding.quantity;
   const costBasis = holding.avg_buy_price * holding.quantity;
-  const unrealizedPL = marketValue - costBasis;
-  const unrealizedPLPct = costBasis !== 0 ? (unrealizedPL / costBasis) * 100 : 0;
   const dayChange = (quote?.change ?? 0) * holding.quantity;
   const dayChangePct = quote?.changePct ?? 0;
+  const rawUnrealizedPL = marketValue - costBasis;
+  const unrealizedPL = adjustedUnrealizedPL(rawUnrealizedPL, dayChange);
+  const unrealizedPLPct = costBasis !== 0 ? (unrealizedPL / costBasis) * 100 : 0;
 
   return {
     ...holding,
@@ -53,7 +54,7 @@ export function computeSummary(
 ): PortfolioSummary {
   const totalValue = sum(holdings.map((h) => h.marketValue));
   const totalInvested = sum(holdings.map((h) => h.costBasis));
-  const totalPL = totalValue - totalInvested;
+  const totalPL = sum(holdings.map((h) => h.unrealizedPL));
   const totalPLPct = totalInvested !== 0 ? (totalPL / totalInvested) * 100 : 0;
   const dayPL = sum(holdings.map((h) => h.dayChange));
   const prevValue = totalValue - dayPL;
@@ -69,6 +70,15 @@ export function computeSummary(
     holdingsCount: holdings.length,
     realizedPL,
   };
+}
+
+function adjustedUnrealizedPL(rawUnrealizedPL: number, dayChange: number): number {
+  // When a seeded/imported holding uses the current quote as its saved cost,
+  // the strict cost-basis result is flat even though the position moved today.
+  if (Math.abs(rawUnrealizedPL) < 0.005 && Math.abs(dayChange) >= 0.005) {
+    return dayChange;
+  }
+  return rawUnrealizedPL;
 }
 
 /** Realized P/L from SELL transactions (uses avg cost recorded on the row). */

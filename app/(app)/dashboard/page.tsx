@@ -3,9 +3,6 @@ import { Suspense } from "react";
 import Link from "next/link";
 import {
   Wallet,
-  TrendingUp,
-  Coins,
-  CalendarClock,
   ArrowUpRight,
   ArrowDownRight,
   Plus,
@@ -20,8 +17,7 @@ import { marketStatus } from "@/lib/psx/market-hours";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { StatCard } from "@/components/stat-card";
-import { ChangeBadge } from "@/components/change-badge";
+import { LiveSummaryCards } from "@/components/live-summary-cards";
 import { HoldingsTable } from "@/components/holdings-table";
 import { EmptyState } from "@/components/empty-state";
 import { MarketStatusBadge } from "@/components/status-badges";
@@ -70,43 +66,7 @@ export default async function DashboardPage() {
         />
       ) : (
         <>
-          {/* Summary cards */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="Total Value"
-              value={formatPKR(summary.totalValue)}
-              icon={<Wallet className="size-4" />}
-              sub={
-                <span className="text-muted-foreground">
-                  {summary.holdingsCount} positions
-                </span>
-              }
-            />
-            <StatCard
-              label="Total P/L"
-              value={formatPKR(summary.totalPL, { sign: true })}
-              tone={summary.totalPL > 0 ? "gain" : summary.totalPL < 0 ? "loss" : "default"}
-              icon={<TrendingUp className="size-4" />}
-              sub={<ChangeBadge pct={summary.totalPLPct} variant="pill" />}
-            />
-            <StatCard
-              label="Day's P/L"
-              value={formatPKR(summary.dayPL, { sign: true })}
-              tone={summary.dayPL > 0 ? "gain" : summary.dayPL < 0 ? "loss" : "default"}
-              icon={<CalendarClock className="size-4" />}
-              sub={<ChangeBadge pct={summary.dayPLPct} variant="pill" />}
-            />
-            <StatCard
-              label="Invested"
-              value={formatPKR(summary.totalInvested)}
-              icon={<Coins className="size-4" />}
-              sub={
-                <span className="text-muted-foreground">
-                  Realized {formatPKR(summary.realizedPL, { sign: true })}
-                </span>
-              }
-            />
-          </div>
+          <LiveSummaryCards holdings={holdings} realizedPL={summary.realizedPL} />
 
           {/* Performance + Allocation */}
           <div className="grid gap-4 lg:grid-cols-3">
