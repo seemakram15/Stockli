@@ -1,4 +1,4 @@
-# Sahm — PSX Portfolio Tracker
+# Stockli — PSX Portfolio Tracker
 
 A free, serverless web app for tracking personal stock portfolios on the
 **Pakistan Stock Exchange (PSX)**. Live‑ish prices, profit/loss, candlestick
@@ -77,7 +77,7 @@ Copy [`.env.example`](.env.example) → `.env.local` and fill in:
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | [Supabase dashboard](https://supabase.com/dashboard) → Project Settings → API |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | [Upstash console](https://console.upstash.com) → your Redis DB → REST |
 | `CRON_SECRET` | any long random string |
-| `NEXT_PUBLIC_SITE_URL` | your deployed URL (e.g. `https://sahm.vercel.app`) |
+| `NEXT_PUBLIC_SITE_URL` | your deployed URL (e.g. `https://stockli.vercel.app`) |
 
 Any *real* value flips the app out of demo mode automatically (see
 [`lib/config.ts`](lib/config.ts)).
