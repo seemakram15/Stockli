@@ -194,6 +194,7 @@ export interface Alert {
 export interface HoldingWithMetrics extends Holding {
   ticker: Ticker | null;
   quote: Quote | null;
+  livePrice: number;
   marketValue: number;
   costBasis: number;
   unrealizedPL: number;

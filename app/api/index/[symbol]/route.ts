@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getIndexDetail } from "@/lib/services/market";
+import { normalizeSymbol } from "@/lib/security/validation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,7 +10,9 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ symbol: string }> }
 ) {
-  const { symbol } = await params;
+  const { symbol: rawSymbol } = await params;
+  const symbol = normalizeSymbol(rawSymbol);
+  if (!symbol) return NextResponse.json({ error: "Unknown index" }, { status: 404 });
   const detail = await getIndexDetail(symbol);
   if (!detail) return NextResponse.json({ error: "Unknown index" }, { status: 404 });
   return NextResponse.json(detail, {

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { isDemoMode } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeSymbol } from "@/lib/security/validation";
 
 export interface ToggleState {
   watching?: boolean;
@@ -28,11 +29,11 @@ export async function toggleWatchlist(
   _prev: ToggleState,
   formData: FormData
 ): Promise<ToggleState> {
-  const symbol = String(formData.get("symbol") ?? "").toUpperCase();
+  const symbol = normalizeSymbol(formData.get("symbol"));
   const watching = String(formData.get("watching") ?? "") === "true";
   if (isDemoMode)
     return { error: "Demo mode — add Supabase keys to use watchlists." };
-  if (!symbol) return { error: "Missing symbol" };
+  if (!symbol) return { error: "Invalid symbol" };
 
   try {
     const supabase = await createClient();
@@ -65,7 +66,7 @@ export async function toggleWatchlist(
 
 export async function removeFromWatchlist(formData: FormData): Promise<void> {
   if (isDemoMode) return;
-  const symbol = String(formData.get("symbol") ?? "").toUpperCase();
+  const symbol = normalizeSymbol(formData.get("symbol"));
   if (!symbol) return;
   const supabase = await createClient();
   const { data: lists } = await supabase.from("watchlists").select("id");

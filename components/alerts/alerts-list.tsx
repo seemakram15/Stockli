@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { usePrices } from "@/lib/hooks/use-prices";
+import { effectiveQuotePrice } from "@/lib/services/metrics";
 import { formatPKR, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { deleteAlert, toggleAlert } from "@/lib/actions/alerts";
@@ -29,7 +30,7 @@ export function AlertsList({ alerts, demo }: { alerts: Alert[]; demo?: boolean }
     <ul className="divide-y divide-border">
       {alerts.map((a) => {
         const q = quotes.get(a.symbol.toUpperCase());
-        const price = q?.price ?? null;
+        const price = effectiveQuotePrice(q ?? null);
         const distance =
           price != null ? ((a.target_price - price) / price) * 100 : null;
         const triggered = !a.is_active && a.last_triggered_at != null;

@@ -5,6 +5,7 @@ import { getRedis } from "@/lib/cache/redis";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured } from "@/lib/config";
 import { PRICE_CACHE_TTL_SECONDS } from "@/lib/constants";
+import { normalizeSymbol, normalizeSymbols } from "@/lib/security/validation";
 
 /**
  * Price service — the single hot path for quotes.
@@ -133,7 +134,7 @@ export async function getMarketRows(): Promise<MarketWatchRow[]> {
 
 /** Get quotes for the given symbols, using cache first then a batched refresh. */
 export async function getQuotes(symbols: string[]): Promise<Map<string, Quote>> {
-  const wanted = Array.from(new Set(symbols.map((s) => s.toUpperCase())));
+  const wanted = normalizeSymbols(symbols, 100);
   if (wanted.length === 0) return new Map();
 
   const cached = await readCache(wanted);
@@ -151,8 +152,10 @@ export async function getQuotes(symbols: string[]): Promise<Map<string, Quote>> 
 }
 
 export async function getQuote(symbol: string): Promise<Quote | null> {
-  const map = await getQuotes([symbol]);
-  return map.get(symbol.toUpperCase()) ?? null;
+  const normalized = normalizeSymbol(symbol);
+  if (!normalized) return null;
+  const map = await getQuotes([normalized]);
+  return map.get(normalized) ?? null;
 }
 
 /** All quotes from the latest market snapshot (cache-first). */

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getQuotes } from "@/lib/services/prices";
 import { marketStatus } from "@/lib/psx/market-hours";
+import { normalizeSymbols } from "@/lib/security/validation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,10 +14,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const raw = searchParams.get("symbols") ?? "";
-  const symbols = raw
-    .split(",")
-    .map((s) => s.trim().toUpperCase())
-    .filter(Boolean);
+  const symbols = normalizeSymbols(raw.split(","), 40);
 
   if (symbols.length === 0) {
     return NextResponse.json({ quotes: [], market: marketStatus() });

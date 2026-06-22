@@ -172,15 +172,15 @@ function MoversCard({
             <div>
               <p className="font-medium">{h.symbol}</p>
               <p className="text-xs text-muted-foreground">
-                {formatPKR(h.quote?.price ?? h.avg_buy_price)}
+                {formatPKR(h.livePrice)}
               </p>
             </div>
             <div className="text-right">
-              <p className={`font-medium tabular-nums ${plColorClass(h.unrealizedPL)}`}>
-                {formatPKR(h.unrealizedPL, { sign: true })}
+              <p className={`font-medium tabular-nums ${plColorClass(h.dayChange)}`}>
+                {formatPKR(h.dayChange, { sign: true })}
               </p>
-              <p className={`text-xs tabular-nums ${plColorClass(h.unrealizedPLPct)}`}>
-                {formatPercent(h.unrealizedPLPct)}
+              <p className={`text-xs tabular-nums ${plColorClass(h.dayChangePct)}`}>
+                {formatPercent(h.dayChangePct)}
               </p>
             </div>
           </Link>

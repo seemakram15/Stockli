@@ -21,6 +21,7 @@ import {
 } from "@/lib/demo/data";
 import { SEED_TICKERS } from "@/lib/psx/symbols";
 import { sectorName } from "@/lib/psx/sectors";
+import { normalizeSymbol, normalizeSymbols } from "@/lib/security/validation";
 import type {
   Alert,
   Holding,
@@ -56,7 +57,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
 /** Ticker metadata for a set of symbols (DB table, seed-backed fallback). */
 export async function getTickerMap(symbols: string[]): Promise<Map<string, Ticker>> {
-  const upper = Array.from(new Set(symbols.map((s) => s.toUpperCase())));
+  const upper = normalizeSymbols(symbols, 100);
   const map = new Map<string, Ticker>();
   if (upper.length === 0) return map;
 
@@ -143,7 +144,8 @@ export async function getTransactions(portfolioId?: string): Promise<Transaction
 
 /** All BUY/SELL/etc. transactions for one symbol across the user's portfolios. */
 export async function getTransactionsForSymbol(symbol: string): Promise<Transaction[]> {
-  const sym = symbol.toUpperCase();
+  const sym = normalizeSymbol(symbol);
+  if (!sym) return [];
   if (isDemoMode) {
     return DEMO_TRANSACTIONS.filter((t) => t.symbol.toUpperCase() === sym).sort((a, b) =>
       a.transacted_at.localeCompare(b.transacted_at)
@@ -217,7 +219,7 @@ export async function getDashboard(): Promise<DashboardData> {
   ]);
   const enriched = await enrichHoldings(holdings);
   const realized = computeRealizedPL(transactions);
-  const byPerf = [...enriched].sort((a, b) => b.unrealizedPLPct - a.unrealizedPLPct);
+  const byDay = [...enriched].sort((a, b) => b.dayChange - a.dayChange);
 
   return {
     portfolios,
@@ -225,8 +227,8 @@ export async function getDashboard(): Promise<DashboardData> {
     summary: computeSummary(enriched, realized),
     sectorAllocation: allocationBySector(enriched),
     holdingAllocation: allocationByHolding(enriched),
-    topGainers: byPerf.slice(0, 3),
-    topLosers: byPerf.slice(-3).reverse(),
+    topGainers: byDay.filter((h) => h.dayChange > 0).slice(0, 3),
+    topLosers: byDay.filter((h) => h.dayChange < 0).reverse().slice(0, 3),
   };
 }
 

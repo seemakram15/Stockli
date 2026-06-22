@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ChangeBadge } from "@/components/change-badge";
 import { usePrices } from "@/lib/hooks/use-prices";
+import { effectiveQuotePrice } from "@/lib/services/metrics";
 import { formatPKR, formatCompact } from "@/lib/format";
 import { removeFromWatchlist } from "@/lib/actions/watchlist";
 import type { Quote } from "@/lib/types";
@@ -53,6 +54,7 @@ export function WatchlistTable({
       <div className="space-y-3 p-3 sm:hidden">
         {items.map((it) => {
           const q = quotes.get(it.symbol.toUpperCase());
+          const price = effectiveQuotePrice(q ?? null);
           return (
             <div key={it.symbol} className="rounded-xl border border-border bg-card p-3">
               <div className="flex items-start justify-between gap-3">
@@ -65,7 +67,7 @@ export function WatchlistTable({
                 <RemoveWatchItem symbol={it.symbol} demo={demo} />
               </div>
               <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                <MobileMetric label="Last" value={formatPKR(q?.price ?? null)} />
+                <MobileMetric label="Last" value={formatPKR(price)} />
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">Change</p>
                   <ChangeBadge pct={q?.changePct} className="justify-end" />
@@ -93,6 +95,7 @@ export function WatchlistTable({
           <TableBody>
             {items.map((it) => {
               const q = quotes.get(it.symbol.toUpperCase());
+              const price = effectiveQuotePrice(q ?? null);
               return (
                 <TableRow key={it.symbol} className="group">
                   <TableCell>
@@ -107,7 +110,7 @@ export function WatchlistTable({
                     {it.sector}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
-                    {formatPKR(q?.price ?? null)}
+                    {formatPKR(price)}
                   </TableCell>
                   <TableCell className="text-right">
                     <ChangeBadge pct={q?.changePct} className="justify-end" />

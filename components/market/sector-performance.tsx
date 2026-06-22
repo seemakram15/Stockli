@@ -9,7 +9,13 @@ import { formatCompact, formatPercent, plColorClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { SectorPerformance } from "@/lib/services/market";
 
-export function SectorPerformancePanel({ data }: { data: SectorPerformance[] }) {
+export function SectorPerformancePanel({
+  data,
+  showHeader = true,
+}: {
+  data: SectorPerformance[];
+  showHeader?: boolean;
+}) {
   const [query, setQuery] = React.useState("");
   const marketStats = React.useMemo(() => buildMarketStats(data), [data]);
   const filtered = React.useMemo(() => {
@@ -23,12 +29,18 @@ export function SectorPerformancePanel({ data }: { data: SectorPerformance[] }) 
     <Card>
       <CardHeader className="gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle>Sector Performance</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
+          {showHeader ? (
+            <div>
+              <CardTitle>Sector Performance</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Search sectors and open one to inspect every stock in that group.
+              </p>
+            </div>
+          ) : (
+            <p className="max-w-xl text-sm text-muted-foreground">
               Search sectors and open one to inspect every stock in that group.
             </p>
-          </div>
+          )}
           <div className="relative w-full sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input

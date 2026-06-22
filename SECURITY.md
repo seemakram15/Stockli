@@ -8,6 +8,7 @@ placeholder `.env.example`, not real `.env.local` values.
 Never commit these values:
 
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `DATABASE_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
 - `CRON_SECRET`
 - real `.env.local` files
@@ -27,6 +28,7 @@ Required variables:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `DATABASE_URL`
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
 - `CRON_SECRET`
@@ -35,6 +37,9 @@ Required variables:
 
 The service-role key is server-only. It must never be prefixed with
 `NEXT_PUBLIC_`.
+
+`DATABASE_URL` is also server-only. Vercel uses it during `npm run build` to
+apply SQL migrations before compiling the app. Never expose it to client code.
 
 ## Cron Routes
 

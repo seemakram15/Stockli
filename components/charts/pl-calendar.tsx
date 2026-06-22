@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { formatPKR, formatPercent } from "@/lib/format";
 import { usePrices } from "@/lib/hooks/use-prices";
 import { PSX_TIMEZONE } from "@/lib/constants";
+import { effectiveQuotePrice } from "@/lib/services/metrics";
 import type { Quote } from "@/lib/types";
 import type { CalendarDay } from "@/lib/services/daily-pl";
 
@@ -31,7 +32,7 @@ export function PLCalendar({
   hasPosition: boolean;
   livePositions?: { symbol: string; quantity: number; initial?: Quote | null }[];
 }) {
-  const liveData = useLiveCalendarData(data, livePositions, hasPosition);
+  const { liveData, positionSummary } = useLiveCalendarData(data, livePositions, hasPosition);
   const byDate = React.useMemo(() => {
     const m = new Map<string, CalendarDay>();
     for (const d of liveData) m.set(d.date, d);
@@ -74,6 +75,12 @@ export function PLCalendar({
   const monthTotal = monthDays.reduce((a, d) => a + d.dayPL, 0);
   const upDays = monthDays.filter((d) => metric(d) > 0).length;
   const downDays = monthDays.filter((d) => metric(d) < 0).length;
+  const positionCounts =
+    positionSummary &&
+    positionSummary.totalPositions > 1 &&
+    current === positionSummary.month
+      ? positionSummary
+      : null;
 
   const cells: (CalendarDay | null | { date: string; empty: true })[] = [];
   for (let i = 0; i < firstWeekday; i++) cells.push(null);
@@ -112,8 +119,17 @@ export function PLCalendar({
         </div>
         <div className="flex items-center gap-4 text-sm">
           <span className="text-muted-foreground">
-            <span className="text-gain">{upDays}</span> up ·{" "}
-            <span className="text-loss">{downDays}</span> down
+            {positionCounts ? (
+              <>
+                <span className="text-gain">{positionCounts.up}</span> holdings up ·{" "}
+                <span className="text-loss">{positionCounts.down}</span> down today
+              </>
+            ) : (
+              <>
+                <span className="text-gain">{upDays}</span> gain days ·{" "}
+                <span className="text-loss">{downDays}</span> loss days
+              </>
+            )}
           </span>
           {hasPosition && (
             <span
@@ -177,19 +193,27 @@ function useLiveCalendarData(
   const { quotes } = usePrices(symbols, initial);
 
   return React.useMemo(() => {
-    if (!hasPosition || active.length === 0) return data;
+    const empty = { liveData: data, positionSummary: null };
+    if (!hasPosition || active.length === 0) return empty;
 
     let dayPL = 0;
     let close = 0;
     let found = 0;
+    let up = 0;
+    let down = 0;
     for (const position of active) {
       const q = quotes.get(position.symbol.toUpperCase()) ?? position.initial;
       if (!q) continue;
+      const price = effectiveQuotePrice(q);
+      if (price == null) continue;
       found++;
-      dayPL += q.change * position.quantity;
-      close += q.price * position.quantity;
+      const positionPL = q.change * position.quantity;
+      dayPL += positionPL;
+      close += price * position.quantity;
+      if (positionPL > 0) up++;
+      if (positionPL < 0) down++;
     }
-    if (found === 0) return data;
+    if (found === 0) return empty;
 
     const prevValue = close - dayPL;
     const dayPLPct = prevValue ? (dayPL / prevValue) * 100 : 0;
@@ -204,7 +228,15 @@ function useLiveCalendarData(
 
     const next = data.filter((d) => d.date !== today);
     next.push(liveDay);
-    return next.sort((a, b) => a.date.localeCompare(b.date));
+    return {
+      liveData: next.sort((a, b) => a.date.localeCompare(b.date)),
+      positionSummary: {
+        month: today.slice(0, 7),
+        up,
+        down,
+        totalPositions: found,
+      },
+    };
   }, [active, data, hasPosition, quotes]);
 }
 
@@ -259,8 +291,10 @@ function DayCell({
           <>
             <span
               className={cn(
-                "text-[10px] font-bold tabular-nums sm:text-xs",
-                active ? "text-foreground drop-shadow-sm" : "text-muted-foreground"
+                "w-fit max-w-full rounded px-1 py-0.5 text-[10px] font-bold tabular-nums sm:text-xs",
+                active
+                  ? "bg-background/85 text-foreground shadow-sm ring-1 ring-foreground/10"
+                  : "text-muted-foreground"
               )}
             >
               {valueText.replace("Rs ", "")}
@@ -269,8 +303,14 @@ function DayCell({
         ) : (
           <span
             className={cn(
-              "text-[11px] font-semibold tabular-nums sm:text-xs",
-              up ? "text-gain" : down ? "text-loss" : "text-muted-foreground"
+              "w-fit max-w-full rounded px-1 py-0.5 text-[11px] font-semibold tabular-nums sm:text-xs",
+              active
+                ? "bg-background/85 text-foreground shadow-sm ring-1 ring-foreground/10"
+                : up
+                  ? "text-gain"
+                  : down
+                    ? "text-loss"
+                    : "text-muted-foreground"
             )}
           >
             {formatPercent(d.changePct)}
