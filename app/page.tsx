@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -24,6 +25,8 @@ import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { DataDelayBadge } from "@/components/status-badges";
 import { InstallAppButton } from "@/components/pwa/install-app-button";
+import { AuthDialog } from "@/components/auth/auth-dialog";
+import { UrlAuthDialog } from "@/components/auth/url-auth-dialog";
 import { isDemoMode } from "@/lib/config";
 import { APP_NAME } from "@/lib/constants";
 
@@ -84,11 +87,13 @@ const MARKET_RAILS = [
 ];
 
 export default function Home() {
-  const primaryHref = isDemoMode ? "/dashboard" : "/signup";
   const primaryLabel = isDemoMode ? "Open the demo" : "Start tracking free";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <Suspense fallback={null}>
+        <UrlAuthDialog demo={isDemoMode} />
+      </Suspense>
       <section className="relative min-h-[92svh] overflow-hidden bg-[#06120f] text-white">
         <Image
           src="/landing/market-command-center.webp"
@@ -107,19 +112,37 @@ export default function Home() {
           </Link>
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
             <ThemeToggle />
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-white/10 hover:text-white"
-            >
-              <Link href={isDemoMode ? "/dashboard" : "/login"}>
-                {isDemoMode ? "Demo" : "Sign in"}
-              </Link>
-            </Button>
-            <Button asChild size="sm" className="hidden bg-white text-[#07130f] hover:bg-white/90 sm:inline-flex">
-              <Link href={primaryHref}>{isDemoMode ? "Launch" : "Sign up"}</Link>
-            </Button>
+            {isDemoMode ? (
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/10 hover:text-white"
+              >
+                <Link href="/dashboard">Demo</Link>
+              </Button>
+            ) : (
+              <AuthDialog initialMode="login" demo={isDemoMode}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:bg-white/10 hover:text-white"
+                >
+                  Sign in
+                </Button>
+              </AuthDialog>
+            )}
+            {isDemoMode ? (
+              <Button asChild size="sm" className="hidden bg-white text-[#07130f] hover:bg-white/90 sm:inline-flex">
+                <Link href="/dashboard">Launch</Link>
+              </Button>
+            ) : (
+              <AuthDialog initialMode="signup" demo={isDemoMode}>
+                <Button size="sm" className="hidden bg-white text-[#07130f] hover:bg-white/90 sm:inline-flex">
+                  Sign up
+                </Button>
+              </AuthDialog>
+            )}
           </div>
         </header>
 
@@ -138,11 +161,19 @@ export default function Home() {
               installable web app.
             </p>
             <div className="mt-8 flex w-full max-w-sm flex-col items-stretch gap-3 sm:w-auto sm:max-w-none sm:flex-row">
-              <Button asChild size="lg" className="h-11 gap-2 bg-emerald-400 text-[#07130f] hover:bg-emerald-300">
-                <Link href={primaryHref}>
-                  {primaryLabel} <ArrowRight className="size-4" />
-                </Link>
-              </Button>
+              {isDemoMode ? (
+                <Button asChild size="lg" className="h-11 gap-2 bg-emerald-400 text-[#07130f] hover:bg-emerald-300">
+                  <Link href="/dashboard">
+                    {primaryLabel} <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              ) : (
+                <AuthDialog initialMode="signup" demo={isDemoMode}>
+                  <Button size="lg" className="h-11 gap-2 bg-emerald-400 text-[#07130f] hover:bg-emerald-300">
+                    {primaryLabel} <ArrowRight className="size-4" />
+                  </Button>
+                </AuthDialog>
+              )}
               <Button
                 asChild
                 size="lg"
@@ -288,19 +319,37 @@ export default function Home() {
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
-              <Button asChild size="lg" className="bg-emerald-400 text-[#07130f] hover:bg-emerald-300">
-                <Link href={primaryHref}>{primaryLabel}</Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white"
-              >
-                <Link href={isDemoMode ? "/dashboard" : "/login"}>
-                  {isDemoMode ? "Open dashboard" : "Sign in"}
-                </Link>
-              </Button>
+              {isDemoMode ? (
+                <Button asChild size="lg" className="bg-emerald-400 text-[#07130f] hover:bg-emerald-300">
+                  <Link href="/dashboard">{primaryLabel}</Link>
+                </Button>
+              ) : (
+                <AuthDialog initialMode="signup" demo={isDemoMode}>
+                  <Button size="lg" className="bg-emerald-400 text-[#07130f] hover:bg-emerald-300">
+                    {primaryLabel}
+                  </Button>
+                </AuthDialog>
+              )}
+              {isDemoMode ? (
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white"
+                >
+                  <Link href="/dashboard">Open dashboard</Link>
+                </Button>
+              ) : (
+                <AuthDialog initialMode="login" demo={isDemoMode}>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white"
+                  >
+                    Sign in
+                  </Button>
+                </AuthDialog>
+              )}
             </div>
           </div>
         </section>
