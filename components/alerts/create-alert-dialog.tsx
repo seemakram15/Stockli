@@ -25,6 +25,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SymbolField } from "@/components/portfolio/symbol-field";
 import { createAlert, type AlertActionState } from "@/lib/actions/alerts";
+import { effectiveQuotePrice } from "@/lib/services/metrics";
+import type { Quote } from "@/lib/types";
 
 export function CreateAlertDialog({
   defaultSymbol,
@@ -38,6 +40,10 @@ export function CreateAlertDialog({
     createAlert,
     {}
   );
+  const [targetPrice, setTargetPrice] = React.useState("");
+  const [priceLoading, setPriceLoading] = React.useState(false);
+  const priceTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const priceRequestId = React.useRef(0);
 
   React.useEffect(() => {
     if (state.ok) {
@@ -47,6 +53,40 @@ export function CreateAlertDialog({
       toast.error(state.error);
     }
   }, [state]);
+
+  const onSymbol = React.useCallback((sym: string) => {
+    if (priceTimer.current) clearTimeout(priceTimer.current);
+    const s = sym.trim().toUpperCase();
+    const requestId = priceRequestId.current + 1;
+    priceRequestId.current = requestId;
+    if (s.length < 1) {
+      setPriceLoading(false);
+      return;
+    }
+
+    setPriceLoading(true);
+    priceTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/prices?symbols=${encodeURIComponent(s)}`);
+        const data = await res.json();
+        const q: Quote | undefined = data.quotes?.[0];
+        const latest = q && q.symbol.toUpperCase() === s ? effectiveQuotePrice(q) : null;
+        if (latest != null && priceRequestId.current === requestId) {
+          setTargetPrice(String(latest));
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        if (priceRequestId.current === requestId) setPriceLoading(false);
+      }
+    }, 350);
+  }, []);
+
+  React.useEffect(() => {
+    return () => {
+      if (priceTimer.current) clearTimeout(priceTimer.current);
+    };
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -68,7 +108,7 @@ export function CreateAlertDialog({
           <div className="space-y-4 py-4">
             <div className="space-y-1.5">
               <Label>Symbol</Label>
-              <SymbolField defaultValue={defaultSymbol ?? ""} required />
+              <SymbolField defaultValue={defaultSymbol ?? ""} required onSymbolChange={onSymbol} />
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -84,8 +124,21 @@ export function CreateAlertDialog({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="target">Target (PKR)</Label>
-                <Input id="target" name="target_price" type="number" min="0" step="0.01" placeholder="200" required />
+                <Label htmlFor="target" className="flex items-center gap-1.5">
+                  Target (PKR)
+                  {priceLoading && <Loader2 className="size-3 animate-spin text-muted-foreground" />}
+                </Label>
+                <Input
+                  id="target"
+                  name="target_price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="auto-filled"
+                  value={targetPrice}
+                  onChange={(event) => setTargetPrice(event.target.value)}
+                  required
+                />
               </div>
             </div>
           </div>
