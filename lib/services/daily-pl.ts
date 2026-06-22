@@ -1,5 +1,5 @@
 import "server-only";
-import { psx } from "@/lib/psx/adapter";
+import { getEodCandlesCached } from "@/lib/services/history";
 import type { Candle } from "@/lib/types";
 
 export interface DayPL {
@@ -23,7 +23,7 @@ export async function getDailyPL(
   symbol: string,
   quantity = 1
 ): Promise<DayPL[]> {
-  const candles = await psx.getEodCandles(symbol);
+  const candles = await getEodCandlesCached(symbol);
   return candlesToDailyPL(candles, quantity);
 }
 

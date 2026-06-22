@@ -2,6 +2,7 @@ import { parse } from "node-html-parser";
 import type { Candle, MarketWatchRow, SeriesPoint } from "@/lib/types";
 import { config } from "@/lib/config";
 import { genEodCandles, genIntraday, genMarketWatch } from "./mock";
+import { sectorName } from "./sectors";
 
 /**
  * PSX data source — a thin adapter so the underlying provider can be swapped
@@ -129,7 +130,7 @@ export const dpsSource: PsxDataSource = {
 
       rows.push({
         symbol,
-        sector: rec.sector ?? null,
+        sector: sectorName(rec.sector), // PSX returns a numeric code → map to a name
         listedIn: rec.listedIn ?? null,
         ldcp,
         open: toNum(rec.open),

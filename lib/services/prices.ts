@@ -18,6 +18,7 @@ import { PRICE_CACHE_TTL_SECONDS } from "@/lib/constants";
  */
 
 const priceKey = (symbol: string) => `psx:price:${symbol.toUpperCase()}`;
+const MARKET_WATCH_KEY = "psx:marketwatch";
 
 export function marketWatchRowToQuote(row: MarketWatchRow): Quote {
   return {
@@ -87,15 +88,47 @@ async function persistSnapshots(quotes: Quote[]): Promise<void> {
   }
 }
 
+/** Scrape the live market watch and warm every cache + persist snapshots. */
+async function scrapeAndStore(): Promise<MarketWatchRow[]> {
+  const rows = await psx.getMarketWatch();
+  const quotes = rows.map(marketWatchRowToQuote);
+  const redis = getRedis();
+  await Promise.all([
+    writeCache(quotes),
+    persistSnapshots(quotes),
+    redis
+      ? redis
+          .set(MARKET_WATCH_KEY, rows, { ex: PRICE_CACHE_TTL_SECONDS })
+          .catch(() => undefined)
+      : Promise.resolve(),
+  ]);
+  return rows;
+}
+
 /**
  * Run the batched market-watch refresh: scrape → cache → persist.
  * Returns a map of every symbol's quote. Safe to call repeatedly (idempotent).
  */
 export async function refreshMarketWatch(): Promise<Map<string, Quote>> {
-  const rows = await psx.getMarketWatch();
-  const quotes = rows.map(marketWatchRowToQuote);
-  await Promise.all([writeCache(quotes), persistSnapshots(quotes)]);
-  return new Map(quotes.map((q) => [q.symbol, q]));
+  const rows = await scrapeAndStore();
+  return new Map(rows.map((r) => [r.symbol.toUpperCase(), marketWatchRowToQuote(r)]));
+}
+
+/**
+ * The full market snapshot (all rows incl. sector), cache-first. Powers the
+ * Market page without re-scraping on every visit.
+ */
+export async function getMarketRows(): Promise<MarketWatchRow[]> {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const cached = await redis.get<MarketWatchRow[]>(MARKET_WATCH_KEY);
+      if (cached && cached.length) return cached;
+    } catch {
+      /* fall through */
+    }
+  }
+  return scrapeAndStore();
 }
 
 /** Get quotes for the given symbols, using cache first then a batched refresh. */
@@ -122,8 +155,8 @@ export async function getQuote(symbol: string): Promise<Quote | null> {
   return map.get(symbol.toUpperCase()) ?? null;
 }
 
-/** All quotes from the latest market snapshot (for the Market page). */
+/** All quotes from the latest market snapshot (cache-first). */
 export async function getAllQuotes(): Promise<Quote[]> {
-  const fresh = await refreshMarketWatch();
-  return Array.from(fresh.values());
+  const rows = await getMarketRows();
+  return rows.map(marketWatchRowToQuote);
 }

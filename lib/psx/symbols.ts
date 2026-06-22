@@ -15,13 +15,13 @@ export interface SeedTicker {
 }
 
 export const SEED_TICKERS: SeedTicker[] = [
-  { symbol: "OGDC", company: "Oil & Gas Development Co.", sector: "Oil & Gas Exploration", ref: 178 },
-  { symbol: "PPL", company: "Pakistan Petroleum Ltd.", sector: "Oil & Gas Exploration", ref: 118 },
-  { symbol: "POL", company: "Pakistan Oilfields Ltd.", sector: "Oil & Gas Exploration", ref: 560 },
-  { symbol: "MARI", company: "Mari Petroleum Co.", sector: "Oil & Gas Exploration", ref: 620 },
-  { symbol: "PSO", company: "Pakistan State Oil Co.", sector: "Oil & Gas Marketing", ref: 365 },
-  { symbol: "APL", company: "Attock Petroleum Ltd.", sector: "Oil & Gas Marketing", ref: 480 },
-  { symbol: "HASCOL", company: "Hascol Petroleum Ltd.", sector: "Oil & Gas Marketing", ref: 9 },
+  { symbol: "OGDC", company: "Oil & Gas Development Co.", sector: "Oil & Gas Exploration Companies", ref: 178 },
+  { symbol: "PPL", company: "Pakistan Petroleum Ltd.", sector: "Oil & Gas Exploration Companies", ref: 118 },
+  { symbol: "POL", company: "Pakistan Oilfields Ltd.", sector: "Oil & Gas Exploration Companies", ref: 560 },
+  { symbol: "MARI", company: "Mari Petroleum Co.", sector: "Oil & Gas Exploration Companies", ref: 620 },
+  { symbol: "PSO", company: "Pakistan State Oil Co.", sector: "Oil & Gas Marketing Companies", ref: 365 },
+  { symbol: "APL", company: "Attock Petroleum Ltd.", sector: "Oil & Gas Marketing Companies", ref: 480 },
+  { symbol: "HASCOL", company: "Hascol Petroleum Ltd.", sector: "Oil & Gas Marketing Companies", ref: 9 },
   { symbol: "LUCK", company: "Lucky Cement Ltd.", sector: "Cement", ref: 1080 },
   { symbol: "DGKC", company: "D.G. Khan Cement Co.", sector: "Cement", ref: 96 },
   { symbol: "MLCF", company: "Maple Leaf Cement Factory", sector: "Cement", ref: 58 },
@@ -52,9 +52,9 @@ export const SEED_TICKERS: SeedTicker[] = [
   { symbol: "SEARL", company: "The Searle Company Ltd.", sector: "Pharmaceuticals", ref: 92 },
   { symbol: "AGP", company: "AGP Ltd.", sector: "Pharmaceuticals", ref: 110 },
   { symbol: "HINOON", company: "Highnoon Laboratories Ltd.", sector: "Pharmaceuticals", ref: 720 },
-  { symbol: "NESTLE", company: "Nestle Pakistan Ltd.", sector: "Food & Personal Care", ref: 7200 },
-  { symbol: "NATF", company: "National Foods Ltd.", sector: "Food & Personal Care", ref: 215 },
-  { symbol: "UNITY", company: "Unity Foods Ltd.", sector: "Food & Personal Care", ref: 26 },
+  { symbol: "NESTLE", company: "Nestle Pakistan Ltd.", sector: "Food & Personal Care Products", ref: 7200 },
+  { symbol: "NATF", company: "National Foods Ltd.", sector: "Food & Personal Care Products", ref: 215 },
+  { symbol: "UNITY", company: "Unity Foods Ltd.", sector: "Food & Personal Care Products", ref: 26 },
   { symbol: "HUBC", company: "Hub Power Company Ltd.", sector: "Power Generation & Distribution", ref: 142 },
   { symbol: "KAPCO", company: "Kot Addu Power Co.", sector: "Power Generation & Distribution", ref: 35 },
   { symbol: "KEL", company: "K-Electric Ltd.", sector: "Power Generation & Distribution", ref: 4.6 },
@@ -67,4 +67,26 @@ export const SEED_SYMBOLS = SEED_TICKERS.map((t) => t.symbol);
 
 export function getSeedTicker(symbol: string): SeedTicker | undefined {
   return SEED_TICKERS.find((t) => t.symbol === symbol.toUpperCase());
+}
+
+/** Tradeable PSX indices shown on the Market screen. */
+export interface PsxIndex {
+  symbol: string;
+  name: string;
+  ref: number;
+}
+
+export const PSX_INDICES: PsxIndex[] = [
+  { symbol: "KSE100", name: "KSE-100 Index", ref: 179299 },
+  { symbol: "KSE30", name: "KSE-30 Index", ref: 53444 },
+  { symbol: "KMI30", name: "KMI-30 (Shariah) Index", ref: 255999 },
+  { symbol: "ALLSHR", name: "All Share Index", ref: 108152 },
+  { symbol: "KMIALLSHR", name: "KMI All Share Index", ref: 73210 },
+  { symbol: "PSXDIV20", name: "PSX Dividend 20 Index", ref: 28940 },
+];
+
+/** Reference (anchor) price for a symbol — used to seed deterministic series. */
+export function getRefPrice(symbol: string): number | undefined {
+  const s = symbol.toUpperCase();
+  return getSeedTicker(s)?.ref ?? PSX_INDICES.find((i) => i.symbol === s)?.ref;
 }

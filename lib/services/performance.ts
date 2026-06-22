@@ -1,5 +1,5 @@
 import "server-only";
-import { psx } from "@/lib/psx/adapter";
+import { getEodCandlesCached } from "@/lib/services/history";
 import { KSE100_SYMBOL } from "@/lib/constants";
 
 export interface PerfPoint {
@@ -33,10 +33,10 @@ export async function getPortfolioPerformance(
     Promise.all(
       symbols.map(async (s) => ({
         symbol: s,
-        byDate: toDateCloseMap(await psx.getEodCandles(s)),
+        byDate: toDateCloseMap(await getEodCandlesCached(s)),
       }))
     ),
-    psx.getEodCandles(KSE100_SYMBOL),
+    getEodCandlesCached(KSE100_SYMBOL),
   ]);
 
   const closeBySymbol = new Map(seriesList.map((x) => [x.symbol, x.byDate]));
