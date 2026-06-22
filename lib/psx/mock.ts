@@ -1,4 +1,11 @@
-import type { Candle, MarketWatchRow, Quote, SeriesPoint } from "@/lib/types";
+import type {
+  Candle,
+  IndexConstituent,
+  IndexSummary,
+  MarketWatchRow,
+  Quote,
+  SeriesPoint,
+} from "@/lib/types";
 import { SEED_TICKERS, getRefPrice, PSX_INDICES } from "./symbols";
 
 /**
@@ -147,6 +154,48 @@ export function genMarketWatch(now: Date = new Date()): MarketWatchRow[] {
       volume: q.volume,
     };
   });
+}
+
+/** Live index summaries (demo). */
+export function genIndexSummaries(now: Date = new Date()): IndexSummary[] {
+  return PSX_INDICES.map((idx) => {
+    const q = genQuote(idx.symbol, now);
+    return {
+      symbol: idx.symbol,
+      current: q.price,
+      change: q.change,
+      changePct: q.changePct,
+      high: q.high,
+      low: q.low,
+    };
+  });
+}
+
+/** Index constituents with synthetic weights summing ~100% (demo). */
+export function genIndexConstituents(
+  symbol: string,
+  now: Date = new Date()
+): IndexConstituent[] {
+  // Pick a deterministic subset sized to the index.
+  const sym = symbol.toUpperCase();
+  const size = sym.includes("30") ? 30 : sym.includes("DIV") ? 20 : SEED_TICKERS.length;
+  const picks = SEED_TICKERS.slice(0, Math.min(size, SEED_TICKERS.length));
+  const caps = picks.map((t) => t.ref * (50 + (hashString(t.symbol) % 200)));
+  const total = caps.reduce((a, b) => a + b, 0) || 1;
+  return picks.map((t, i) => {
+    const q = genQuote(t.symbol, now);
+    return {
+      symbol: t.symbol,
+      name: t.company,
+      ldcp: q.ldcp,
+      current: q.price,
+      change: q.change,
+      changePct: q.changePct,
+      weight: round2((caps[i] / total) * 100),
+      idxPoint: round2(q.changePct * (caps[i] / total) * 10),
+      volume: q.volume,
+    };
+  }).sort((a, b) => b.weight - a.weight);
 }
 
 function round2(n: number): number {

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Bell,
   ShieldCheck,
+  Loader2,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,20 @@ const ICONS: Record<string, LucideIcon> = {
   Bell,
   ShieldCheck,
 };
+
+/** Swaps the nav icon for a spinner while that link's navigation is pending. */
+function NavIcon({ Icon, active }: { Icon: LucideIcon; active: boolean }) {
+  const { pending } = useLinkStatus();
+  if (pending) return <Loader2 className="size-4 shrink-0 animate-spin text-primary" />;
+  return (
+    <Icon
+      className={cn(
+        "size-4 shrink-0",
+        active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+      )}
+    />
+  );
+}
 
 export function NavLinks({
   onNavigate,
@@ -56,14 +71,7 @@ export function NavLinks({
                 : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
             )}
           >
-            {Icon && (
-              <Icon
-                className={cn(
-                  "size-4 shrink-0",
-                  active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-                )}
-              />
-            )}
+            {Icon && <NavIcon Icon={Icon} active={active} />}
             {item.label}
           </Link>
         );

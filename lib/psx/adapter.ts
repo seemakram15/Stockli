@@ -1,7 +1,19 @@
 import { parse } from "node-html-parser";
-import type { Candle, MarketWatchRow, SeriesPoint } from "@/lib/types";
+import type {
+  Candle,
+  IndexConstituent,
+  IndexSummary,
+  MarketWatchRow,
+  SeriesPoint,
+} from "@/lib/types";
 import { config } from "@/lib/config";
-import { genEodCandles, genIntraday, genMarketWatch } from "./mock";
+import {
+  genEodCandles,
+  genIntraday,
+  genMarketWatch,
+  genIndexSummaries,
+  genIndexConstituents,
+} from "./mock";
 import { sectorName } from "./sectors";
 
 /**
@@ -21,6 +33,16 @@ export interface PsxDataSource {
   getMarketWatch(): Promise<MarketWatchRow[]>;
   getEodCandles(symbol: string): Promise<Candle[]>;
   getIntraday(symbol: string): Promise<SeriesPoint[]>;
+  /** Live summaries of all indices (from /indices). */
+  getIndexSummaries(): Promise<IndexSummary[]>;
+  /** Constituents of one index incl. official weight (from /indices/{symbol}). */
+  getIndexConstituents(symbol: string): Promise<IndexConstituent[]>;
+}
+
+/** Build a header→column-index lookup for a parsed table. */
+function headerIndex(headers: string[]) {
+  const h = headers.map((x) => x.toLowerCase());
+  return (...keys: string[]) => h.findIndex((x) => keys.some((k) => x.includes(k)));
 }
 
 const BROWSER_HEADERS: Record<string, string> = {
@@ -66,7 +88,8 @@ function delay(ms: number): Promise<void> {
 
 function toNum(raw: string | undefined): number | null {
   if (raw == null) return null;
-  const cleaned = raw.replace(/[, ]/g, "").replace(/[()]/g, "").trim();
+  // Strip thousands separators, percent signs and parens (PSX wraps some values).
+  const cleaned = raw.replace(/[,%\s]/g, "").replace(/[()]/g, "").trim();
   if (cleaned === "" || cleaned === "-") return null;
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
@@ -192,6 +215,89 @@ export const dpsSource: PsxDataSource = {
       .filter((p) => Number.isFinite(p.time) && Number.isFinite(p.value))
       .sort((a, b) => a.time - b.time);
   },
+
+  async getIndexSummaries(): Promise<IndexSummary[]> {
+    const res = await fetchWithRetry(`${config.psx.baseUrl}/indices`);
+    const root = parse(await res.text());
+    const table = root.querySelector("table");
+    if (!table) throw new Error("indices: no table");
+    const headers = table.querySelectorAll("thead th").map((th) => th.text.trim());
+    const at = headerIndex(headers);
+    const cSym = at("symbol", "index");
+    const cHigh = at("high");
+    const cLow = at("low");
+    const cCur = at("current");
+    const cPct = headers.findIndex((h) => h.includes("%"));
+    const cChg = headers.findIndex(
+      (h, i) => i !== cPct && h.toLowerCase().includes("change")
+    );
+
+    const out: IndexSummary[] = [];
+    for (const tr of table.querySelectorAll("tbody tr")) {
+      const td = tr.querySelectorAll("td").map((c) => c.text.trim());
+      const symbol = (td[cSym] ?? "").toUpperCase();
+      if (!symbol) continue;
+      const current = toNum(td[cCur]) ?? 0;
+      out.push({
+        symbol,
+        current,
+        change: toNum(td[cChg]) ?? 0,
+        changePct: toNum(td[cPct]) ?? 0,
+        high: toNum(td[cHigh]),
+        low: toNum(td[cLow]),
+      });
+    }
+    if (out.length === 0) throw new Error("indices: 0 rows");
+    return out;
+  },
+
+  async getIndexConstituents(symbol: string): Promise<IndexConstituent[]> {
+    const res = await fetchWithRetry(
+      `${config.psx.baseUrl}/indices/${encodeURIComponent(symbol.toUpperCase())}`
+    );
+    const root = parse(await res.text());
+    const table = root.querySelector("table");
+    if (!table) throw new Error(`indices/${symbol}: no table`);
+    const headers = table.querySelectorAll("thead th").map((th) => th.text.trim());
+    const at = headerIndex(headers);
+    const cSym = at("symbol");
+    const cName = at("name");
+    const cLdcp = at("ldcp");
+    const cCur = at("current");
+    const cWtg = at("wtg", "weight");
+    const cPoint = at("point");
+    const cVol = at("volume");
+    const cPct = headers.findIndex((h) => h.includes("(%)") || h.trim().endsWith("%"));
+    const cChg = headers.findIndex(
+      (h, i) => i !== cPct && i !== cWtg && h.toLowerCase().trim() === "change"
+    );
+
+    const out: IndexConstituent[] = [];
+    for (const tr of table.querySelectorAll("tbody tr")) {
+      const td = tr.querySelectorAll("td").map((c) => c.text.trim());
+      const sym = (td[cSym] ?? "").toUpperCase();
+      if (!sym) continue;
+      const current = toNum(td[cCur]) ?? 0;
+      const ldcp = toNum(td[cLdcp]);
+      let change = cChg >= 0 ? toNum(td[cChg]) : null;
+      let changePct = cPct >= 0 ? toNum(td[cPct]) : null;
+      if (change == null && ldcp != null) change = current - ldcp;
+      if (changePct == null && ldcp) changePct = ((current - ldcp) / ldcp) * 100;
+      out.push({
+        symbol: sym,
+        name: cName >= 0 ? td[cName] ?? null : null,
+        ldcp,
+        current,
+        change: change ?? 0,
+        changePct: changePct ?? 0,
+        weight: cWtg >= 0 ? toNum(td[cWtg]) ?? 0 : 0,
+        idxPoint: cPoint >= 0 ? toNum(td[cPoint]) : null,
+        volume: cVol >= 0 ? toNum(td[cVol]) : null,
+      });
+    }
+    if (out.length === 0) throw new Error(`indices/${symbol}: 0 rows`);
+    return out;
+  },
 };
 
 // ── Mock source ───────────────────────────────────────────────
@@ -205,6 +311,12 @@ export const mockSource: PsxDataSource = {
   },
   async getIntraday(symbol: string) {
     return genIntraday(symbol);
+  },
+  async getIndexSummaries() {
+    return genIndexSummaries();
+  },
+  async getIndexConstituents(symbol: string) {
+    return genIndexConstituents(symbol);
   },
 };
 
@@ -242,6 +354,24 @@ export const psx: PsxDataSource = {
     } catch (err) {
       console.warn(`[psx] intraday ${symbol} live fetch failed, using mock:`, errMsg(err));
       return mockSource.getIntraday(symbol);
+    }
+  },
+  async getIndexSummaries() {
+    try {
+      return await dpsSource.getIndexSummaries();
+    } catch (err) {
+      console.warn("[psx] indices live fetch failed, using mock:", errMsg(err));
+      return mockSource.getIndexSummaries();
+    }
+  },
+  async getIndexConstituents(symbol: string) {
+    try {
+      const rows = await dpsSource.getIndexConstituents(symbol);
+      if (rows.length === 0) throw new Error("empty constituents");
+      return rows;
+    } catch (err) {
+      console.warn(`[psx] constituents ${symbol} live fetch failed, using mock:`, errMsg(err));
+      return mockSource.getIndexConstituents(symbol);
     }
   },
 };

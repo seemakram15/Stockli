@@ -1,8 +1,21 @@
 import "server-only";
-import { getEodCandlesCached } from "@/lib/services/history";
-import { getMarketRows } from "@/lib/services/prices";
+import {
+  getEodCandlesCached,
+  getIntradayCached,
+  getIndexSummariesCached,
+  getIndexConstituentsCached,
+} from "@/lib/services/history";
 import { PSX_INDICES } from "@/lib/psx/symbols";
-import type { Candle } from "@/lib/types";
+import type { Candle, IndexConstituent, SeriesPoint } from "@/lib/types";
+
+export interface IndexCard {
+  symbol: string;
+  name: string;
+  current: number;
+  change: number;
+  changePct: number;
+  spark: number[];
+}
 
 export interface IndexReturns {
   d1: number;
@@ -13,139 +26,97 @@ export interface IndexReturns {
   ytd: number;
 }
 
-export interface IndexData {
+export interface IndexDetail {
   symbol: string;
   name: string;
-  value: number;
+  current: number;
   change: number;
   changePct: number;
+  high: number | null;
+  low: number | null;
+  prevClose: number | null;
   returns: IndexReturns;
-  spark: number[];
-  dayHigh: number;
-  dayLow: number;
   week52High: number;
   week52Low: number;
+  volume: number | null;
+  candles: Candle[];
+  intraday: SeriesPoint[];
+  constituents: IndexConstituent[];
 }
 
-function buildIndex(meta: { symbol: string; name: string }, candles: Candle[]): IndexData {
-  if (candles.length === 0) {
-    return {
-      symbol: meta.symbol,
-      name: meta.name,
-      value: 0,
-      change: 0,
-      changePct: 0,
-      returns: { d1: 0, w1: 0, m1: 0, m3: 0, y1: 0, ytd: 0 },
-      spark: [],
-      dayHigh: 0,
-      dayLow: 0,
-      week52High: 0,
-      week52Low: 0,
-    };
-  }
-  const last = candles[candles.length - 1];
-  const prev = candles[candles.length - 2] ?? last;
-  const value = last?.close ?? 0;
-  const change = value - (prev?.close ?? value);
-  const changePct = prev?.close ? (change / prev.close) * 100 : 0;
+/** Index cards for the overview row — live value/change + EOD sparkline. */
+export async function getIndexCards(): Promise<IndexCard[]> {
+  const summaries = await getIndexSummariesCached();
+  const byCode = new Map(summaries.map((s) => [s.symbol, s]));
+  return Promise.all(
+    PSX_INDICES.map(async (idx) => {
+      const s = byCode.get(idx.symbol);
+      const candles = await getEodCandlesCached(idx.symbol);
+      const lastClose = candles[candles.length - 1]?.close ?? idx.ref;
+      return {
+        symbol: idx.symbol,
+        name: idx.name,
+        current: s?.current ?? lastClose,
+        change: s?.change ?? 0,
+        changePct: s?.changePct ?? 0,
+        spark: candles.slice(-32).map((c) => c.close),
+      };
+    })
+  );
+}
 
-  // Return over `n` trading days back.
+/** Full detail for one index — live header, returns, 52w, chart series + constituents. */
+export async function getIndexDetail(symbol: string): Promise<IndexDetail | null> {
+  const meta = PSX_INDICES.find((i) => i.symbol === symbol.toUpperCase());
+  if (!meta) return null;
+
+  const [summaries, candles, intraday, constituents] = await Promise.all([
+    getIndexSummariesCached(),
+    getEodCandlesCached(meta.symbol),
+    getIntradayCached(meta.symbol),
+    getIndexConstituentsCached(meta.symbol),
+  ]);
+
+  const s = summaries.find((x) => x.symbol === meta.symbol);
+  const lastEod = candles[candles.length - 1]?.close ?? null;
+  const intradayLast = intraday[intraday.length - 1]?.value ?? null;
+  const current = s?.current ?? intradayLast ?? lastEod ?? meta.ref;
+  const prevClose = lastEod;
+  const change = s?.change ?? (prevClose != null ? current - prevClose : 0);
+  const changePct = s?.changePct ?? (prevClose ? (change / prevClose) * 100 : 0);
+
+  // Returns: `current` (live) vs an EOD close N trading days back.
   const back = (n: number) => {
-    const idx = candles.length - 1 - n;
-    const base = candles[Math.max(0, idx)]?.close;
-    return base ? ((value - base) / base) * 100 : 0;
+    const base = candles[candles.length - 1 - n]?.close;
+    return base ? ((current - base) / base) * 100 : 0;
   };
-
-  // YTD: first candle whose date is in the current (latest) calendar year.
-  const lastYear = new Date((last?.time ?? 0) * 1000).getUTCFullYear();
+  const lastYear = candles.length
+    ? new Date(candles[candles.length - 1].time * 1000).getUTCFullYear()
+    : new Date().getUTCFullYear();
   const firstOfYear = candles.find(
     (c) => new Date(c.time * 1000).getUTCFullYear() === lastYear
   );
-  const ytd = firstOfYear?.close ? ((value - firstOfYear.close) / firstOfYear.close) * 100 : 0;
+  const ytd = firstOfYear?.close ? ((current - firstOfYear.close) / firstOfYear.close) * 100 : 0;
 
   const year = candles.slice(-252);
+  const week52High = Math.max(current, ...(year.length ? year.map((c) => c.high) : [current]));
+  const week52Low = Math.min(current, ...(year.length ? year.map((c) => c.low) : [current]));
+
   return {
     symbol: meta.symbol,
     name: meta.name,
-    value,
+    current,
     change,
     changePct,
-    returns: {
-      d1: changePct,
-      w1: back(5),
-      m1: back(22),
-      m3: back(66),
-      y1: back(252),
-      ytd,
-    },
-    spark: candles.slice(-32).map((c) => c.close),
-    dayHigh: last?.high ?? value,
-    dayLow: last?.low ?? value,
-    week52High: year.length ? Math.max(...year.map((c) => c.high)) : value,
-    week52Low: year.length ? Math.min(...year.map((c) => c.low)) : value,
+    high: s?.high ?? null,
+    low: s?.low ?? null,
+    prevClose,
+    returns: { d1: changePct, w1: back(5), m1: back(22), m3: back(66), y1: back(252), ytd },
+    week52High,
+    week52Low,
+    volume: constituents.reduce((a, c) => a + (c.volume ?? 0), 0) || null,
+    candles: candles.slice(-260),
+    intraday,
+    constituents: [...constituents].sort((a, b) => b.weight - a.weight),
   };
-}
-
-export async function getIndices(): Promise<IndexData[]> {
-  return Promise.all(
-    PSX_INDICES.map(async (idx) => buildIndex(idx, await getEodCandlesCached(idx.symbol)))
-  );
-}
-
-export interface SectorStat {
-  sector: string;
-  count: number;
-  avgChangePct: number;
-  advances: number;
-  declines: number;
-  weight: number; // 0..1 share of listings, for bar width
-}
-
-export interface MarketBreadth {
-  advances: number;
-  declines: number;
-  unchanged: number;
-}
-
-export async function getSectorBreakdown(): Promise<{
-  sectors: SectorStat[];
-  breadth: MarketBreadth;
-}> {
-  const rows = await getMarketRows();
-
-  const map = new Map<string, { count: number; sum: number; up: number; down: number }>();
-  let advances = 0;
-  let declines = 0;
-  let unchanged = 0;
-
-  for (const r of rows) {
-    const sector = r.sector?.trim() || "Other";
-    const e = map.get(sector) ?? { count: 0, sum: 0, up: 0, down: 0 };
-    e.count += 1;
-    e.sum += r.changePct;
-    if (r.changePct > 0) {
-      e.up += 1;
-      advances += 1;
-    } else if (r.changePct < 0) {
-      e.down += 1;
-      declines += 1;
-    } else {
-      unchanged += 1;
-    }
-    map.set(sector, e);
-  }
-
-  const maxCount = Math.max(...Array.from(map.values()).map((e) => e.count), 1);
-  const sectors: SectorStat[] = Array.from(map.entries())
-    .map(([sector, e]) => ({
-      sector,
-      count: e.count,
-      avgChangePct: e.count ? e.sum / e.count : 0,
-      advances: e.up,
-      declines: e.down,
-      weight: e.count / maxCount,
-    }))
-    .sort((a, b) => b.count - a.count);
-
-  return { sectors, breadth: { advances, declines, unchanged } };
 }

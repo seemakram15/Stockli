@@ -52,6 +52,29 @@ export interface SeriesPoint {
   value: number;
 }
 
+/** Live summary of a PSX index (from /indices). */
+export interface IndexSummary {
+  symbol: string;
+  current: number;
+  change: number;
+  changePct: number;
+  high: number | null;
+  low: number | null;
+}
+
+/** A constituent of an index (from /indices/{symbol}) incl. official weight. */
+export interface IndexConstituent {
+  symbol: string;
+  name: string | null;
+  ldcp: number | null;
+  current: number;
+  change: number;
+  changePct: number;
+  weight: number; // IDX WTG (%)
+  idxPoint: number | null;
+  volume: number | null;
+}
+
 // ── Database rows ─────────────────────────────────────────────
 
 export interface Profile {

@@ -1,16 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { Activity } from "lucide-react";
+import { Activity, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkline } from "@/components/charts/sparkline";
+import { PriceChart } from "@/components/charts/price-chart";
+import { ConstituentsTable } from "@/components/market/constituents-table";
 import { ChangeBadge } from "@/components/change-badge";
 import { DataDelayBadge } from "@/components/status-badges";
 import { cn } from "@/lib/utils";
-import { formatNumber, formatPercent, plColorClass } from "@/lib/format";
-import type { IndexData, SectorStat, MarketBreadth } from "@/lib/services/market";
+import { formatNumber, formatPercent, formatCompact, plColorClass } from "@/lib/format";
+import type { IndexCard, IndexDetail, IndexReturns } from "@/lib/services/market";
 
-const RETURN_LABELS: { key: keyof IndexData["returns"]; label: string }[] = [
+const RETURN_LABELS: { key: keyof IndexReturns; label: string }[] = [
   { key: "d1", label: "1D" },
   { key: "w1", label: "1W" },
   { key: "m1", label: "1M" },
@@ -20,29 +23,48 @@ const RETURN_LABELS: { key: keyof IndexData["returns"]; label: string }[] = [
 ];
 
 export function IndicesPanel({
-  indices,
-  sectors,
-  breadth,
+  cards,
+  initialDetail,
 }: {
-  indices: IndexData[];
-  sectors: SectorStat[];
-  breadth: MarketBreadth;
+  cards: IndexCard[];
+  initialDetail: IndexDetail;
 }) {
-  const [selected, setSelected] = React.useState(
-    indices.find((i) => i.symbol === "KSE100")?.symbol ?? indices[0]?.symbol
-  );
-  const active = indices.find((i) => i.symbol === selected) ?? indices[0];
+  const [selected, setSelected] = React.useState(initialDetail.symbol);
+  const [detail, setDetail] = React.useState<IndexDetail>(initialDetail);
+  const [loading, setLoading] = React.useState(false);
+  const cache = React.useRef<Record<string, IndexDetail>>({ [initialDetail.symbol]: initialDetail });
+
+  async function select(symbol: string) {
+    if (symbol === selected) return;
+    setSelected(symbol);
+    if (cache.current[symbol]) {
+      setDetail(cache.current[symbol]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/index/${symbol}`);
+      if (!res.ok) throw new Error("Failed to load index");
+      const data: IndexDetail = await res.json();
+      cache.current[symbol] = data;
+      setDetail(data);
+    } catch {
+      toast.error("Couldn't load that index. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
       {/* Index cards */}
       <div className="flex gap-3 overflow-x-auto scrollbar-thin pb-1">
-        {indices.map((idx) => {
+        {cards.map((idx) => {
           const isActive = idx.symbol === selected;
           return (
             <button
               key={idx.symbol}
-              onClick={() => setSelected(idx.symbol)}
+              onClick={() => select(idx.symbol)}
               className={cn(
                 "flex min-w-52 shrink-0 items-center justify-between gap-3 rounded-xl border bg-card p-4 text-left transition-colors",
                 isActive ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/40"
@@ -50,7 +72,7 @@ export function IndicesPanel({
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{idx.symbol}</p>
-                <p className="tabular-nums text-lg font-semibold">{formatNumber(idx.value, 0)}</p>
+                <p className="tabular-nums text-lg font-semibold">{formatNumber(idx.current, 0)}</p>
                 <ChangeBadge pct={idx.changePct} className="text-xs" />
               </div>
               <Sparkline data={idx.spark} className="shrink-0" />
@@ -59,35 +81,35 @@ export function IndicesPanel({
         })}
       </div>
 
-      {active && (
-        <div className="grid gap-4 lg:grid-cols-3">
-          {/* Selected index detail */}
-          <Card className="lg:col-span-2">
-            <CardHeader className="flex-row items-start justify-between gap-2">
-              <div className="flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Activity className="size-5" />
-                </span>
-                <div>
-                  <CardTitle className="text-xl">{active.symbol}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{active.name}</p>
-                </div>
-              </div>
-              <DataDelayBadge />
-            </CardHeader>
-            <CardContent className="space-y-5">
+      {/* Selected index detail: stats + price chart */}
+      <Card className={cn("transition-opacity", loading && "opacity-60")}>
+        <CardHeader className="flex-row items-start justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+              {loading ? <Loader2 className="size-5 animate-spin" /> : <Activity className="size-5" />}
+            </span>
+            <div>
+              <CardTitle className="text-xl">{detail.symbol}</CardTitle>
+              <p className="text-sm text-muted-foreground">{detail.name}</p>
+            </div>
+          </div>
+          <DataDelayBadge />
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6 lg:grid-cols-5">
+            {/* Left: value, returns, stats */}
+            <div className="space-y-5 lg:col-span-2">
               <div className="flex flex-wrap items-end gap-3">
-                <span className="text-3xl font-bold tabular-nums">{formatNumber(active.value, 2)}</span>
-                <span className={cn("pb-1 text-sm font-medium tabular-nums", plColorClass(active.change))}>
-                  {active.change >= 0 ? "+" : "−"}
-                  {formatNumber(Math.abs(active.change), 2)} ({formatPercent(active.changePct)})
+                <span className="text-3xl font-bold tabular-nums">{formatNumber(detail.current, 2)}</span>
+                <span className={cn("pb-1 text-sm font-medium tabular-nums", plColorClass(detail.change))}>
+                  {detail.change >= 0 ? "+" : "−"}
+                  {formatNumber(Math.abs(detail.change), 2)} ({formatPercent(detail.changePct)})
                 </span>
               </div>
 
-              {/* Returns chips */}
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+              <div className="grid grid-cols-3 gap-2">
                 {RETURN_LABELS.map(({ key, label }) => {
-                  const v = active.returns[key];
+                  const v = detail.returns[key];
                   return (
                     <div
                       key={key}
@@ -105,43 +127,42 @@ export function IndicesPanel({
                 })}
               </div>
 
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
-                <Stat label="Day High" value={formatNumber(active.dayHigh, 0)} />
-                <Stat label="Day Low" value={formatNumber(active.dayLow, 0)} />
-                <Stat label="52W High" value={formatNumber(active.week52High, 0)} />
-                <Stat label="52W Low" value={formatNumber(active.week52Low, 0)} />
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <Stat label="Day High" value={formatNumber(detail.high, 2)} />
+                <Stat label="Day Low" value={formatNumber(detail.low, 2)} />
+                <Stat label="52W High" value={formatNumber(detail.week52High, 0)} />
+                <Stat label="52W Low" value={formatNumber(detail.week52Low, 0)} />
+                <Stat label="Prev Close" value={formatNumber(detail.prevClose, 2)} />
+                <Stat label="Volume" value={formatCompact(detail.volume)} />
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Sector breakdown (by name) */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Sectors</CardTitle>
-              <BreadthBar breadth={breadth} />
-            </CardHeader>
-            <CardContent className="max-h-[22rem] space-y-2.5 overflow-y-auto scrollbar-thin">
-              {sectors.map((s) => (
-                <div key={s.sector}>
-                  <div className="flex items-center justify-between gap-2 text-sm">
-                    <span className="truncate">{s.sector}</span>
-                    <span className={cn("shrink-0 tabular-nums", plColorClass(s.avgChangePct))}>
-                      {formatPercent(s.avgChangePct)}
-                    </span>
-                  </div>
-                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={cn("h-full rounded-full", s.avgChangePct >= 0 ? "bg-gain" : "bg-loss")}
-                      style={{ width: `${Math.max(6, s.weight * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            {/* Right: price chart (replaces the old sector panel) */}
+            <div className="lg:col-span-3">
+              <PriceChart
+                key={detail.symbol}
+                candles={detail.candles}
+                intraday={detail.intraday}
+                defaultType="area"
+                hideTypeToggle
+                defaultRange={detail.intraday.length > 1 ? "1D" : "3M"}
+                height={300}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Constituents = the index's listings, with weights */}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle>{detail.symbol} constituents ({detail.constituents.length})</CardTitle>
+          <span className="text-xs text-muted-foreground">Sorted by index weight</span>
+        </CardHeader>
+        <CardContent>
+          <ConstituentsTable constituents={detail.constituents} />
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -151,23 +172,6 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="font-medium tabular-nums">{value}</p>
-    </div>
-  );
-}
-
-function BreadthBar({ breadth }: { breadth: MarketBreadth }) {
-  const total = Math.max(1, breadth.advances + breadth.declines + breadth.unchanged);
-  return (
-    <div className="space-y-1">
-      <div className="flex h-2 overflow-hidden rounded-full bg-muted">
-        <div className="bg-gain" style={{ width: `${(breadth.advances / total) * 100}%` }} />
-        <div className="bg-muted-foreground/30" style={{ width: `${(breadth.unchanged / total) * 100}%` }} />
-        <div className="bg-loss" style={{ width: `${(breadth.declines / total) * 100}%` }} />
-      </div>
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span className="text-gain">{breadth.advances} up</span>
-        <span className="text-loss">{breadth.declines} down</span>
-      </div>
     </div>
   );
 }

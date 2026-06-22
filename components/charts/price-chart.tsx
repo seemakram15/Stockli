@@ -46,16 +46,22 @@ export function PriceChart({
   intraday,
   className,
   height = 380,
+  defaultType = "candles",
+  hideTypeToggle = false,
+  defaultRange = "3M",
 }: {
   candles: Candle[];
   intraday?: SeriesPoint[];
   className?: string;
   height?: number;
+  defaultType?: ChartType;
+  hideTypeToggle?: boolean;
+  defaultRange?: Range;
 }) {
   const { resolvedTheme } = useTheme();
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const [type, setType] = React.useState<ChartType>("candles");
-  const [range, setRange] = React.useState<Range>("3M");
+  const [type, setType] = React.useState<ChartType>(defaultType);
+  const [range, setRange] = React.useState<Range>(defaultRange);
   const [mounted, setMounted] = React.useState(false);
 
   const hasIntraday = (intraday?.length ?? 0) > 1;
@@ -140,21 +146,25 @@ export function PriceChart({
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="inline-flex rounded-lg border border-border p-0.5">
-          {(["candles", "area"] as ChartType[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setType(t)}
-              disabled={range === "1D"}
-              className={cn(
-                "rounded-md px-3 py-1 text-xs font-medium capitalize transition-colors disabled:opacity-40",
-                type === t ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+        {hideTypeToggle ? (
+          <span />
+        ) : (
+          <div className="inline-flex rounded-lg border border-border p-0.5">
+            {(["candles", "area"] as ChartType[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => setType(t)}
+                disabled={range === "1D"}
+                className={cn(
+                  "rounded-md px-3 py-1 text-xs font-medium capitalize transition-colors disabled:opacity-40",
+                  type === t ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="inline-flex rounded-lg border border-border p-0.5">
           {RANGES.map((r) => {
             if (r === "1D" && !hasIntraday) return null;
