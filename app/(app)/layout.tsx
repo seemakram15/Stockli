@@ -12,6 +12,7 @@ import { NotificationBell } from "@/components/shell/notification-bell";
 import { UserMenu } from "@/components/shell/user-menu";
 import { DemoBanner } from "@/components/shell/demo-banner";
 import { DataDelayBadge } from "@/components/status-badges";
+import { InstallAppButton } from "@/components/pwa/install-app-button";
 
 export default async function AppLayout({
   children,
@@ -36,6 +37,7 @@ export default async function AppLayout({
         </div>
         <div className="space-y-3 border-t border-border px-5 py-4">
           <DataDelayBadge />
+          <InstallAppButton size="sm" className="w-full justify-start" />
           <p className="text-xs leading-relaxed text-muted-foreground">
             Data sourced from{" "}
             <a
