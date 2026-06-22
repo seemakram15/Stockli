@@ -7,21 +7,32 @@ import type { SearchResult } from "@/app/api/search/route";
 
 /**
  * Symbol input with live suggestions from /api/search. Writes the chosen
- * symbol into a hidden field named by `name` so it submits with the form.
+ * symbol into a hidden field named by `name` so it submits with the form, and
+ * notifies the parent via `onSymbolChange` (used to auto-fill the price).
  */
 export function SymbolField({
   name = "symbol",
   defaultValue = "",
   required,
+  onSymbolChange,
 }: {
   name?: string;
   defaultValue?: string;
   required?: boolean;
+  onSymbolChange?: (symbol: string) => void;
 }) {
   const [value, setValue] = React.useState(defaultValue.toUpperCase());
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [open, setOpen] = React.useState(false);
   const boxRef = React.useRef<HTMLDivElement>(null);
+  const notify = React.useRef(onSymbolChange);
+  notify.current = onSymbolChange;
+
+  // Fire once on mount for a pre-filled symbol (e.g. opened from a stock page).
+  React.useEffect(() => {
+    if (defaultValue) notify.current?.(defaultValue.toUpperCase());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   React.useEffect(() => {
     const q = value.trim();
@@ -53,6 +64,12 @@ export function SymbolField({
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
+  function choose(sym: string) {
+    setValue(sym);
+    setOpen(false);
+    notify.current?.(sym);
+  }
+
   return (
     <div ref={boxRef} className="relative">
       <input type="hidden" name={name} value={value} />
@@ -62,8 +79,10 @@ export function SymbolField({
         autoComplete="off"
         placeholder="e.g. OGDC"
         onChange={(e) => {
-          setValue(e.target.value.toUpperCase());
+          const v = e.target.value.toUpperCase();
+          setValue(v);
           setOpen(true);
+          notify.current?.(v);
         }}
         onFocus={() => setOpen(true)}
       />
@@ -73,10 +92,7 @@ export function SymbolField({
             <button
               key={r.symbol}
               type="button"
-              onClick={() => {
-                setValue(r.symbol);
-                setOpen(false);
-              }}
+              onClick={() => choose(r.symbol)}
               className={cn(
                 "flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-accent"
               )}

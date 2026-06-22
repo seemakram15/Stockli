@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import {
   Wallet,
@@ -10,7 +11,10 @@ import {
   Plus,
 } from "lucide-react";
 import { getDashboard } from "@/lib/services/portfolio";
-import { getPortfolioPerformance } from "@/lib/services/performance";
+import {
+  PerformanceSection,
+  PerformanceSkeleton,
+} from "@/components/dashboard/performance-section";
 import { marketStatus } from "@/lib/psx/market-hours";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +23,6 @@ import { StatCard } from "@/components/stat-card";
 import { ChangeBadge } from "@/components/change-badge";
 import { HoldingsTable } from "@/components/holdings-table";
 import { AllocationChart } from "@/components/charts/allocation-chart";
-import { PerformanceChart } from "@/components/charts/performance-chart";
 import { EmptyState } from "@/components/empty-state";
 import { MarketStatusBadge } from "@/components/status-badges";
 import { formatPKR, formatPercent, plColorClass } from "@/lib/format";
@@ -31,10 +34,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const data = await getDashboard();
   const { summary, holdings, portfolios } = data;
-  const performance = await getPortfolioPerformance(
-    holdings.map((h) => ({ symbol: h.symbol, quantity: h.quantity })),
-    120
-  );
+  const positions = holdings.map((h) => ({ symbol: h.symbol, quantity: h.quantity }));
   const market = marketStatus();
   const portfolioNames = Object.fromEntries(portfolios.map((p) => [p.id, p.name]));
 
@@ -110,15 +110,9 @@ export default async function DashboardPage() {
 
           {/* Performance + Allocation */}
           <div className="grid gap-4 lg:grid-cols-3">
-            <Card className="lg:col-span-2">
-              <CardHeader className="flex-row items-center justify-between">
-                <CardTitle>Performance vs KSE-100</CardTitle>
-                <span className="text-xs text-muted-foreground">Last 120 trading days</span>
-              </CardHeader>
-              <CardContent>
-                <PerformanceChart data={performance} />
-              </CardContent>
-            </Card>
+            <Suspense fallback={<PerformanceSkeleton />}>
+              <PerformanceSection positions={positions} />
+            </Suspense>
             <Card>
               <CardHeader>
                 <CardTitle>Sector allocation</CardTitle>
