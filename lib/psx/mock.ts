@@ -1,5 +1,5 @@
 import type { Candle, MarketWatchRow, Quote, SeriesPoint } from "@/lib/types";
-import { SEED_TICKERS, getSeedTicker } from "./symbols";
+import { SEED_TICKERS, getRefPrice, PSX_INDICES } from "./symbols";
 
 /**
  * Deterministic, seeded mock data. Used as the DEMO-MODE source and as a
@@ -47,8 +47,8 @@ export function genEodCandles(
   days = 500,
   now: Date = new Date()
 ): Candle[] {
-  const seed = getSeedTicker(symbol);
-  const base = seed?.ref ?? 50 + (hashString(symbol) % 400);
+  const isIndex = PSX_INDICES.some((i) => i.symbol === symbol.toUpperCase());
+  const base = getRefPrice(symbol) ?? 50 + (hashString(symbol) % 400);
   const rand = mulberry32(hashString(symbol));
 
   // Build forward from `days` ago so the most recent close lands near `base`.
@@ -61,7 +61,8 @@ export function genEodCandles(
     const dow = new Date(ts * 1000).getUTCDay();
     if (dow === 0 || dow === 6) continue; // skip weekends
 
-    const vol = 0.012 + rand() * 0.02; // daily volatility 1.2%–3.2%
+    // Indices move far less per day than single stocks.
+    const vol = isIndex ? 0.003 + rand() * 0.006 : 0.012 + rand() * 0.02;
     const shock = (rand() - 0.5) * 2 * vol;
     const open = price;
     let close = open * drift * (1 + shock);

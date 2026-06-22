@@ -20,6 +20,7 @@ import {
   DEMO_WATCHLIST_ITEMS,
 } from "@/lib/demo/data";
 import { SEED_TICKERS } from "@/lib/psx/symbols";
+import { sectorName } from "@/lib/psx/sectors";
 import type {
   Alert,
   Holding,
@@ -68,7 +69,9 @@ export async function getTickerMap(symbols: string[]): Promise<Map<string, Ticke
 
   const supabase = await createClient();
   const { data } = await supabase.from("tickers").select("*").in("symbol", upper);
-  (data as Ticker[] | null)?.forEach((t) => map.set(t.symbol, t));
+  (data as Ticker[] | null)?.forEach((t) =>
+    map.set(t.symbol, { ...t, sector: sectorName(t.sector) })
+  );
   return fillFromSeed(map, upper);
 }
 

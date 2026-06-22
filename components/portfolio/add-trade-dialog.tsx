@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SymbolField } from "./symbol-field";
 import { addHolding, sellHolding, type ActionState } from "@/lib/actions/portfolio";
+import type { Quote } from "@/lib/types";
 
 export function AddTradeDialog({
   portfolioId,
@@ -91,6 +92,9 @@ function TradeForm({
     kind === "buy" ? addHolding : sellHolding,
     {}
   );
+  const [price, setPrice] = React.useState("");
+  const [priceLoading, setPriceLoading] = React.useState(false);
+  const priceTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
     if (state.ok) {
@@ -101,12 +105,40 @@ function TradeForm({
     }
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-fill the latest price when a symbol is chosen (still editable).
+  const onSymbol = React.useCallback((sym: string) => {
+    if (priceTimer.current) clearTimeout(priceTimer.current);
+    const s = sym.trim().toUpperCase();
+    if (s.length < 1) return;
+    setPriceLoading(true);
+    priceTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/prices?symbols=${encodeURIComponent(s)}`);
+        const data = await res.json();
+        const q: Quote | undefined = data.quotes?.[0];
+        if (q && q.symbol.toUpperCase() === s && q.price != null) {
+          setPrice(String(q.price));
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        setPriceLoading(false);
+      }
+    }, 350);
+  }, []);
+
+  React.useEffect(() => {
+    return () => {
+      if (priceTimer.current) clearTimeout(priceTimer.current);
+    };
+  }, []);
+
   return (
     <form action={action} className="space-y-4 pt-4">
       <input type="hidden" name="portfolioId" value={portfolioId} />
       <div className="space-y-1.5">
         <Label>Symbol</Label>
-        <SymbolField defaultValue={defaultSymbol ?? ""} required />
+        <SymbolField defaultValue={defaultSymbol ?? ""} required onSymbolChange={onSymbol} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
@@ -114,17 +146,33 @@ function TradeForm({
           <Input id={`${kind}-qty`} name="quantity" type="number" min="1" step="1" placeholder="100" required />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor={`${kind}-price`}>Price (PKR)</Label>
-          <Input id={`${kind}-price`} name="price" type="number" min="0" step="0.01" placeholder="150.25" required />
+          <Label htmlFor={`${kind}-price`} className="flex items-center gap-1.5">
+            Price (PKR)
+            {priceLoading && <Loader2 className="size-3 animate-spin text-muted-foreground" />}
+          </Label>
+          <Input
+            id={`${kind}-price`}
+            name="price"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="auto-filled"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            required
+          />
         </div>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor={`${kind}-date`}>Date</Label>
         <Input id={`${kind}-date`} name="date" type="date" defaultValue={today} max={today} />
       </div>
+      <p className="text-xs text-muted-foreground">
+        Price auto-fills with the latest quote — edit it to match your fill.
+      </p>
       <Button type="submit" className="w-full" disabled={pending} variant={kind === "sell" ? "destructive" : "default"}>
         {pending && <Loader2 className="size-4 animate-spin" />}
-        {kind === "buy" ? "Add buy" : "Record sell"}
+        {kind === "buy" ? "Buy" : "Sell"}
       </Button>
     </form>
   );

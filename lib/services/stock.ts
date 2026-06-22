@@ -1,5 +1,5 @@
 import "server-only";
-import { psx } from "@/lib/psx/adapter";
+import { getEodCandlesCached, getIntradayCached } from "@/lib/services/history";
 import { getQuote } from "@/lib/services/prices";
 import { getTickerMap, getAllHoldings } from "@/lib/services/portfolio";
 import type { Candle, Holding, Quote, SeriesPoint, Ticker } from "@/lib/types";
@@ -19,8 +19,8 @@ export async function getStockDetail(symbolRaw: string): Promise<StockDetail> {
   const [tickerMap, quote, candles, intraday, allHoldings] = await Promise.all([
     getTickerMap([symbol]),
     getQuote(symbol),
-    psx.getEodCandles(symbol),
-    psx.getIntraday(symbol),
+    getEodCandlesCached(symbol),
+    getIntradayCached(symbol),
     getAllHoldings(),
   ]);
 
