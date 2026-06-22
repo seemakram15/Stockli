@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { config, isSupabaseAdminConfigured } from "@/lib/config";
+import { isSupabaseAdminConfigured } from "@/lib/config";
 import { refreshMarketWatch } from "@/lib/services/prices";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isTradingDay, marketStatus } from "@/lib/psx/market-hours";
 import { getRedis } from "@/lib/cache/redis";
 import { psx } from "@/lib/psx/adapter";
+import { isAuthorizedCronRequest } from "@/lib/auth/cron";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,8 +22,7 @@ export const maxDuration = 60; // Vercel Hobby limit
  *        upsert today's daily P/L per holding → evaluate price alerts.
  */
 export async function GET(request: Request) {
-  const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${config.cronSecret}`) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

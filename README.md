@@ -68,19 +68,32 @@ deterministic mock data** so the UI never hard‑fails.
 
 ---
 
-## 🔌 Going live (add real keys)
+## 🔌 Going live (add real keys safely)
 
-Copy [`.env.example`](.env.example) → `.env.local` and fill in:
+Copy [`.env.example`](.env.example) → `.env.local` for local development. For
+Vercel, do **not** upload `.env.local`; add the same keys in
+**Vercel Project Settings → Environment Variables**.
 
 | Variable | Where |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | [Supabase dashboard](https://supabase.com/dashboard) → Project Settings → API |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | [Upstash console](https://console.upstash.com) → your Redis DB → REST |
-| `CRON_SECRET` | any long random string |
+| `CRON_SECRET` | long random string, e.g. `openssl rand -base64 32` |
 | `NEXT_PUBLIC_SITE_URL` | your deployed URL (e.g. `https://stockli.vercel.app`) |
+| `PSX_DPS_BASE_URL` | default: `https://dps.psx.com.pk` |
 
 Any *real* value flips the app out of demo mode automatically (see
 [`lib/config.ts`](lib/config.ts)).
+
+Security rules:
+
+- Never commit `.env.local`, Supabase service-role keys, Upstash tokens, cron
+  secrets, account passwords, or provider dashboard tokens.
+- Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. Never rename it with
+  `NEXT_PUBLIC_` and never import the admin client into client components.
+- Rotate any secret that was ever pasted into chat, logs, screenshots, or a
+  public repo.
+- See [SECURITY.md](SECURITY.md) before pushing or deploying.
 
 ### Database setup
 
@@ -93,19 +106,24 @@ In the Supabase SQL editor, run the migrations in order:
    service‑role‑write)
 3. `supabase/migrations/0003_seed_tickers.sql` — base PSX listings (the cron
    refresh extends/updates these from the live feed)
+4. `supabase/migrations/0004_roles.sql` — superadmin role support and role
+   escalation protection
+5. `supabase/migrations/0005_notifications.sql` — in-app notifications
 
 ---
 
 ## 🚀 Deploy (Vercel Hobby, $0)
 
 1. Push to GitHub → **Import** into Vercel (Hobby).
-2. Add all env vars (Production + Preview).
+2. Add all env vars in Vercel Project Settings. Use Production + Preview values
+   intentionally; avoid sharing production service-role keys with throwaway
+   preview projects.
 3. Run the SQL migrations in Supabase.
 4. Deploy. Function `maxDuration` is set to 60s (Hobby limit).
 5. **Scheduling** — Vercel Hobby cron runs **once per day max**, so:
    - [`vercel.json`](vercel.json) registers two daily crons: a Supabase
-     keep‑alive ping and a backup price refresh (Vercel auto‑sends
-     `Authorization: Bearer $CRON_SECRET`).
+     keep‑alive ping and a backup price refresh. Both routes require
+     `Authorization: Bearer <CRON_SECRET>`.
    - For the real ~15‑min refresh during market hours, point a free external
      scheduler ([cron‑job.org](https://cron-job.org)) at
      `GET https://<app>/api/cron/refresh` with header
@@ -126,11 +144,13 @@ so duplicate or missed cron runs are safe.
   vs KSE‑100** chart, sector allocation, best/worst performers, live holdings table.
 - **Stock detail** — candlestick + area + intraday charts (Lightweight Charts),
   position summary, and a **large daily gain/loss calendar** (month‑grid heatmap).
-- **Market** — searchable/sortable snapshot of all ~460 listings, breadth,
-  top gainers/losers.
+- **Market** — live indices, KSE constituents, market performers, searchable
+  sector performance, and per-sector stock drill-down pages.
 - **Watchlists** & **price alerts** (above/below, evaluated each refresh).
-- **Polished, responsive UI** with dark mode (the hero), ⌘K search, tabular
-  figures, and an emerald/finance palette.
+- **Installable PWA** — Android/Desktop install prompt and iPhone/iPad Add to
+  Home Screen support.
+- **Polished, responsive UI** with dark mode, ⌘K search, tabular figures, and
+  an emerald/finance palette.
 
 ---
 

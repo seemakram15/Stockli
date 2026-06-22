@@ -9,13 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@base-ui/react": "^1.6.0",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
     "@upstash/redis": "^1.38.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "date-fns": "^4.4.0",
     "lightweight-charts": "^5.2.0",
     "lucide-react": "^1.21.0",
     "next": "15.5.19",
@@ -42,5 +40,8 @@
     "eslint-config-next": "15.5.19",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": "8.5.15"
   }
 }
