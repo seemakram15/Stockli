@@ -7,6 +7,12 @@ const PREFETCH_ROUTES = [
   "/dashboard",
   "/portfolios",
   "/market",
+  "/market/strategy",
+  "/market/mutual-funds",
+  "/market/etfs",
+  "/market/us",
+  "/market/india",
+  "/market/world",
   "/watchlist",
   "/alerts",
 ];

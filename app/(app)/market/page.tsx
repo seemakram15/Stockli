@@ -30,8 +30,8 @@ export default async function MarketPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <PageHeader
-        title="Market"
-        description="Live PSX indices, constituents and index weights."
+        title="Pakistan Stock Exchange"
+        description="Live PSX indices, constituents, market performers and sector performance."
         actions={<MarketStatusBadge status={market.status} label={market.label} />}
       />
 
