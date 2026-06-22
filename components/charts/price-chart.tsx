@@ -145,11 +145,11 @@ export function PriceChart({
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         {hideTypeToggle ? (
           <span />
         ) : (
-          <div className="inline-flex rounded-lg border border-border p-0.5">
+          <div className="inline-flex w-fit rounded-lg border border-border p-0.5">
             {(["candles", "area"] as ChartType[]).map((t) => (
               <button
                 key={t}
@@ -165,7 +165,7 @@ export function PriceChart({
             ))}
           </div>
         )}
-        <div className="inline-flex rounded-lg border border-border p-0.5">
+        <div className="flex max-w-full overflow-x-auto rounded-lg border border-border p-0.5 scrollbar-thin">
           {RANGES.map((r) => {
             if (r === "1D" && !hasIntraday) return null;
             return (
@@ -183,7 +183,7 @@ export function PriceChart({
           })}
         </div>
       </div>
-      <div ref={containerRef} style={{ height }} className="w-full" />
+      <div ref={containerRef} style={{ height }} className="min-h-64 w-full" />
     </div>
   );
 }

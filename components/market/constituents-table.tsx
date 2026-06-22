@@ -75,7 +75,44 @@ export function ConstituentsTable({
         </span>
       </div>
 
-      <div className="overflow-x-auto scrollbar-thin rounded-lg border border-border">
+      <div className="space-y-3 sm:hidden">
+        {rows.map((c) => (
+          <Link
+            key={c.symbol}
+            href={`/stock/${c.symbol}`}
+            className="block rounded-xl border border-border bg-card p-3 hover:border-primary/40"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-semibold">{c.symbol}</p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">{c.name}</p>
+              </div>
+              <div className="text-right">
+                <p className="font-medium tabular-nums">{formatPKR(c.current)}</p>
+                <ChangeBadge pct={c.changePct} className="justify-end text-xs" />
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Weight</p>
+                <p className="font-medium tabular-nums">{formatNumber(c.weight, 2)}%</p>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary"
+                    style={{ width: `${Math.max(4, (c.weight / maxWeight) * 100)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Volume</p>
+                <p className="font-medium tabular-nums">{formatCompact(c.volume)}</p>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto scrollbar-thin rounded-lg border border-border sm:block">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">

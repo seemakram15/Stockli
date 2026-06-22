@@ -128,20 +128,23 @@ export function PLCalendar({
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-        {WEEKDAYS.map((w) => (
-          <div key={w} className="pb-1 text-center text-xs font-medium text-muted-foreground">
-            {w}
-          </div>
-        ))}
-        {cells.map((cell, i) => (
-          <DayCell
-            key={i}
-            cell={cell}
-            maxAbs={maxAbs}
-            hasPosition={hasPosition}
-          />
-        ))}
+      <div className="overflow-x-auto pb-1 scrollbar-thin">
+        <div className="grid min-w-[21rem] grid-cols-7 gap-1.5 sm:min-w-0 sm:gap-2">
+          {WEEKDAYS.map((w) => (
+            <div key={w} className="pb-1 text-center text-[11px] font-medium text-muted-foreground sm:text-xs">
+              <span className="sm:hidden">{w.slice(0, 1)}</span>
+              <span className="hidden sm:inline">{w}</span>
+            </div>
+          ))}
+          {cells.map((cell, i) => (
+            <DayCell
+              key={i}
+              cell={cell}
+              maxAbs={maxAbs}
+              hasPosition={hasPosition}
+            />
+          ))}
+        </div>
       </div>
 
       <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
@@ -220,7 +223,7 @@ function DayCell({
 
   if (!hasData) {
     return (
-      <div className="flex aspect-square flex-col rounded-lg border border-border/60 bg-muted/20 p-1.5 sm:p-2">
+      <div className="flex aspect-square flex-col rounded-md border border-border/60 bg-muted/20 p-1 sm:rounded-lg sm:p-2">
         <span className="text-xs font-medium text-muted-foreground/50">{day}</span>
       </div>
     );
@@ -238,7 +241,7 @@ function DayCell({
   return (
     <div
       className={cn(
-        "group relative flex aspect-square flex-col rounded-lg border p-1.5 transition-colors sm:p-2",
+        "group relative flex aspect-square flex-col rounded-md border p-1 transition-colors sm:rounded-lg sm:p-2",
         up
           ? "border-gain/45"
           : down
@@ -248,7 +251,7 @@ function DayCell({
       style={tint(up ? "gain" : down ? "loss" : "muted", 0.28 + intensity * 0.58)}
       title={`${d.date}: ${hasPosition ? valueText : pctText}`}
     >
-      <span className={cn("text-xs font-medium", active ? "text-foreground/75" : "text-muted-foreground")}>
+      <span className={cn("text-[11px] font-medium sm:text-xs", active ? "text-foreground/75" : "text-muted-foreground")}>
         {day}
       </span>
       <span className="mt-auto flex flex-col leading-tight">
@@ -256,7 +259,7 @@ function DayCell({
           <>
             <span
               className={cn(
-                "text-[11px] font-bold tabular-nums sm:text-xs",
+                "text-[10px] font-bold tabular-nums sm:text-xs",
                 active ? "text-foreground drop-shadow-sm" : "text-muted-foreground"
               )}
             >

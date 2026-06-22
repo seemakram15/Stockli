@@ -52,10 +52,10 @@ export default async function AppLayout({
       </aside>
 
       {/* Main column */}
-      <div className="flex flex-1 flex-col lg:pl-64">
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-2 border-b border-border bg-background/80 px-4 backdrop-blur sm:px-6">
+      <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
+        <header className="sticky top-0 z-20 flex h-14 min-w-0 items-center gap-1.5 border-b border-border bg-background/80 px-3 backdrop-blur sm:h-16 sm:gap-2 sm:px-6">
           <MobileNav showAdmin={showAdmin} />
-          <div className="flex flex-1 items-center">
+          <div className="flex min-w-0 flex-1 items-center">
             <GlobalSearch />
           </div>
           <NotificationBell />
@@ -69,7 +69,7 @@ export default async function AppLayout({
 
         {isDemoMode && <DemoBanner />}
 
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="min-w-0 flex-1 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">{children}</main>
       </div>
     </div>
   );

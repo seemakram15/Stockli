@@ -73,7 +73,7 @@ export default async function StockPage({
             <LiveQuote symbol={symbol} initial={quote} />
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <WatchButton symbol={symbol} initialWatching={watched.includes(symbol)} />
           <CreateAlertDialog defaultSymbol={symbol} />
           {portfolios.length > 0 && (
@@ -85,7 +85,7 @@ export default async function StockPage({
       {/* Chart + stats */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between">
+          <CardHeader className="flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Price</CardTitle>
             <DataDelayBadge />
           </CardHeader>
@@ -141,7 +141,7 @@ export default async function StockPage({
 
       {/* Large daily P/L calendar */}
       <Card>
-        <CardHeader className="flex-row items-start justify-between gap-2">
+        <CardHeader className="flex-col items-start gap-2 sm:flex-row sm:justify-between">
           <div className="flex items-start gap-2">
             <CalendarRange className="mt-0.5 size-5 text-primary" />
             <div>

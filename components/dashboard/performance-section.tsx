@@ -16,7 +16,7 @@ export async function PerformanceSection({
   const performance = await getPortfolioPerformance(positions, 120);
   return (
     <Card className="lg:col-span-2">
-      <CardHeader className="flex-row items-center justify-between">
+      <CardHeader className="flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle>Performance vs KSE-100</CardTitle>
         <span className="text-xs text-muted-foreground">Last 120 trading days</span>
       </CardHeader>
@@ -30,7 +30,7 @@ export async function PerformanceSection({
 export function PerformanceSkeleton() {
   return (
     <Card className="lg:col-span-2">
-      <CardHeader className="flex-row items-center justify-between">
+      <CardHeader className="flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle>Performance vs KSE-100</CardTitle>
       </CardHeader>
       <CardContent>

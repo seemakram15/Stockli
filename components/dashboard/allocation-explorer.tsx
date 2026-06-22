@@ -74,9 +74,9 @@ export function AllocationExplorer({
   return (
     <Card className={className}>
       <CardHeader className="flex-row items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0">
           <CardTitle>{title}</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">{selectedName}</p>
+          <p className="mt-1 truncate text-sm text-muted-foreground">{selectedName}</p>
         </div>
         <Dialog>
           <DialogTrigger asChild>
@@ -84,7 +84,7 @@ export function AllocationExplorer({
               <Maximize2 className="size-4" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-6xl">
+          <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto p-4 sm:max-w-6xl sm:p-6">
             <DialogHeader>
               <DialogTitle>Portfolio allocation</DialogTitle>
               <DialogDescription>{description}</DialogDescription>
@@ -141,7 +141,7 @@ export function AllocationExplorer({
             <AllocationBars data={holdingData} />
           </TabsContent>
         </Tabs>
-        <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
           <MiniStat label="Invested" value={formatPKR(summary.totalInvested)} />
           <MiniStat
             label="Total P/L"
@@ -187,7 +187,7 @@ function AllocationControls({
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <Select value={portfolioId} onValueChange={setPortfolioId}>
-        <SelectTrigger className="sm:w-64">
+        <SelectTrigger className="w-full sm:w-64">
           <SelectValue placeholder="Select portfolio" />
         </SelectTrigger>
         <SelectContent>
@@ -200,8 +200,8 @@ function AllocationControls({
         </SelectContent>
       </Select>
 
-      <Tabs value={mode} onValueChange={(v) => setMode(v as AllocationMode)}>
-        <TabsList>
+      <Tabs value={mode} onValueChange={(v) => setMode(v as AllocationMode)} className="w-full sm:w-auto">
+        <TabsList className="grid w-full grid-cols-2 sm:w-auto">
           <TabsTrigger value="sector">By sector</TabsTrigger>
           <TabsTrigger value="holding">By holding</TabsTrigger>
         </TabsList>
@@ -296,9 +296,9 @@ function AllocationBreakdown({
       <div className="space-y-2">
         {data.map((slice) => (
           <div key={slice.label}>
-            <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+            <div className="mb-1 flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <span className="truncate font-medium">{slice.label}</span>
-              <span className="shrink-0 tabular-nums text-muted-foreground">
+              <span className="shrink-0 tabular-nums text-muted-foreground sm:text-right">
                 {formatPKR(slice.value)} · {formatPercent(slice.pct).replace("+", "")}
               </span>
             </div>

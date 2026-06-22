@@ -69,7 +69,7 @@ export function IndicesPanel({
               key={idx.symbol}
               onClick={() => select(idx.symbol)}
               className={cn(
-                "flex min-w-52 shrink-0 items-center justify-between gap-3 rounded-xl border bg-card p-4 text-left transition-colors",
+                "flex min-w-44 shrink-0 items-center justify-between gap-3 rounded-xl border bg-card p-3 text-left transition-colors sm:min-w-52 sm:p-4",
                 isActive ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/40"
               )}
             >
@@ -86,14 +86,14 @@ export function IndicesPanel({
 
       {/* Selected index detail: stats + price chart */}
       <Card className={cn("transition-opacity", loading && "opacity-60")}>
-        <CardHeader className="flex-row items-start justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
               {loading ? <Loader2 className="size-5 animate-spin" /> : <Activity className="size-5" />}
             </span>
-            <div>
+            <div className="min-w-0">
               <CardTitle className="text-xl">{detail.symbol}</CardTitle>
-              <p className="text-sm text-muted-foreground">{detail.name}</p>
+              <p className="truncate text-sm text-muted-foreground">{detail.name}</p>
             </div>
           </div>
           <DataDelayBadge />
@@ -110,7 +110,7 @@ export function IndicesPanel({
                 </span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {RETURN_LABELS.map(({ key, label }) => {
                   const v = detail.returns[key];
                   return (

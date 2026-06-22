@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type * as React from "react";
 import {
   Table,
   TableBody,
@@ -35,7 +36,42 @@ export function TransactionsTable({
   }
 
   return (
-    <div className="overflow-x-auto scrollbar-thin">
+    <>
+      <div className="space-y-3 p-3 sm:hidden">
+        {transactions.map((t) => (
+          <div key={t.id} className="rounded-xl border border-border bg-card p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-xs font-medium",
+                    TYPE_STYLES[t.type]
+                  )}
+                >
+                  {t.type}
+                </span>
+                {showSymbol && (
+                  <Link href={`/stock/${t.symbol}`} className="mt-2 block font-semibold hover:text-primary">
+                    {t.symbol}
+                  </Link>
+                )}
+              </div>
+              <p className="shrink-0 text-right text-xs text-muted-foreground">
+                {formatDate(t.transacted_at)}
+              </p>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+              <MobileMetric label="Quantity" value={t.quantity ? formatNumber(t.quantity, 0) : "—"} />
+              <MobileMetric label="Price" value={t.price ? formatPKR(t.price) : "—"} align="right" />
+              <MobileMetric label="Total" value={t.quantity && t.price ? formatPKR(t.quantity * t.price) : "—"} />
+              <MobileMetric label="Fees" value={formatPKR(t.fees)} align="right" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto scrollbar-thin sm:block">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
@@ -87,6 +123,24 @@ export function TransactionsTable({
           ))}
         </TableBody>
       </Table>
+    </div>
+    </>
+  );
+}
+
+function MobileMetric({
+  label,
+  value,
+  align = "left",
+}: {
+  label: string;
+  value: React.ReactNode;
+  align?: "left" | "right";
+}) {
+  return (
+    <div className={align === "right" ? "text-right" : ""}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="font-medium tabular-nums">{value}</p>
     </div>
   );
 }

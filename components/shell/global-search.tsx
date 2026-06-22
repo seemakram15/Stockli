@@ -96,12 +96,12 @@ export function GlobalSearch({ className }: { className?: string }) {
         <Button
           variant="outline"
           className={cn(
-            "h-9 w-full justify-start gap-2 px-3 text-muted-foreground sm:w-64",
+            "h-9 min-w-0 flex-1 justify-start gap-2 px-2 text-muted-foreground sm:w-64 sm:flex-none sm:px-3",
             className
           )}
         >
           <Search className="size-4" />
-          <span className="flex-1 text-left text-sm">Search stocks…</span>
+          <span className="min-w-0 flex-1 truncate text-left text-sm">Search stocks…</span>
           <kbd className="hidden rounded border border-border bg-muted px-1.5 text-[10px] font-medium sm:inline">
             ⌘K
           </kbd>

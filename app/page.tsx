@@ -30,30 +30,24 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
-      {/* Ambient glow */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-40 left-1/2 size-[42rem] -translate-x-1/2 rounded-full bg-primary/15 blur-3xl"
-      />
-
-      <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+      <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-5 sm:px-6">
         <Logo />
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <ThemeToggle />
           <Button asChild variant="ghost" size="sm">
             <Link href={isDemoMode ? "/dashboard" : "/login"}>
               {isDemoMode ? "Demo" : "Sign in"}
             </Link>
           </Button>
-          <Button asChild size="sm">
+          <Button asChild size="sm" className="hidden sm:inline-flex">
             <Link href={primaryHref}>{isDemoMode ? "Launch" : "Sign up"}</Link>
           </Button>
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-6xl px-6">
+      <main className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
         {/* Hero */}
-        <section className="flex flex-col items-center py-20 text-center sm:py-28">
+        <section className="flex flex-col items-center py-16 text-center sm:py-28">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
             <span className="size-1.5 rounded-full bg-gain" />
             Built for the Pakistan Stock Exchange
@@ -61,11 +55,11 @@ export default function Home() {
           <h1 className="max-w-3xl text-balance text-4xl font-bold tracking-tight sm:text-6xl">
             Track your <span className="text-primary">PSX portfolio</span> like a pro
           </h1>
-          <p className="mt-5 max-w-xl text-pretty text-lg text-muted-foreground">
+          <p className="mt-5 max-w-xl text-pretty text-base text-muted-foreground sm:text-lg">
             {APP_NAME} brings live-ish prices, profit/loss, candlestick charts and a
             daily gain/loss calendar to one clean, fast dashboard. Free, forever.
           </p>
-          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
+          <div className="mt-8 flex w-full max-w-xs flex-col items-stretch gap-3 sm:w-auto sm:max-w-none sm:flex-row">
             <Button asChild size="lg" className="gap-2">
               <Link href={primaryHref}>
                 {primaryLabel} <ArrowRight className="size-4" />
@@ -85,7 +79,7 @@ export default function Home() {
           {FEATURES.map((f) => (
             <div
               key={f.title}
-              className="rounded-2xl border border-border bg-card/60 p-6 backdrop-blur transition-colors hover:border-primary/30"
+              className="rounded-xl border border-border bg-card/60 p-6 backdrop-blur transition-colors hover:border-primary/30"
             >
               <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <f.icon className="size-5" />
@@ -97,7 +91,7 @@ export default function Home() {
         </section>
 
         {/* Trust strip */}
-        <section className="mb-20 flex flex-col items-center gap-3 rounded-2xl border border-border bg-card/40 px-6 py-8 text-center">
+        <section className="mb-20 flex flex-col items-center gap-3 rounded-xl border border-border bg-card/40 px-6 py-8 text-center">
           <ShieldCheck className="size-6 text-primary" />
           <h2 className="text-lg font-semibold">Personal, non-commercial & private</h2>
           <p className="max-w-2xl text-sm text-muted-foreground">

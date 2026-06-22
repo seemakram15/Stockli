@@ -42,9 +42,9 @@ export function TransactionsPanel({ transactions }: { transactions: Transaction[
             Showing {filtered.length} of {transactions.length}
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex">
+        <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2">
           <Select value={symbol} onValueChange={setSymbol}>
-            <SelectTrigger className="sm:w-40">
+            <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Holding" />
             </SelectTrigger>
             <SelectContent>
@@ -58,7 +58,7 @@ export function TransactionsPanel({ transactions }: { transactions: Transaction[
           </Select>
 
           <Select value={type} onValueChange={(v) => setType(v as TradeTypeFilter)}>
-            <SelectTrigger className="sm:w-36">
+            <SelectTrigger className="w-full sm:w-36">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>

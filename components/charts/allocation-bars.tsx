@@ -22,11 +22,11 @@ export function AllocationBars({
     <div className="space-y-3">
       {shown.map((item) => (
         <div key={item.label} className="space-y-1.5">
-          <div className="flex items-start justify-between gap-3 text-sm">
+          <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-start sm:justify-between sm:gap-3">
             <span className="min-w-0 flex-1 truncate font-medium" title={item.label}>
               {item.label}
             </span>
-            <span className="shrink-0 text-right tabular-nums text-muted-foreground">
+            <span className="shrink-0 tabular-nums text-muted-foreground sm:text-right">
               {formatPKRCompact(item.value)} · {formatPercent(item.pct).replace("+", "")}
             </span>
           </div>

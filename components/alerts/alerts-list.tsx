@@ -35,48 +35,52 @@ export function AlertsList({ alerts, demo }: { alerts: Alert[]; demo?: boolean }
         const triggered = !a.is_active && a.last_triggered_at != null;
 
         return (
-          <li key={a.id} className="flex flex-wrap items-center gap-3 py-3">
-            <span
-              className={cn(
-                "flex size-9 items-center justify-center rounded-lg",
-                a.condition === "ABOVE" ? "bg-gain/10 text-gain" : "bg-loss/10 text-loss"
-              )}
-            >
-              {a.condition === "ABOVE" ? <ArrowUp className="size-4" /> : <ArrowDown className="size-4" />}
-            </span>
+          <li key={a.id} className="py-3">
+            <div className="flex items-start gap-3">
+              <span
+                className={cn(
+                  "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                  a.condition === "ABOVE" ? "bg-gain/10 text-gain" : "bg-loss/10 text-loss"
+                )}
+              >
+                {a.condition === "ABOVE" ? <ArrowUp className="size-4" /> : <ArrowDown className="size-4" />}
+              </span>
 
-            <div className="min-w-32 flex-1">
-              <Link href={`/stock/${a.symbol}`} className="font-semibold hover:text-primary">
-                {a.symbol}
-              </Link>
-              <p className="text-sm text-muted-foreground">
-                {a.condition === "ABOVE" ? "Rises above" : "Falls below"}{" "}
-                <span className="font-medium text-foreground">{formatPKR(a.target_price)}</span>
-              </p>
-            </div>
-
-            <div className="text-right">
-              <p className="text-sm tabular-nums">{formatPKR(price)}</p>
-              {distance != null && (
-                <p className="text-xs tabular-nums text-muted-foreground">
-                  {formatPercent(distance)} to target
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link href={`/stock/${a.symbol}`} className="font-semibold hover:text-primary">
+                    {a.symbol}
+                  </Link>
+                  <StatusBadge active={a.is_active} triggered={triggered} />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {a.condition === "ABOVE" ? "Rises above" : "Falls below"}{" "}
+                  <span className="font-medium text-foreground">{formatPKR(a.target_price)}</span>
                 </p>
-              )}
-            </div>
-
-            <StatusBadge active={a.is_active} triggered={triggered} />
-
-            <div className="flex items-center gap-1">
-              <ToggleActionButton
-                demo={demo}
-                id={a.id}
-                active={a.is_active}
-              />
-              <DeleteActionButton
-                demo={demo}
-                id={a.id}
-                symbol={a.symbol}
-              />
+                <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Current</p>
+                    <p className="text-sm tabular-nums">{formatPKR(price)}</p>
+                    {distance != null && (
+                      <p className="text-xs tabular-nums text-muted-foreground">
+                        {formatPercent(distance)} to target
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <ToggleActionButton
+                      demo={demo}
+                      id={a.id}
+                      active={a.is_active}
+                    />
+                    <DeleteActionButton
+                      demo={demo}
+                      id={a.id}
+                      symbol={a.symbol}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </li>
         );

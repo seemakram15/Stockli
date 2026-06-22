@@ -39,29 +39,29 @@ export default async function PortfoliosPage() {
             return (
               <Link key={p.id} href={`/portfolios/${p.id}`}>
                 <Card className="group h-full gap-0 p-5 transition-colors hover:border-primary/40">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                         <Wallet className="size-4.5" />
                       </span>
-                      <div>
-                        <p className="font-semibold">{p.name}</p>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{p.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {summary.holdingsCount} position{summary.holdingsCount === 1 ? "" : "s"}
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                   </div>
 
-                  <div className="mt-5 flex items-end justify-between">
-                    <div>
+                  <div className="mt-5 flex items-end justify-between gap-3">
+                    <div className="min-w-0">
                       <p className="text-xs text-muted-foreground">Value</p>
-                      <p className="text-xl font-semibold tabular-nums">
+                      <p className="truncate text-xl font-semibold tabular-nums">
                         {formatPKR(summary.totalValue)}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="shrink-0 text-right">
                       <p className={`text-sm font-medium tabular-nums ${plColorClass(summary.totalPL)}`}>
                         {formatPKR(summary.totalPL, { sign: true })}
                       </p>

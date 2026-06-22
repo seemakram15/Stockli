@@ -51,7 +51,7 @@ export default async function MarketPage() {
 
       {detail && (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
+          <CardHeader className="flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>{detail.symbol} constituents ({detail.constituents.length})</CardTitle>
             <span className="text-xs text-muted-foreground">Sorted by index weight</span>
           </CardHeader>

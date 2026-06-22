@@ -58,7 +58,29 @@ function PerformerTable({
         {icon}
         <h3 className="text-sm font-semibold uppercase tracking-wide">{title}</h3>
       </div>
-      <div className="overflow-x-auto scrollbar-thin">
+      <div className="space-y-2 p-3 sm:hidden">
+        {rows.map((row) => (
+          <Link
+            key={row.symbol}
+            href={`/stock/${row.symbol}`}
+            className="block rounded-lg border border-border/70 bg-card px-3 py-2 hover:border-primary/40"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold">{row.symbol}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Vol {formatCompact(row.volume)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-medium tabular-nums">{formatPKR(row.price)}</p>
+                <ChangeBadge value={row.change} pct={row.changePct} showValue className="justify-end text-xs" />
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+      <div className="hidden overflow-x-auto scrollbar-thin sm:block">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">

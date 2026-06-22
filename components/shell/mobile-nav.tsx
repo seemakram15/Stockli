@@ -22,7 +22,7 @@ export function MobileNav({ showAdmin = false }: { showAdmin?: boolean }) {
           <Menu className="size-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-72 p-0">
+      <SheetContent side="left" className="w-72 max-w-[calc(100vw-2rem)] p-0">
         <SheetHeader className="border-b border-border px-4 py-4">
           <SheetTitle asChild>
             <Logo />

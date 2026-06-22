@@ -72,8 +72,14 @@ export interface SectorPerformance {
 export interface SectorStockPerformance {
   symbol: string;
   price: number;
+  change: number;
   changePct: number;
   volume: number;
+  ldcp: number | null;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  listedIn: string | null;
 }
 
 export interface MarketAnalytics {
@@ -231,8 +237,14 @@ function buildSectorPerformance(rows: MarketWatchRow[]): SectorPerformance[] {
     cur.stocks.push({
       symbol: row.symbol,
       price: row.current,
+      change: row.change,
       changePct: row.changePct,
       volume: row.volume ?? 0,
+      ldcp: row.ldcp,
+      open: row.open,
+      high: row.high,
+      low: row.low,
+      listedIn: row.listedIn,
     });
     map.set(sector, cur);
   }

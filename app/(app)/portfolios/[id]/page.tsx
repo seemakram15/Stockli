@@ -108,8 +108,8 @@ export default async function PortfolioDetailPage({
             <Card className="lg:col-span-2">
               <CardContent className="px-0 pt-0 sm:px-2">
                 <Tabs defaultValue="holdings">
-                  <div className="px-4 pt-4 sm:px-2">
-                    <TabsList>
+                  <div className="overflow-x-auto px-4 pt-4 scrollbar-thin sm:px-2">
+                    <TabsList className="min-w-max">
                       <TabsTrigger value="holdings">Holdings</TabsTrigger>
                       <TabsTrigger value="transactions">
                         Transactions ({transactions.length})
@@ -137,7 +137,7 @@ export default async function PortfolioDetailPage({
           </div>
 
           <Card>
-            <CardHeader className="flex-row items-start gap-2">
+            <CardHeader className="flex-col items-start gap-2 sm:flex-row">
               <CalendarClock className="mt-0.5 size-5 text-primary" />
               <div>
                 <CardTitle>Portfolio gain / loss calendar</CardTitle>

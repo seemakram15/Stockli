@@ -39,63 +39,117 @@ export function AdminUsersTable({
   demo?: boolean;
 }) {
   return (
-    <div className="overflow-x-auto scrollbar-thin">
-      <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead>User</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead className="hidden text-right sm:table-cell">Portfolios</TableHead>
-            <TableHead className="hidden text-right sm:table-cell">Holdings</TableHead>
-            <TableHead className="hidden text-right md:table-cell">Joined</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users.map((u) => (
-            <TableRow key={u.id}>
-              <TableCell>
-                <div className="flex flex-col">
-                  <span className="font-medium">{u.displayName ?? "—"}</span>
-                  <span className="text-xs text-muted-foreground">{u.email ?? u.id}</span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-                    u.role === "superadmin"
-                      ? "bg-primary/15 text-primary"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {u.role === "superadmin" && <Shield className="size-3" />}
-                  {u.role === "superadmin" ? "Superadmin" : "User"}
-                </span>
-              </TableCell>
-              <TableCell className="hidden text-right tabular-nums sm:table-cell">
-                {u.portfolioCount}
-              </TableCell>
-              <TableCell className="hidden text-right tabular-nums sm:table-cell">
-                {u.holdingCount}
-              </TableCell>
-              <TableCell className="hidden text-right text-muted-foreground md:table-cell">
-                {formatDate(u.createdAt)}
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex items-center justify-end gap-1">
-                  <Button asChild variant="ghost" size="icon" className="size-8" title="View account">
-                    <Link href={`/admin/users/${u.id}`} aria-label={`View ${u.displayName ?? u.email}`}>
-                      <Eye className="size-4" />
-                    </Link>
-                  </Button>
-                  <RoleToggle user={u} isSelf={u.id === currentUserId} demo={demo} />
-                </div>
-              </TableCell>
+    <>
+      <div className="space-y-3 p-3 sm:hidden">
+        {users.map((u) => (
+          <div key={u.id} className="rounded-xl border border-border bg-card p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate font-medium">{u.displayName ?? "—"}</p>
+                <p className="truncate text-xs text-muted-foreground">{u.email ?? u.id}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <Button asChild variant="ghost" size="icon" className="size-8" title="View account">
+                  <Link href={`/admin/users/${u.id}`} aria-label={`View ${u.displayName ?? u.email}`}>
+                    <Eye className="size-4" />
+                  </Link>
+                </Button>
+                <RoleToggle user={u} isSelf={u.id === currentUserId} demo={demo} />
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <RoleBadge role={u.role} />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+              <MobileMetric label="Portfolios" value={u.portfolioCount} />
+              <MobileMetric label="Holdings" value={u.holdingCount} align="right" />
+              <MobileMetric label="Joined" value={formatDate(u.createdAt)} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto scrollbar-thin sm:block">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>User</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead className="hidden text-right sm:table-cell">Portfolios</TableHead>
+              <TableHead className="hidden text-right sm:table-cell">Holdings</TableHead>
+              <TableHead className="hidden text-right md:table-cell">Joined</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {users.map((u) => (
+              <TableRow key={u.id}>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{u.displayName ?? "—"}</span>
+                    <span className="text-xs text-muted-foreground">{u.email ?? u.id}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <RoleBadge role={u.role} />
+                </TableCell>
+                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                  {u.portfolioCount}
+                </TableCell>
+                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                  {u.holdingCount}
+                </TableCell>
+                <TableCell className="hidden text-right text-muted-foreground md:table-cell">
+                  {formatDate(u.createdAt)}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <Button asChild variant="ghost" size="icon" className="size-8" title="View account">
+                      <Link href={`/admin/users/${u.id}`} aria-label={`View ${u.displayName ?? u.email}`}>
+                        <Eye className="size-4" />
+                      </Link>
+                    </Button>
+                    <RoleToggle user={u} isSelf={u.id === currentUserId} demo={demo} />
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </>
+  );
+}
+
+function RoleBadge({ role }: { role: AdminUserRow["role"] }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+        role === "superadmin"
+          ? "bg-primary/15 text-primary"
+          : "bg-muted text-muted-foreground"
+      )}
+    >
+      {role === "superadmin" && <Shield className="size-3" />}
+      {role === "superadmin" ? "Superadmin" : "User"}
+    </span>
+  );
+}
+
+function MobileMetric({
+  label,
+  value,
+  align = "left",
+}: {
+  label: string;
+  value: React.ReactNode;
+  align?: "left" | "right";
+}) {
+  return (
+    <div className={align === "right" ? "text-right" : ""}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="font-medium tabular-nums">{value}</p>
     </div>
   );
 }

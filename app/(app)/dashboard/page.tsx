@@ -124,7 +124,7 @@ export default async function DashboardPage() {
 
           {/* Holdings */}
           <Card>
-            <CardHeader className="flex-row items-center justify-between">
+            <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle>All holdings</CardTitle>
               <Button asChild variant="ghost" size="sm">
                 <Link href="/portfolios">View portfolios</Link>

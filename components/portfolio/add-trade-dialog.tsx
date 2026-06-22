@@ -141,7 +141,7 @@ function TradeForm({
         <Label>Symbol</Label>
         <SymbolField defaultValue={defaultSymbol ?? ""} required onSymbolChange={onSymbol} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor={`${kind}-qty`}>Quantity</Label>
           <Input id={`${kind}-qty`} name="quantity" type="number" min="1" step="1" placeholder="100" required />
