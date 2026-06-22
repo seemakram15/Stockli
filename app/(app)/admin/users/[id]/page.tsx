@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Shield, Wallet, TrendingUp, Coins, Bell, Star, Eye } from "lucide-react";
+import { Shield, Wallet, TrendingUp, Coins, Bell, Star, Eye } from "lucide-react";
 import { getUserOverview } from "@/lib/services/admin";
 import { isDemoMode } from "@/lib/config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
+import { SmartBackLink } from "@/components/smart-back-link";
 import { StatCard } from "@/components/stat-card";
 import { ChangeBadge } from "@/components/change-badge";
 import { HoldingsTable } from "@/components/holdings-table";
@@ -38,9 +39,7 @@ export default async function AdminUserPage({
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <Link href="/admin" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" /> Admin
-      </Link>
+      <SmartBackLink fallbackHref="/admin" label="Back" />
 
       {/* Impersonation/view notice */}
       <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2 text-sm">

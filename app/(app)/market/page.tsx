@@ -1,19 +1,28 @@
 import type { Metadata } from "next";
-import { getIndexCards, getIndexDetail } from "@/lib/services/market";
+import {
+  getIndexCards,
+  getIndexDetail,
+  getMarketAnalytics,
+} from "@/lib/services/market";
 import { marketStatus } from "@/lib/psx/market-hours";
 import { PageHeader } from "@/components/page-header";
 import { IndicesPanel } from "@/components/market/indices-panel";
+import { MarketPerformers } from "@/components/market/market-performers";
+import { SectorPerformancePanel } from "@/components/market/sector-performance";
+import { ConstituentsTable } from "@/components/market/constituents-table";
 import { MarketStatusBadge } from "@/components/status-badges";
 import { EmptyState } from "@/components/empty-state";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp } from "lucide-react";
 
 export const metadata: Metadata = { title: "Market" };
 export const dynamic = "force-dynamic";
 
 export default async function MarketPage() {
-  const [cards, detail] = await Promise.all([
+  const [cards, detail, analytics] = await Promise.all([
     getIndexCards(),
     getIndexDetail("KSE100"),
+    getMarketAnalytics(),
   ]);
   const market = marketStatus();
 
@@ -37,6 +46,22 @@ export default async function MarketPage() {
           />
         )}
       </section>
+
+      <MarketPerformers data={analytics.performers} />
+
+      {detail && (
+        <Card>
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle>{detail.symbol} constituents ({detail.constituents.length})</CardTitle>
+            <span className="text-xs text-muted-foreground">Sorted by index weight</span>
+          </CardHeader>
+          <CardContent>
+            <ConstituentsTable constituents={detail.constituents} />
+          </CardContent>
+        </Card>
+      )}
+
+      <SectorPerformancePanel data={analytics.sectors} />
     </div>
   );
 }

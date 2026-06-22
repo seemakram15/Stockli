@@ -5,6 +5,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatPKR, formatPercent } from "@/lib/format";
+import { usePrices } from "@/lib/hooks/use-prices";
+import { PSX_TIMEZONE } from "@/lib/constants";
+import type { Quote } from "@/lib/types";
 import type { CalendarDay } from "@/lib/services/daily-pl";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -22,21 +25,24 @@ const MONTHS = [
 export function PLCalendar({
   data,
   hasPosition,
+  livePositions = [],
 }: {
   data: CalendarDay[];
   hasPosition: boolean;
+  livePositions?: { symbol: string; quantity: number; initial?: Quote | null }[];
 }) {
+  const liveData = useLiveCalendarData(data, livePositions, hasPosition);
   const byDate = React.useMemo(() => {
     const m = new Map<string, CalendarDay>();
-    for (const d of data) m.set(d.date, d);
+    for (const d of liveData) m.set(d.date, d);
     return m;
-  }, [data]);
+  }, [liveData]);
 
   const months = React.useMemo(() => {
     const set = new Set<string>();
-    for (const d of data) set.add(d.date.slice(0, 7));
+    for (const d of liveData) set.add(d.date.slice(0, 7));
     return Array.from(set).sort();
-  }, [data]);
+  }, [liveData]);
 
   const [idx, setIdx] = React.useState(Math.max(0, months.length - 1));
   React.useEffect(() => {
@@ -59,7 +65,7 @@ export function PLCalendar({
   const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
 
-  const monthDays = data.filter((d) => d.date.startsWith(current));
+  const monthDays = liveData.filter((d) => d.date.startsWith(current));
   const metric = (d: CalendarDay) => (hasPosition ? d.dayPL : d.changePct);
   const maxAbs = Math.max(
     hasPosition ? 1 : 0.5,
@@ -151,6 +157,54 @@ export function PLCalendar({
   );
 }
 
+function useLiveCalendarData(
+  data: CalendarDay[],
+  livePositions: { symbol: string; quantity: number; initial?: Quote | null }[],
+  hasPosition: boolean
+) {
+  const active = React.useMemo(
+    () => livePositions.filter((p) => p.quantity > 0),
+    [livePositions]
+  );
+  const symbols = React.useMemo(() => active.map((p) => p.symbol), [active]);
+  const initial = React.useMemo(
+    () => active.map((p) => p.initial).filter(Boolean) as Quote[],
+    [active]
+  );
+  const { quotes } = usePrices(symbols, initial);
+
+  return React.useMemo(() => {
+    if (!hasPosition || active.length === 0) return data;
+
+    let dayPL = 0;
+    let close = 0;
+    let found = 0;
+    for (const position of active) {
+      const q = quotes.get(position.symbol.toUpperCase()) ?? position.initial;
+      if (!q) continue;
+      found++;
+      dayPL += q.change * position.quantity;
+      close += q.price * position.quantity;
+    }
+    if (found === 0) return data;
+
+    const prevValue = close - dayPL;
+    const dayPLPct = prevValue ? (dayPL / prevValue) * 100 : 0;
+    const today = todayInPkt();
+    const liveDay: CalendarDay = {
+      date: today,
+      close,
+      changePct: dayPLPct,
+      dayPL,
+      dayPLPct,
+    };
+
+    const next = data.filter((d) => d.date !== today);
+    next.push(liveDay);
+    return next.sort((a, b) => a.date.localeCompare(b.date));
+  }, [active, data, hasPosition, quotes]);
+}
+
 function DayCell({
   cell,
   maxAbs,
@@ -178,27 +232,35 @@ function DayCell({
   const down = value < 0;
   const intensity = Math.min(1, Math.abs(value) / maxAbs);
   const pctText = hasPosition ? formatPercent(d.dayPLPct) : formatPercent(d.changePct);
+  const valueText = formatPKR(d.dayPL, { sign: true });
+  const active = up || down;
 
   return (
     <div
-      className="group relative flex aspect-square flex-col rounded-lg border border-transparent p-1.5 transition-colors sm:p-2"
-      style={tint(up ? "gain" : down ? "loss" : "muted", 0.18 + intensity * 0.62)}
-      title={`${d.date}: ${pctText}${hasPosition ? ` · ${formatPKR(d.dayPL, { sign: true })}` : ""}`}
+      className={cn(
+        "group relative flex aspect-square flex-col rounded-lg border p-1.5 transition-colors sm:p-2",
+        up
+          ? "border-gain/45"
+          : down
+            ? "border-loss/45"
+            : "border-border/40"
+      )}
+      style={tint(up ? "gain" : down ? "loss" : "muted", 0.28 + intensity * 0.58)}
+      title={`${d.date}: ${hasPosition ? valueText : pctText}`}
     >
-      <span className="text-xs font-medium text-muted-foreground">{day}</span>
+      <span className={cn("text-xs font-medium", active ? "text-foreground/75" : "text-muted-foreground")}>
+        {day}
+      </span>
       <span className="mt-auto flex flex-col leading-tight">
         {hasPosition ? (
           <>
             <span
               className={cn(
-                "text-[11px] font-semibold tabular-nums sm:text-xs",
-                up ? "text-gain" : down ? "text-loss" : "text-muted-foreground"
+                "text-[11px] font-bold tabular-nums sm:text-xs",
+                active ? "text-foreground drop-shadow-sm" : "text-muted-foreground"
               )}
             >
-              {formatPKR(d.dayPL, { sign: true }).replace("Rs ", "")}
-            </span>
-            <span className="hidden text-[10px] tabular-nums text-muted-foreground sm:block">
-              {pctText}
+              {valueText.replace("Rs ", "")}
             </span>
           </>
         ) : (
@@ -220,4 +282,15 @@ function tint(kind: "gain" | "loss" | "muted", amount: number): React.CSSPropert
   if (kind === "muted") return { backgroundColor: "transparent" };
   const pct = Math.round(amount * 100);
   return { backgroundColor: `color-mix(in oklab, var(--${kind}) ${pct}%, transparent)` };
+}
+
+function todayInPkt(): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: PSX_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }

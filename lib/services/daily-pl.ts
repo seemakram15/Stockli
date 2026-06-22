@@ -1,6 +1,6 @@
 import "server-only";
 import { getEodCandlesCached } from "@/lib/services/history";
-import type { Transaction } from "@/lib/types";
+import type { Holding, Transaction } from "@/lib/types";
 
 export interface CalendarDay {
   date: string; // YYYY-MM-DD (UTC day of the candle)
@@ -108,4 +108,56 @@ export async function getStockCalendar(
   }
 
   return { days, hasPosition: true, firstDate: firstBuyDate };
+}
+
+/**
+ * Aggregate daily P/L across the current holdings in one portfolio.
+ *
+ * Each symbol is calculated with the same cash-flow-aware accounting as the
+ * stock detail calendar, then summed by date. The client calendar can overlay
+ * today's live quote change, so the current session appears before EOD candles
+ * are published.
+ */
+export async function getPortfolioCalendar(
+  holdings: Pick<Holding, "symbol">[],
+  transactions: Transaction[]
+): Promise<StockCalendar> {
+  const symbols = Array.from(new Set(holdings.map((h) => h.symbol.toUpperCase())));
+  if (symbols.length === 0) return { days: [], hasPosition: false, firstDate: null };
+
+  const calendars = await Promise.all(
+    symbols.map(async (symbol) => {
+      const symbolTxns = transactions.filter((t) => t.symbol.toUpperCase() === symbol);
+      return getStockCalendar(symbol, symbolTxns);
+    })
+  );
+
+  const byDate = new Map<string, CalendarDay>();
+  let firstDate: string | null = null;
+
+  for (const calendar of calendars) {
+    if (calendar.firstDate && (!firstDate || calendar.firstDate < firstDate)) {
+      firstDate = calendar.firstDate;
+    }
+    for (const day of calendar.days) {
+      const existing =
+        byDate.get(day.date) ??
+        ({
+          date: day.date,
+          close: 0,
+          changePct: 0,
+          dayPL: 0,
+          dayPLPct: 0,
+        } satisfies CalendarDay);
+      existing.close += day.close;
+      existing.dayPL += day.dayPL;
+      byDate.set(day.date, existing);
+    }
+  }
+
+  return {
+    days: Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date)),
+    hasPosition: true,
+    firstDate,
+  };
 }

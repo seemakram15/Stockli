@@ -15,6 +15,7 @@ import {
   PerformanceSection,
   PerformanceSkeleton,
 } from "@/components/dashboard/performance-section";
+import { AllocationExplorer } from "@/components/dashboard/allocation-explorer";
 import { marketStatus } from "@/lib/psx/market-hours";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,6 @@ import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { ChangeBadge } from "@/components/change-badge";
 import { HoldingsTable } from "@/components/holdings-table";
-import { AllocationChart } from "@/components/charts/allocation-chart";
 import { EmptyState } from "@/components/empty-state";
 import { MarketStatusBadge } from "@/components/status-badges";
 import { formatPKR, formatPercent, plColorClass } from "@/lib/format";
@@ -113,14 +113,7 @@ export default async function DashboardPage() {
             <Suspense fallback={<PerformanceSkeleton />}>
               <PerformanceSection positions={positions} />
             </Suspense>
-            <Card>
-              <CardHeader>
-                <CardTitle>Sector allocation</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <AllocationChart data={data.sectorAllocation} />
-              </CardContent>
-            </Card>
+            <AllocationExplorer holdings={holdings} portfolios={portfolios} title="Sector allocation" />
           </div>
 
           {/* Movers */}
