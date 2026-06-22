@@ -1,0 +1,192 @@
+/**
+ * Shared domain & database types.
+ *
+ * DB row types mirror the Supabase schema in supabase/migrations.
+ * Computed/domain types are derived in the service layer.
+ */
+
+// ── PSX data layer ────────────────────────────────────────────
+
+/** One row of the PSX /market-watch table, normalised. */
+export interface MarketWatchRow {
+  symbol: string;
+  sector: string | null;
+  listedIn: string | null;
+  ldcp: number | null; // last day close price
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  current: number;
+  change: number;
+  changePct: number;
+  volume: number | null;
+}
+
+/** A point-in-time quote for one symbol (what the UI consumes). */
+export interface Quote {
+  symbol: string;
+  price: number;
+  ldcp: number | null;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  change: number;
+  changePct: number;
+  volume: number | null;
+  capturedAt: string; // ISO timestamp
+}
+
+/** OHLC candle for the candlestick chart. */
+export interface Candle {
+  time: number; // unix epoch seconds (UTC day)
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number;
+}
+
+/** A simple time/value point (line/area series). */
+export interface SeriesPoint {
+  time: number; // unix epoch seconds
+  value: number;
+}
+
+// ── Database rows ─────────────────────────────────────────────
+
+export interface Profile {
+  id: string;
+  display_name: string | null;
+  base_currency: string;
+  created_at: string;
+}
+
+export interface Portfolio {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+}
+
+export interface Ticker {
+  symbol: string;
+  company_name: string | null;
+  sector: string | null;
+  listed_in: string | null;
+  is_active: boolean;
+}
+
+export interface Holding {
+  id: string;
+  portfolio_id: string;
+  symbol: string;
+  quantity: number;
+  avg_buy_price: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TransactionType = "BUY" | "SELL" | "ADD" | "EDIT" | "REMOVE";
+
+export interface Transaction {
+  id: string;
+  portfolio_id: string;
+  symbol: string;
+  type: TransactionType;
+  quantity: number;
+  price: number;
+  fees: number;
+  note: string | null;
+  transacted_at: string;
+  created_at: string;
+}
+
+export interface PriceSnapshot {
+  symbol: string;
+  price: number;
+  ldcp: number | null;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  change: number;
+  change_pct: number;
+  volume: number | null;
+  captured_at: string;
+}
+
+export interface DailyPL {
+  id: string;
+  portfolio_id: string;
+  symbol: string;
+  date: string; // YYYY-MM-DD
+  open_value: number;
+  close_value: number;
+  day_pl: number;
+  day_pl_pct: number;
+}
+
+export interface Watchlist {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface WatchlistItem {
+  id: string;
+  watchlist_id: string;
+  symbol: string;
+  created_at: string;
+}
+
+export type AlertCondition = "ABOVE" | "BELOW";
+
+export interface Alert {
+  id: string;
+  user_id: string;
+  symbol: string;
+  condition: AlertCondition;
+  target_price: number;
+  is_active: boolean;
+  last_triggered_at: string | null;
+  created_at: string;
+}
+
+// ── Computed / domain ─────────────────────────────────────────
+
+/** A holding enriched with live quote + computed P/L metrics. */
+export interface HoldingWithMetrics extends Holding {
+  ticker: Ticker | null;
+  quote: Quote | null;
+  marketValue: number;
+  costBasis: number;
+  unrealizedPL: number;
+  unrealizedPLPct: number;
+  dayChange: number; // value change today
+  dayChangePct: number;
+}
+
+/** Aggregate metrics across a set of holdings. */
+export interface PortfolioSummary {
+  totalValue: number;
+  totalInvested: number;
+  totalPL: number;
+  totalPLPct: number;
+  dayPL: number;
+  dayPLPct: number;
+  holdingsCount: number;
+  realizedPL: number;
+}
+
+export interface PortfolioWithMetrics extends Portfolio {
+  holdings: HoldingWithMetrics[];
+  summary: PortfolioSummary;
+}
+
+/** Allocation slice for pie charts. */
+export interface AllocationSlice {
+  label: string;
+  value: number;
+  pct: number;
+}

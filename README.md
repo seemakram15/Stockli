@@ -1,36 +1,155 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sahm — PSX Portfolio Tracker
 
-## Getting Started
+A free, serverless web app for tracking personal stock portfolios on the
+**Pakistan Stock Exchange (PSX)**. Live‑ish prices, profit/loss, candlestick
+charts, a **large daily gain/loss calendar**, watchlists, price alerts and
+KSE‑100 benchmarking — all on free tiers.
 
-First, run the development server:
+Built with **Next.js 15 (App Router) · TypeScript · Tailwind v4 · shadcn/ui ·
+Supabase · Upstash Redis · TradingView Lightweight Charts · Recharts**.
+
+> ⚠️ Market data comes from the **public PSX Data Portal** and is **delayed
+> (~15 min)**. For personal, non‑commercial use only. Not investment advice.
+
+---
+
+## ✨ Demo mode (runs with zero setup)
+
+The repo ships with **dummy env values**, so it boots straight into **DEMO
+MODE**: a sample investor with two portfolios, transactions, a watchlist and
+alerts — rendered through the *exact same code path* as live data. Live PSX
+prices are still fetched (the scraper hits the real endpoints); only accounts &
+persistence are stubbed until you add real keys.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+nvm use 22         # Node 18.18+ required (this repo was built on v22)
+npm install
+npm run dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Everything is navigable immediately. A dismissible banner marks demo mode.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🏗️ Architecture
 
-## Learn More
+```
+[Browser] ── SWR poll /api/prices (30s) ──▶ [Next.js on Vercel]
+                                              ├─ Server Components (dashboard, detail, market…)
+                                              ├─ Route Handlers (/api/prices, /api/cron/refresh, …)
+                                              │     │ cache miss
+                                              │     ▼
+                                              │  [Upstash Redis]  15‑min TTL price snapshots
+                                              │     │
+                                              │     ▼
+                                              │  [PSX adapter] ─scrape─▶ dps.psx.com.pk
+                                              │     (live → mock fallback)
+                                              └─ [Supabase Postgres + Auth + RLS]
+[External cron] ─Bearer CRON_SECRET─▶ /api/cron/refresh  (warms cache, writes daily P/L, fires alerts)
+```
 
-To learn more about Next.js, take a look at the following resources:
+**The data layer is swappable.** Everything goes through
+[`lib/psx/adapter.ts`](lib/psx/adapter.ts) (`PsxDataSource`). Swap the live
+scraper for a licensed feed or an authorised redistributor without touching app
+code. The resilient `psx` export retries with backoff and **falls back to
+deterministic mock data** so the UI never hard‑fails.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Key directories
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Path | What |
+|---|---|
+| `lib/psx/` | Data adapter, market‑hours helper, mock generator, symbol seed |
+| `lib/services/` | Prices (cache→scrape→store), metrics, portfolio, stock, daily‑P/L, performance |
+| `lib/actions/` | Server actions: auth, portfolio CRUD, watchlist, alerts |
+| `lib/supabase/` | Browser / server / admin clients + session middleware |
+| `app/(app)/` | Authenticated app (dashboard, portfolios, stock, market, watchlist, alerts) |
+| `components/charts/` | Candlestick/area chart, allocation donut, performance, **P/L calendar** |
+| `supabase/migrations/` | Schema, RLS policies, ticker seed |
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🔌 Going live (add real keys)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Copy [`.env.example`](.env.example) → `.env.local` and fill in:
+
+| Variable | Where |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | [Supabase dashboard](https://supabase.com/dashboard) → Project Settings → API |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | [Upstash console](https://console.upstash.com) → your Redis DB → REST |
+| `CRON_SECRET` | any long random string |
+| `NEXT_PUBLIC_SITE_URL` | your deployed URL (e.g. `https://sahm.vercel.app`) |
+
+Any *real* value flips the app out of demo mode automatically (see
+[`lib/config.ts`](lib/config.ts)).
+
+### Database setup
+
+In the Supabase SQL editor, run the migrations in order:
+
+1. `supabase/migrations/0001_schema.sql` — tables + triggers (auto‑creates a
+   profile, default portfolio and watchlist on sign‑up)
+2. `supabase/migrations/0002_rls.sql` — Row Level Security (every user‑owned
+   table is locked to `auth.uid()`; tickers & price snapshots are public‑read,
+   service‑role‑write)
+3. `supabase/migrations/0003_seed_tickers.sql` — base PSX listings (the cron
+   refresh extends/updates these from the live feed)
+
+---
+
+## 🚀 Deploy (Vercel Hobby, $0)
+
+1. Push to GitHub → **Import** into Vercel (Hobby).
+2. Add all env vars (Production + Preview).
+3. Run the SQL migrations in Supabase.
+4. Deploy. Function `maxDuration` is set to 60s (Hobby limit).
+5. **Scheduling** — Vercel Hobby cron runs **once per day max**, so:
+   - [`vercel.json`](vercel.json) registers two daily crons: a Supabase
+     keep‑alive ping and a backup price refresh (Vercel auto‑sends
+     `Authorization: Bearer $CRON_SECRET`).
+   - For the real ~15‑min refresh during market hours, point a free external
+     scheduler ([cron‑job.org](https://cron-job.org)) at
+     `GET https://<app>/api/cron/refresh` with header
+     `Authorization: Bearer <CRON_SECRET>`, every 15 min, Mon–Fri ~09:30–15:30 PKT.
+
+The refresh route is **idempotent** (sets latest snapshot / upserts daily P/L),
+so duplicate or missed cron runs are safe.
+
+---
+
+## 🧩 Features
+
+- **Accounts** — email/password + Google OAuth via Supabase Auth.
+- **Multiple portfolios** — create/rename/delete; per‑portfolio P/L.
+- **Holdings CRUD** — buys update a weighted‑average cost; sells reduce the
+  position; every action is logged to an immutable **transaction audit log**.
+- **Dashboard** — total value, unrealized/realized P/L, day change, **Performance
+  vs KSE‑100** chart, sector allocation, best/worst performers, live holdings table.
+- **Stock detail** — candlestick + area + intraday charts (Lightweight Charts),
+  position summary, and a **large daily gain/loss calendar** (month‑grid heatmap).
+- **Market** — searchable/sortable snapshot of all ~460 listings, breadth,
+  top gainers/losers.
+- **Watchlists** & **price alerts** (above/below, evaluated each refresh).
+- **Polished, responsive UI** with dark mode (the hero), ⌘K search, tabular
+  figures, and an emerald/finance palette.
+
+---
+
+## ⚖️ Data, legality & limits
+
+- No official free PSX REST API exists; this scrapes the **public, no‑auth**
+  `dps.psx.com.pk` endpoints (`/market-watch`, `/timeseries/eod`,
+  `/timeseries/int`) — the same source the open‑source PSX ecosystem uses.
+- Keep it **non‑commercial**, attribute PSX, rate‑limit politely, cache
+  aggressively. To monetize, obtain a licence or switch the adapter to an
+  authorised redistributor / paid feed.
+- Market‑hours awareness (`lib/psx/market-hours.ts`) pauses writes off‑session
+  and on Pakistani holidays (PKT, UTC+5, no DST).
+
+## Scripts
+
+```bash
+npm run dev      # dev server
+npm run build    # production build
+npm run start    # serve the production build
+npm run lint     # eslint
+```

@@ -1,0 +1,237 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { isDemoMode } from "@/lib/config";
+import { createClient } from "@/lib/supabase/server";
+import { weightedAvgPrice } from "@/lib/services/metrics";
+import type { Holding } from "@/lib/types";
+
+export interface ActionState {
+  error?: string;
+  message?: string;
+  ok?: boolean;
+}
+
+const DEMO_BLOCK: ActionState = {
+  error: "Demo mode — add real Supabase keys to .env.local to save changes.",
+};
+
+async function requireUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  return { supabase, user };
+}
+
+// ── Portfolios ────────────────────────────────────────────────
+
+const portfolioSchema = z.object({
+  name: z.string().min(1, "Name is required").max(80),
+  description: z.string().max(280).optional(),
+});
+
+export async function createPortfolio(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  if (isDemoMode) return DEMO_BLOCK;
+  const parsed = portfolioSchema.safeParse({
+    name: formData.get("name"),
+    description: formData.get("description") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  try {
+    const { supabase, user } = await requireUser();
+    const { error } = await supabase.from("portfolios").insert({
+      user_id: user.id,
+      name: parsed.data.name,
+      description: parsed.data.description ?? null,
+    });
+    if (error) return { error: error.message };
+    revalidatePath("/portfolios");
+    return { ok: true, message: "Portfolio created." };
+  } catch (e) {
+    return { error: String(e) };
+  }
+}
+
+export async function updatePortfolio(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  if (isDemoMode) return DEMO_BLOCK;
+  const id = String(formData.get("id") ?? "");
+  const parsed = portfolioSchema.safeParse({
+    name: formData.get("name"),
+    description: formData.get("description") || undefined,
+  });
+  if (!id || !parsed.success)
+    return { error: parsed.success ? "Missing id" : parsed.error.issues[0].message };
+
+  try {
+    const { supabase } = await requireUser();
+    const { error } = await supabase
+      .from("portfolios")
+      .update({ name: parsed.data.name, description: parsed.data.description ?? null })
+      .eq("id", id);
+    if (error) return { error: error.message };
+    revalidatePath("/portfolios");
+    revalidatePath(`/portfolios/${id}`);
+    return { ok: true, message: "Saved." };
+  } catch (e) {
+    return { error: String(e) };
+  }
+}
+
+export async function deletePortfolio(formData: FormData): Promise<void> {
+  if (isDemoMode) return;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const { supabase } = await requireUser();
+  await supabase.from("portfolios").delete().eq("id", id);
+  revalidatePath("/portfolios");
+}
+
+// ── Holdings + transactions ───────────────────────────────────
+
+const tradeSchema = z.object({
+  portfolioId: z.string().uuid(),
+  symbol: z
+    .string()
+    .min(1)
+    .max(20)
+    .regex(/^[A-Za-z0-9.&-]+$/, "Invalid symbol"),
+  quantity: z.coerce.number().positive("Quantity must be > 0"),
+  price: z.coerce.number().nonnegative("Price must be ≥ 0"),
+  date: z.string().optional(),
+  note: z.string().max(280).optional(),
+});
+
+/** BUY: upsert the holding with a weighted-average cost + log a transaction. */
+export async function addHolding(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  if (isDemoMode) return DEMO_BLOCK;
+  const parsed = tradeSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { portfolioId, symbol, quantity, price, date, note } = parsed.data;
+  const sym = symbol.toUpperCase();
+  const when = date ? new Date(date).toISOString() : new Date().toISOString();
+
+  try {
+    const { supabase } = await requireUser();
+
+    // Ensure the ticker exists (FK) — insert a minimal row if missing.
+    await supabase.from("tickers").upsert({ symbol: sym }, { onConflict: "symbol" });
+
+    const { data: existing } = await supabase
+      .from("holdings")
+      .select("*")
+      .eq("portfolio_id", portfolioId)
+      .eq("symbol", sym)
+      .maybeSingle();
+
+    const ex = existing as Holding | null;
+    const newQty = (ex?.quantity ?? 0) + quantity;
+    const newAvg = weightedAvgPrice(ex?.quantity ?? 0, ex?.avg_buy_price ?? 0, quantity, price);
+
+    const { error: upErr } = await supabase
+      .from("holdings")
+      .upsert(
+        { portfolio_id: portfolioId, symbol: sym, quantity: newQty, avg_buy_price: newAvg },
+        { onConflict: "portfolio_id,symbol" }
+      );
+    if (upErr) return { error: upErr.message };
+
+    await supabase.from("transactions").insert({
+      portfolio_id: portfolioId,
+      symbol: sym,
+      type: "BUY",
+      quantity,
+      price,
+      note: note ?? null,
+      transacted_at: when,
+    });
+
+    revalidatePath(`/portfolios/${portfolioId}`);
+    revalidatePath("/dashboard");
+    return { ok: true, message: `Added ${quantity} ${sym}.` };
+  } catch (e) {
+    return { error: String(e) };
+  }
+}
+
+/** SELL: reduce the position (removing it at zero) + log a SELL transaction. */
+export async function sellHolding(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  if (isDemoMode) return DEMO_BLOCK;
+  const parsed = tradeSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { portfolioId, symbol, quantity, price, date, note } = parsed.data;
+  const sym = symbol.toUpperCase();
+  const when = date ? new Date(date).toISOString() : new Date().toISOString();
+
+  try {
+    const { supabase } = await requireUser();
+    const { data: existing } = await supabase
+      .from("holdings")
+      .select("*")
+      .eq("portfolio_id", portfolioId)
+      .eq("symbol", sym)
+      .maybeSingle();
+    const ex = existing as Holding | null;
+    if (!ex) return { error: `No ${sym} position to sell.` };
+    if (quantity > ex.quantity) return { error: `You only hold ${ex.quantity} ${sym}.` };
+
+    const remaining = ex.quantity - quantity;
+    if (remaining <= 0) {
+      await supabase.from("holdings").delete().eq("id", ex.id);
+    } else {
+      await supabase.from("holdings").update({ quantity: remaining }).eq("id", ex.id);
+    }
+
+    await supabase.from("transactions").insert({
+      portfolio_id: portfolioId,
+      symbol: sym,
+      type: "SELL",
+      quantity,
+      price,
+      note: note ?? null,
+      transacted_at: when,
+    });
+
+    revalidatePath(`/portfolios/${portfolioId}`);
+    revalidatePath("/dashboard");
+    return { ok: true, message: `Sold ${quantity} ${sym}.` };
+  } catch (e) {
+    return { error: String(e) };
+  }
+}
+
+export async function removeHolding(formData: FormData): Promise<void> {
+  if (isDemoMode) return;
+  const holdingId = String(formData.get("holdingId") ?? "");
+  const portfolioId = String(formData.get("portfolioId") ?? "");
+  const symbol = String(formData.get("symbol") ?? "");
+  if (!holdingId) return;
+  const { supabase } = await requireUser();
+  await supabase.from("holdings").delete().eq("id", holdingId);
+  if (portfolioId && symbol) {
+    await supabase.from("transactions").insert({
+      portfolio_id: portfolioId,
+      symbol: symbol.toUpperCase(),
+      type: "REMOVE",
+      quantity: 0,
+      price: 0,
+    });
+  }
+  revalidatePath(`/portfolios/${portfolioId}`);
+  revalidatePath("/dashboard");
+}
