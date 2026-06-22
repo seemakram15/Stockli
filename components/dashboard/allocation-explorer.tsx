@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AllocationBars } from "@/components/charts/allocation-bars";
+import { AllocationChart } from "@/components/charts/allocation-chart";
 import { HoldingsTable } from "@/components/holdings-table";
 import { usePrices } from "@/lib/hooks/use-prices";
 import {
@@ -38,6 +38,7 @@ export function AllocationExplorer({
   holdings,
   portfolios,
   defaultPortfolioId = "all",
+  defaultMode = "sector",
   title = "Allocation",
   description = "Explore exposure, invested amount and live P/L by portfolio.",
   className,
@@ -45,12 +46,13 @@ export function AllocationExplorer({
   holdings: HoldingWithMetrics[];
   portfolios: PortfolioOption[];
   defaultPortfolioId?: string;
+  defaultMode?: AllocationMode;
   title?: string;
   description?: string;
   className?: string;
 }) {
   const [portfolioId, setPortfolioId] = React.useState(defaultPortfolioId);
-  const [mode, setMode] = React.useState<AllocationMode>("sector");
+  const [mode, setMode] = React.useState<AllocationMode>(defaultMode);
   const liveHoldings = useLiveHoldings(holdings);
   const portfolioNames = React.useMemo(
     () => Object.fromEntries(portfolios.map((p) => [p.id, p.name])),
@@ -102,7 +104,11 @@ export function AllocationExplorer({
 
               <div className="grid gap-4 lg:grid-cols-5">
                 <div className="rounded-xl border border-border p-4 lg:col-span-2">
-                  <AllocationBars data={chartData} maxItems={12} />
+                  <AllocationChart
+                    data={chartData}
+                    maxSlices={mode === "holding" ? Math.max(12, chartData.length) : 8}
+                    showSliceLabels={mode === "holding"}
+                  />
                 </div>
                 <div className="rounded-xl border border-border p-4 lg:col-span-3">
                   <AllocationBreakdown data={chartData} />
@@ -135,10 +141,14 @@ export function AllocationExplorer({
             <TabsTrigger value="holding">Holdings</TabsTrigger>
           </TabsList>
           <TabsContent value="sector" className="mt-4">
-            <AllocationBars data={sectorData} />
+            <AllocationChart data={sectorData} maxSlices={8} />
           </TabsContent>
           <TabsContent value="holding" className="mt-4">
-            <AllocationBars data={holdingData} />
+            <AllocationChart
+              data={holdingData}
+              maxSlices={Math.max(12, holdingData.length)}
+              showSliceLabels
+            />
           </TabsContent>
         </Tabs>
         <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
@@ -214,10 +224,8 @@ function allocationByHoldingName(holdings: HoldingWithMetrics[]) {
   const total = holdings.reduce((sum, h) => sum + h.marketValue, 0);
   return holdings
     .map((h) => {
-      const company = h.ticker?.company_name;
-      const label = company && company !== h.symbol ? `${h.symbol} · ${company}` : h.symbol;
       return {
-        label,
+        label: h.symbol,
         value: h.marketValue,
         pct: total ? (h.marketValue / total) * 100 : 0,
       };
@@ -293,21 +301,14 @@ function AllocationBreakdown({
         <PieChart className="size-4 text-primary" />
         <p className="font-semibold">Breakdown</p>
       </div>
-      <div className="space-y-2">
+      <div className="grid gap-2 sm:grid-cols-2">
         {data.map((slice) => (
-          <div key={slice.label}>
-            <div className="mb-1 flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-              <span className="truncate font-medium">{slice.label}</span>
-              <span className="shrink-0 tabular-nums text-muted-foreground sm:text-right">
-                {formatPKR(slice.value)} · {formatPercent(slice.pct).replace("+", "")}
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${Math.max(2, Math.min(100, slice.pct))}%` }}
-              />
-            </div>
+          <div key={slice.label} className="rounded-lg border border-border bg-muted/15 p-3">
+            <p className="truncate text-sm font-medium">{slice.label}</p>
+            <p className="mt-1 font-semibold tabular-nums">{formatPKR(slice.value)}</p>
+            <p className="text-xs tabular-nums text-muted-foreground">
+              {formatPercent(slice.pct).replace("+", "")} of selected portfolio
+            </p>
           </div>
         ))}
       </div>

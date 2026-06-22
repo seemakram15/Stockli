@@ -78,7 +78,7 @@ export function HoldingsTable({
 
             <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
               <MobileMetric label="Qty" value={formatNumber(h.quantity, 0)} />
-              <MobileMetric label="Last" value={formatPKR(h.quote?.price ?? h.avg_buy_price)} align="right" />
+              <MobileMetric label="Last" value={formatPKR(h.livePrice)} align="right" />
               <MobileMetric label="Market value" value={formatPKR(h.marketValue)} />
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Unreal. P/L</p>
@@ -135,7 +135,7 @@ export function HoldingsTable({
                 {formatPKR(h.avg_buy_price)}
               </TableCell>
               <TableCell className="text-right tabular-nums">
-                {formatPKR(h.quote?.price ?? h.avg_buy_price)}
+                {formatPKR(h.livePrice)}
               </TableCell>
               <TableCell className="text-right">
                 <ChangeBadge pct={h.dayChangePct} className="justify-end" />

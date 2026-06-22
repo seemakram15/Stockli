@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isDemoMode } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeSymbol } from "@/lib/security/validation";
 import { weightedAvgPrice } from "@/lib/services/metrics";
 import type { Holding } from "@/lib/types";
 
@@ -104,7 +105,14 @@ const tradeSchema = z.object({
     .string()
     .min(1)
     .max(20)
-    .regex(/^[A-Za-z0-9.&-]+$/, "Invalid symbol"),
+    .transform((value, ctx) => {
+      const symbol = normalizeSymbol(value);
+      if (!symbol) {
+        ctx.addIssue({ code: "custom", message: "Invalid symbol" });
+        return z.NEVER;
+      }
+      return symbol;
+    }),
   quantity: z.coerce.number().positive("Quantity must be > 0"),
   price: z.coerce.number().nonnegative("Price must be ≥ 0"),
   date: z.string().optional(),
@@ -120,7 +128,7 @@ export async function addHolding(
   const parsed = tradeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { portfolioId, symbol, quantity, price, date, note } = parsed.data;
-  const sym = symbol.toUpperCase();
+  const sym = symbol;
   const when = date ? new Date(date).toISOString() : new Date().toISOString();
 
   try {
@@ -175,7 +183,7 @@ export async function sellHolding(
   const parsed = tradeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { portfolioId, symbol, quantity, price, date, note } = parsed.data;
-  const sym = symbol.toUpperCase();
+  const sym = symbol;
   const when = date ? new Date(date).toISOString() : new Date().toISOString();
 
   try {
@@ -219,14 +227,14 @@ export async function removeHolding(formData: FormData): Promise<void> {
   if (isDemoMode) return;
   const holdingId = String(formData.get("holdingId") ?? "");
   const portfolioId = String(formData.get("portfolioId") ?? "");
-  const symbol = String(formData.get("symbol") ?? "");
+  const symbol = normalizeSymbol(formData.get("symbol"));
   if (!holdingId) return;
   const { supabase } = await requireUser();
   await supabase.from("holdings").delete().eq("id", holdingId);
   if (portfolioId && symbol) {
     await supabase.from("transactions").insert({
       portfolio_id: portfolioId,
-      symbol: symbol.toUpperCase(),
+      symbol,
       type: "REMOVE",
       quantity: 0,
       price: 0,

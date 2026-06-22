@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { isDemoMode, config } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
+import { safeRedirectPath } from "@/lib/security/validation";
 
 export interface AuthState {
   error?: string;
@@ -26,8 +27,7 @@ export async function signIn(
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: error.message };
 
-  const redirectTo = String(formData.get("redirectTo") ?? "/dashboard");
-  redirect(redirectTo.startsWith("/") ? redirectTo : "/dashboard");
+  redirect(safeRedirectPath(formData.get("redirectTo")));
 }
 
 export async function signUp(

@@ -14,7 +14,7 @@ export function computeHoldingMetrics(
   ticker: Ticker | null,
   quote: Quote | null
 ): HoldingWithMetrics {
-  const price = quote?.price ?? holding.avg_buy_price;
+  const price = effectiveQuotePrice(quote) ?? holding.avg_buy_price;
   const marketValue = price * holding.quantity;
   const costBasis = holding.avg_buy_price * holding.quantity;
   const unrealizedPL = marketValue - costBasis;
@@ -26,6 +26,7 @@ export function computeHoldingMetrics(
     ...holding,
     ticker,
     quote,
+    livePrice: price,
     marketValue,
     costBasis,
     unrealizedPL,
@@ -33,6 +34,16 @@ export function computeHoldingMetrics(
     dayChange,
     dayChangePct,
   };
+}
+
+export function effectiveQuotePrice(quote: Quote | null): number | null {
+  if (!quote) return null;
+  const derived =
+    quote.ldcp != null && Number.isFinite(quote.change)
+      ? quote.ldcp + quote.change
+      : null;
+  if (derived != null && Number.isFinite(derived) && derived > 0) return derived;
+  return Number.isFinite(quote.price) && quote.price > 0 ? quote.price : null;
 }
 
 /** Aggregate a set of enriched holdings into a portfolio summary. */

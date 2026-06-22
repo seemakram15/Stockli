@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { CalendarRange } from "lucide-react";
 import { getStockDetail } from "@/lib/services/stock";
 import { getStockCalendar } from "@/lib/services/daily-pl";
@@ -17,7 +18,9 @@ import { WatchButton } from "@/components/watch-button";
 import { CreateAlertDialog } from "@/components/alerts/create-alert-dialog";
 import { AddTradeDialog } from "@/components/portfolio/add-trade-dialog";
 import { DataDelayBadge } from "@/components/status-badges";
+import { effectiveQuotePrice } from "@/lib/services/metrics";
 import { formatPKR, formatCompact, formatPercent, formatDate, plColorClass } from "@/lib/format";
+import { normalizeSymbol } from "@/lib/security/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -26,8 +29,8 @@ export async function generateMetadata({
 }: {
   params: Promise<{ symbol: string }>;
 }): Promise<Metadata> {
-  const { symbol } = await params;
-  return { title: symbol.toUpperCase() };
+  const { symbol: rawSymbol } = await params;
+  return { title: normalizeSymbol(rawSymbol) ?? "Stock" };
 }
 
 export default async function StockPage({
@@ -36,7 +39,8 @@ export default async function StockPage({
   params: Promise<{ symbol: string }>;
 }) {
   const { symbol: symbolRaw } = await params;
-  const symbol = symbolRaw.toUpperCase();
+  const symbol = normalizeSymbol(symbolRaw);
+  if (!symbol) notFound();
 
   const [detail, portfolios, watched, symbolTxns] = await Promise.all([
     getStockDetail(symbol),
@@ -50,7 +54,7 @@ export default async function StockPage({
   const hasPosition = totalQty > 0;
   const costBasis = holdings.reduce((a, h) => a + h.quantity * h.avg_buy_price, 0);
   const avgCost = hasPosition ? costBasis / totalQty : 0;
-  const price = quote?.price ?? avgCost;
+  const price = effectiveQuotePrice(quote) ?? avgCost;
   const marketValue = price * totalQty;
   const unrealizedPL = marketValue - costBasis;
   const unrealizedPLPct = costBasis ? (unrealizedPL / costBasis) * 100 : 0;

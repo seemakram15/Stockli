@@ -14,12 +14,20 @@ import { ChangeBadge } from "@/components/change-badge";
 import { formatCompact, formatPKR } from "@/lib/format";
 import type { MarketPerformer, MarketPerformers as MarketPerformersData } from "@/lib/services/market";
 
-export function MarketPerformers({ data }: { data: MarketPerformersData }) {
+export function MarketPerformers({
+  data,
+  showHeader = true,
+}: {
+  data: MarketPerformersData;
+  showHeader?: boolean;
+}) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Market Performers</CardTitle>
-      </CardHeader>
+      {showHeader && (
+        <CardHeader>
+          <CardTitle>Market Performers</CardTitle>
+        </CardHeader>
+      )}
       <CardContent>
         <div className="grid gap-5 lg:grid-cols-3">
           <PerformerTable

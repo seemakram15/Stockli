@@ -77,6 +77,7 @@ Vercel, do **not** upload `.env.local`; add the same keys in
 | Variable | Where |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | [Supabase dashboard](https://supabase.com/dashboard) → Project Settings → API |
+| `DATABASE_URL` | Supabase dashboard → Project Settings → Database → Connection string → URI |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | [Upstash console](https://console.upstash.com) → your Redis DB → REST |
 | `CRON_SECRET` | long random string, e.g. `openssl rand -base64 32` |
 | `NEXT_PUBLIC_SITE_URL` | your deployed URL (e.g. `https://stockli.vercel.app`) |
@@ -95,20 +96,15 @@ Security rules:
   public repo.
 - See [SECURITY.md](SECURITY.md) before pushing or deploying.
 
-### Database setup
+### Database migrations
 
-In the Supabase SQL editor, run the migrations in order:
+`npm run build` runs `npm run migrate` before `next build`. On Vercel this
+applies every pending SQL file in `supabase/migrations/` automatically, records
+checksums in `public.app_schema_migrations`, and fails the deployment if
+`DATABASE_URL` is missing.
 
-1. `supabase/migrations/0001_schema.sql` — tables + triggers (auto‑creates a
-   profile, default portfolio and watchlist on sign‑up)
-2. `supabase/migrations/0002_rls.sql` — Row Level Security (every user‑owned
-   table is locked to `auth.uid()`; tickers & price snapshots are public‑read,
-   service‑role‑write)
-3. `supabase/migrations/0003_seed_tickers.sql` — base PSX listings (the cron
-   refresh extends/updates these from the live feed)
-4. `supabase/migrations/0004_roles.sql` — superadmin role support and role
-   escalation protection
-5. `supabase/migrations/0005_notifications.sql` — in-app notifications
+For local development, `npm run migrate` uses `.env.local` when
+`DATABASE_URL` is present and skips cleanly when it is absent.
 
 ---
 
@@ -118,9 +114,9 @@ In the Supabase SQL editor, run the migrations in order:
 2. Add all env vars in Vercel Project Settings. Use Production + Preview values
    intentionally; avoid sharing production service-role keys with throwaway
    preview projects.
-3. Run the SQL migrations in Supabase.
-4. Deploy. Function `maxDuration` is set to 60s (Hobby limit).
-5. **Scheduling** — Vercel Hobby cron runs **once per day max**, so:
+3. Deploy. Function `maxDuration` is set to 60s (Hobby limit). Pending
+   migrations run automatically during the build.
+4. **Scheduling** — Vercel Hobby cron runs **once per day max**, so:
    - [`vercel.json`](vercel.json) registers two daily crons: a Supabase
      keep‑alive ping and a backup price refresh. Both routes require
      `Authorization: Bearer <CRON_SECRET>`.
@@ -169,6 +165,7 @@ so duplicate or missed cron runs are safe.
 
 ```bash
 npm run dev      # dev server
+npm run migrate  # apply pending Supabase SQL migrations when DATABASE_URL is set
 npm run build    # production build
 npm run start    # serve the production build
 npm run lint     # eslint

@@ -2,6 +2,7 @@
 
 import { usePrices } from "@/lib/hooks/use-prices";
 import { ChangeBadge } from "@/components/change-badge";
+import { effectiveQuotePrice } from "@/lib/services/metrics";
 import { formatPKR } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Quote } from "@/lib/types";
@@ -18,7 +19,7 @@ export function LiveQuote({
 }) {
   const { quotes } = usePrices([symbol], initial ? [initial] : undefined);
   const q = quotes.get(symbol.toUpperCase()) ?? initial ?? null;
-  const price = q?.price ?? null;
+  const price = effectiveQuotePrice(q);
 
   return (
     <div className="flex items-baseline gap-3">

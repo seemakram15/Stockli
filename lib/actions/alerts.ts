@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isDemoMode } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeSymbol } from "@/lib/security/validation";
 
 export interface AlertActionState {
   ok?: boolean;
@@ -16,7 +17,14 @@ const alertSchema = z.object({
     .string()
     .min(1)
     .max(20)
-    .regex(/^[A-Za-z0-9.&-]+$/, "Invalid symbol"),
+    .transform((value, ctx) => {
+      const symbol = normalizeSymbol(value);
+      if (!symbol) {
+        ctx.addIssue({ code: "custom", message: "Invalid symbol" });
+        return z.NEVER;
+      }
+      return symbol;
+    }),
   condition: z.enum(["ABOVE", "BELOW"]),
   target_price: z.coerce.number().positive("Target must be > 0"),
 });
@@ -43,7 +51,7 @@ export async function createAlert(
 
     const { error } = await supabase.from("alerts").insert({
       user_id: user.id,
-      symbol: parsed.data.symbol.toUpperCase(),
+      symbol: parsed.data.symbol,
       condition: parsed.data.condition,
       target_price: parsed.data.target_price,
     });

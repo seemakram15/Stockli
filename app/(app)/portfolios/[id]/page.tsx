@@ -130,6 +130,7 @@ export default async function PortfolioDetailPage({
               holdings={holdings}
               portfolios={[pf]}
               defaultPortfolioId={pf.id}
+              defaultMode="holding"
               title="Allocation"
               description={`Explore ${pf.name}'s holdings, invested amount and live P/L.`}
               className="h-full"
