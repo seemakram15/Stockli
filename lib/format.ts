@@ -28,6 +28,20 @@ export function formatPKRCompact(value: number | null | undefined): string {
   return `${prefix}${CURRENCY_SYMBOL} ${compact}`;
 }
 
+/** Generic compact market currency/price formatter. */
+export function formatMarketPrice(
+  value: number | null | undefined,
+  currency?: string | null
+): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  const decimals = Math.abs(value) >= 1000 ? 2 : Math.abs(value) >= 10 ? 2 : 4;
+  const formatted = value.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+  return currency ? `${currency} ${formatted}` : formatted;
+}
+
 /** Plain number with grouping. */
 export function formatNumber(
   value: number | null | undefined,

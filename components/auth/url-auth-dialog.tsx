@@ -14,12 +14,12 @@ function parseAuthMode(value: string | null): AuthMode | null {
 
 export function UrlAuthDialog({ demo }: { demo?: boolean }) {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/";
   const searchParams = useSearchParams();
-  const urlMode = parseAuthMode(searchParams.get("auth"));
+  const urlMode = parseAuthMode(searchParams?.get("auth") ?? null);
   const [mode, setMode] = React.useState<AuthMode>(urlMode ?? "login");
   const [open, setOpen] = React.useState(Boolean(urlMode));
-  const redirectTo = searchParams.get("redirectTo") ?? undefined;
+  const redirectTo = searchParams?.get("redirectTo") ?? undefined;
 
   React.useEffect(() => {
     if (!urlMode) return;
@@ -28,7 +28,7 @@ export function UrlAuthDialog({ demo }: { demo?: boolean }) {
   }, [urlMode]);
 
   function clearAuthQuery() {
-    const nextParams = new URLSearchParams(searchParams.toString());
+    const nextParams = new URLSearchParams(searchParams?.toString() ?? "");
     nextParams.delete("auth");
     nextParams.delete("redirectTo");
 
