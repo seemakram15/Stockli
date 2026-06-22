@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { DataDelayBadge } from "@/components/status-badges";
+import { InstallAppButton } from "@/components/pwa/install-app-button";
 import { isDemoMode } from "@/lib/config";
 import { APP_NAME } from "@/lib/constants";
 
@@ -68,6 +69,7 @@ export default function Home() {
             <Button asChild size="lg" variant="outline">
               <Link href="/market">Browse the market</Link>
             </Button>
+            <InstallAppButton size="lg" variant="secondary" />
           </div>
           <div className="mt-6">
             <DataDelayBadge />

@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { NavLinks } from "./nav-links";
+import { InstallAppButton } from "@/components/pwa/install-app-button";
 
 export function MobileNav({ showAdmin = false }: { showAdmin?: boolean }) {
   const [open, setOpen] = React.useState(false);
@@ -28,8 +29,11 @@ export function MobileNav({ showAdmin = false }: { showAdmin?: boolean }) {
             <Logo />
           </SheetTitle>
         </SheetHeader>
-        <div className="px-3 py-4">
+        <div className="flex-1 px-3 py-4">
           <NavLinks onNavigate={() => setOpen(false)} showAdmin={showAdmin} />
+        </div>
+        <div className="border-t border-border p-3">
+          <InstallAppButton className="w-full justify-start" />
         </div>
       </SheetContent>
     </Sheet>
