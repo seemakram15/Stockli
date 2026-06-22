@@ -33,3 +33,22 @@ export const NAV_ITEMS = [
   { href: "/market", label: "Market", icon: "TrendingUp" },
   { href: "/alerts", label: "Alerts", icon: "Bell" },
 ] as const;
+
+export const MARKET_NAV_ITEMS = [
+  {
+    label: "Pakistan Stock Exchange",
+    icon: "Landmark",
+    children: [
+      { href: "/market", label: "Stock Market", icon: "TrendingUp" },
+      { href: "/market/strategy", label: "Market Strategy", icon: "Target" },
+      { href: "/market/mutual-funds", label: "Mutual Funds", icon: "BadgePercent" },
+      { href: "/market/etfs", label: "Exchange Traded Funds", icon: "Layers3" },
+    ],
+  },
+  { href: "/market/us", label: "USA S&P 500", icon: "LineChart" },
+  { href: "/market/india", label: "India Stock Market", icon: "CandlestickChart" },
+  { href: "/market/world", label: "World View", icon: "Globe2" },
+  { href: "/market/commodities", label: "Commodities", icon: "Boxes" },
+  { href: "/market/crypto", label: "Crypto Market", icon: "Bitcoin" },
+  { href: "/market/oil", label: "Oil Market", icon: "Droplets" },
+] as const;
