@@ -217,6 +217,7 @@ export interface PortfolioSummary {
 
 export interface PortfolioWithMetrics extends Portfolio {
   holdings: HoldingWithMetrics[];
+  transactions: Transaction[];
   summary: PortfolioSummary;
 }
 

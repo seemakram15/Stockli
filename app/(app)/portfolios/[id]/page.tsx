@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Coins, TrendingUp, CalendarClock, Wallet } from "lucide-react";
-import { getPortfolioView, getTransactions } from "@/lib/services/portfolio";
+import { getPortfolio, getPortfolioView } from "@/lib/services/portfolio";
 import { getPortfolioCalendar } from "@/lib/services/daily-pl";
 import { isDemoMode } from "@/lib/config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +27,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const pf = await getPortfolioView(id);
+  const pf = await getPortfolio(id);
   return { title: pf?.name ?? "Portfolio" };
 }
 
@@ -37,13 +37,10 @@ export default async function PortfolioDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [pf, transactions] = await Promise.all([
-    getPortfolioView(id),
-    getTransactions(id),
-  ]);
+  const pf = await getPortfolioView(id);
   if (!pf) notFound();
 
-  const { summary, holdings } = pf;
+  const { summary, holdings, transactions } = pf;
   const calendar = holdings.length ? await getPortfolioCalendar(holdings, transactions) : null;
 
   return (

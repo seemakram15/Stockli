@@ -121,10 +121,15 @@ export async function getHoldings(portfolioId: string): Promise<Holding[]> {
 export async function getAllHoldings(): Promise<Holding[]> {
   if (isDemoMode) return DEMO_HOLDINGS;
   const portfolios = await getPortfolios();
-  const ids = portfolios.map((p) => p.id);
-  if (ids.length === 0) return [];
+  return getHoldingsForPortfolioIds(portfolios.map((p) => p.id));
+}
+
+async function getHoldingsForPortfolioIds(ids: string[]): Promise<Holding[]> {
+  if (isDemoMode) return DEMO_HOLDINGS.filter((h) => ids.includes(h.portfolio_id));
+  const portfolioIds = ids.filter(Boolean);
+  if (portfolioIds.length === 0) return [];
   const supabase = await createClient();
-  const { data } = await supabase.from("holdings").select("*").in("portfolio_id", ids);
+  const { data } = await supabase.from("holdings").select("*").in("portfolio_id", portfolioIds);
   return (data as Holding[] | null) ?? [];
 }
 
@@ -196,6 +201,7 @@ export async function getPortfolioView(id: string): Promise<PortfolioWithMetrics
   return {
     ...portfolio,
     holdings: enriched,
+    transactions,
     summary: computeSummary(enriched, realized),
   };
 }
@@ -212,9 +218,9 @@ export interface DashboardData {
 
 /** Everything the dashboard needs, aggregated across all portfolios. */
 export async function getDashboard(): Promise<DashboardData> {
-  const [portfolios, holdings, transactions] = await Promise.all([
-    getPortfolios(),
-    getAllHoldings(),
+  const portfolios = await getPortfolios();
+  const [holdings, transactions] = await Promise.all([
+    getHoldingsForPortfolioIds(portfolios.map((p) => p.id)),
     getTransactions(),
   ]);
   const enriched = await enrichHoldings(holdings);
