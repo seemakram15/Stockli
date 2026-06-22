@@ -17,7 +17,7 @@ import { SEED_TICKERS } from "@/lib/psx/symbols";
 
 export const DEMO_USER = {
   id: "demo-user-0000-0000-0000-000000000000",
-  email: "demo@sahm.app",
+  email: "demo@stockli.app",
   displayName: "Demo Investor",
 };
 
