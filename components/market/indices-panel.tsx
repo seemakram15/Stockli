@@ -6,12 +6,15 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkline } from "@/components/charts/sparkline";
 import { PriceChart } from "@/components/charts/price-chart";
-import { ConstituentsTable } from "@/components/market/constituents-table";
 import { ChangeBadge } from "@/components/change-badge";
 import { DataDelayBadge } from "@/components/status-badges";
 import { cn } from "@/lib/utils";
 import { formatNumber, formatPercent, formatCompact, plColorClass } from "@/lib/format";
-import type { IndexCard, IndexDetail, IndexReturns } from "@/lib/services/market";
+import type {
+  IndexCard,
+  IndexDetail,
+  IndexReturns,
+} from "@/lib/services/market";
 
 const RETURN_LABELS: { key: keyof IndexReturns; label: string }[] = [
   { key: "d1", label: "1D" },
@@ -153,16 +156,6 @@ export function IndicesPanel({
         </CardContent>
       </Card>
 
-      {/* Constituents = the index's listings, with weights */}
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle>{detail.symbol} constituents ({detail.constituents.length})</CardTitle>
-          <span className="text-xs text-muted-foreground">Sorted by index weight</span>
-        </CardHeader>
-        <CardContent>
-          <ConstituentsTable constituents={detail.constituents} />
-        </CardContent>
-      </Card>
     </div>
   );
 }

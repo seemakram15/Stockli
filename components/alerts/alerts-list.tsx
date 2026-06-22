@@ -4,6 +4,17 @@ import Link from "next/link";
 import { Bell, BellOff, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { usePrices } from "@/lib/hooks/use-prices";
 import { formatPKR, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -56,20 +67,15 @@ export function AlertsList({ alerts, demo }: { alerts: Alert[]; demo?: boolean }
             <StatusBadge active={a.is_active} triggered={triggered} />
 
             <div className="flex items-center gap-1">
-              <ActionButton
+              <ToggleActionButton
                 demo={demo}
-                action={toggleAlert}
-                fields={{ id: a.id, active: String(a.is_active) }}
-                label={a.is_active ? "Pause" : "Resume"}
-                icon={a.is_active ? <BellOff className="size-4" /> : <Bell className="size-4" />}
+                id={a.id}
+                active={a.is_active}
               />
-              <ActionButton
+              <DeleteActionButton
                 demo={demo}
-                action={deleteAlert}
-                fields={{ id: a.id }}
-                label="Delete"
-                destructive
-                icon={<Trash2 className="size-4" />}
+                id={a.id}
+                symbol={a.symbol}
               />
             </div>
           </li>
@@ -89,48 +95,99 @@ function StatusBadge({ active, triggered }: { active: boolean; triggered: boolea
   return <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", cls)}>{label}</span>;
 }
 
-function ActionButton({
-  action,
-  fields,
-  label,
-  icon,
-  destructive,
+function ToggleActionButton({
+  id,
+  active,
   demo,
 }: {
-  action: (formData: FormData) => void | Promise<void>;
-  fields: Record<string, string>;
-  label: string;
-  icon: React.ReactNode;
-  destructive?: boolean;
+  id: string;
+  active: boolean;
   demo?: boolean;
 }) {
+  const label = active ? "Pause" : "Resume";
   if (demo) {
     return (
       <Button
         variant="ghost"
         size="icon"
-        className={cn("size-8", destructive && "text-loss hover:text-loss")}
+        className="size-8"
         aria-label={label}
         onClick={() => toast.error("Demo mode — add Supabase keys to manage alerts.")}
       >
-        {icon}
+        {active ? <BellOff className="size-4" /> : <Bell className="size-4" />}
       </Button>
     );
   }
   return (
-    <form action={action}>
-      {Object.entries(fields).map(([k, v]) => (
-        <input key={k} type="hidden" name={k} value={v} />
-      ))}
+    <form
+      action={async (formData) => {
+        await toggleAlert(formData);
+        toast.success(active ? "Alert paused." : "Alert resumed.");
+      }}
+    >
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="active" value={String(active)} />
       <Button
         type="submit"
         variant="ghost"
         size="icon"
-        className={cn("size-8", destructive && "text-loss hover:text-loss")}
+        className="size-8"
         aria-label={label}
       >
-        {icon}
+        {active ? <BellOff className="size-4" /> : <Bell className="size-4" />}
       </Button>
     </form>
+  );
+}
+
+function DeleteActionButton({
+  id,
+  symbol,
+  demo,
+}: {
+  id: string;
+  symbol: string;
+  demo?: boolean;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8 text-loss hover:text-loss"
+          aria-label="Delete"
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete {symbol} alert?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This removes the alert permanently. You can create a new alert for
+            this symbol any time.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          {demo ? (
+            <AlertDialogAction onClick={() => toast.error("Demo mode — add Supabase keys to manage alerts.")}>
+              Delete
+            </AlertDialogAction>
+          ) : (
+            <form
+              action={async (formData) => {
+                await deleteAlert(formData);
+                toast.success("Alert deleted.");
+              }}
+            >
+              <input type="hidden" name="id" value={id} />
+              <AlertDialogAction type="submit">Delete</AlertDialogAction>
+            </form>
+          )}
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

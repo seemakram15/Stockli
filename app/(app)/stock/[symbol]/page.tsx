@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowLeft, CalendarRange } from "lucide-react";
+import { CalendarRange } from "lucide-react";
 import { getStockDetail } from "@/lib/services/stock";
 import { getStockCalendar } from "@/lib/services/daily-pl";
 import {
@@ -13,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { PriceChart } from "@/components/charts/price-chart";
 import { PLCalendar } from "@/components/charts/pl-calendar";
 import { LiveQuote } from "@/components/live-quote";
+import { SmartBackLink } from "@/components/smart-back-link";
 import { WatchButton } from "@/components/watch-button";
 import { CreateAlertDialog } from "@/components/alerts/create-alert-dialog";
 import { AddTradeDialog } from "@/components/portfolio/add-trade-dialog";
@@ -59,12 +59,7 @@ export default async function StockPage({
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <Link
-        href="/market"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" /> Market
-      </Link>
+      <SmartBackLink fallbackHref="/market" label="Back" />
 
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -160,7 +155,15 @@ export default async function StockPage({
           </div>
         </CardHeader>
         <CardContent>
-          <PLCalendar data={calendar.days} hasPosition={calendar.hasPosition} />
+          <PLCalendar
+            data={calendar.days}
+            hasPosition={calendar.hasPosition}
+            livePositions={
+              hasPosition
+                ? [{ symbol, quantity: totalQty, initial: quote }]
+                : []
+            }
+          />
         </CardContent>
       </Card>
     </div>

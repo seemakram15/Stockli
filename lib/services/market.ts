@@ -5,8 +5,9 @@ import {
   getIndexSummariesCached,
   getIndexConstituentsCached,
 } from "@/lib/services/history";
+import { getMarketRows } from "@/lib/services/prices";
 import { PSX_INDICES } from "@/lib/psx/symbols";
-import type { Candle, IndexConstituent, SeriesPoint } from "@/lib/types";
+import type { Candle, IndexConstituent, MarketWatchRow, SeriesPoint } from "@/lib/types";
 
 export interface IndexCard {
   symbol: string;
@@ -42,6 +43,42 @@ export interface IndexDetail {
   candles: Candle[];
   intraday: SeriesPoint[];
   constituents: IndexConstituent[];
+}
+
+export interface MarketPerformer {
+  symbol: string;
+  price: number;
+  change: number;
+  changePct: number;
+  volume: number | null;
+}
+
+export interface MarketPerformers {
+  active: MarketPerformer[];
+  advancers: MarketPerformer[];
+  decliners: MarketPerformer[];
+}
+
+export interface SectorPerformance {
+  sector: string;
+  count: number;
+  avgChangePct: number;
+  advancers: number;
+  decliners: number;
+  volume: number;
+  stocks: SectorStockPerformance[];
+}
+
+export interface SectorStockPerformance {
+  symbol: string;
+  price: number;
+  changePct: number;
+  volume: number;
+}
+
+export interface MarketAnalytics {
+  performers: MarketPerformers;
+  sectors: SectorPerformance[];
 }
 
 /** Index cards for the overview row — live value/change + EOD sparkline. */
@@ -119,4 +156,96 @@ export async function getIndexDetail(symbol: string): Promise<IndexDetail | null
     intraday,
     constituents: [...constituents].sort((a, b) => b.weight - a.weight),
   };
+}
+
+/** Top active, advancing and declining stocks from the latest market-watch snapshot. */
+export async function getMarketPerformers(limit = 10): Promise<MarketPerformers> {
+  const rows = await getMarketRows();
+  return buildMarketPerformers(rows, limit);
+}
+
+export async function getSectorPerformance(): Promise<SectorPerformance[]> {
+  const rows = await getMarketRows();
+  return buildSectorPerformance(rows);
+}
+
+/** Market performer + sector analytics from a single market-watch read. */
+export async function getMarketAnalytics(limit = 10): Promise<MarketAnalytics> {
+  const rows = await getMarketRows();
+  return {
+    performers: buildMarketPerformers(rows, limit),
+    sectors: buildSectorPerformance(rows),
+  };
+}
+
+function buildMarketPerformers(rows: MarketWatchRow[], limit: number): MarketPerformers {
+  const toPerformer = (r: MarketWatchRow): MarketPerformer => ({
+    symbol: r.symbol,
+    price: r.current,
+    change: r.change,
+    changePct: r.changePct,
+    volume: r.volume,
+  });
+
+  return {
+    active: [...rows]
+      .sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0))
+      .slice(0, limit)
+      .map(toPerformer),
+    advancers: rows
+      .filter((r) => r.changePct > 0)
+      .sort((a, b) => b.changePct - a.changePct)
+      .slice(0, limit)
+      .map(toPerformer),
+    decliners: rows
+      .filter((r) => r.changePct < 0)
+      .sort((a, b) => a.changePct - b.changePct)
+      .slice(0, limit)
+      .map(toPerformer),
+  };
+}
+
+function buildSectorPerformance(rows: MarketWatchRow[]): SectorPerformance[] {
+  const map = new Map<
+    string,
+    {
+      count: number;
+      changeSum: number;
+      advancers: number;
+      decliners: number;
+      volume: number;
+      stocks: SectorStockPerformance[];
+    }
+  >();
+
+  for (const row of rows) {
+    const sector = row.sector ?? "Other";
+    const cur =
+      map.get(sector) ??
+      { count: 0, changeSum: 0, advancers: 0, decliners: 0, volume: 0, stocks: [] };
+    cur.count += 1;
+    cur.changeSum += row.changePct;
+    cur.advancers += row.changePct > 0 ? 1 : 0;
+    cur.decliners += row.changePct < 0 ? 1 : 0;
+    cur.volume += row.volume ?? 0;
+    cur.stocks.push({
+      symbol: row.symbol,
+      price: row.current,
+      changePct: row.changePct,
+      volume: row.volume ?? 0,
+    });
+    map.set(sector, cur);
+  }
+
+  return Array.from(map.entries())
+    .map(([sector, v]) => ({
+      sector,
+      count: v.count,
+      avgChangePct: v.count ? v.changeSum / v.count : 0,
+      advancers: v.advancers,
+      decliners: v.decliners,
+      volume: v.volume,
+      stocks: v.stocks.sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct)),
+    }))
+    .sort((a, b) => Math.abs(b.avgChangePct) - Math.abs(a.avgChangePct));
 }

@@ -13,6 +13,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { ChangeBadge } from "@/components/change-badge";
 import { usePrices } from "@/lib/hooks/use-prices";
 import { formatPKR, formatCompact } from "@/lib/format";
@@ -76,23 +87,7 @@ export function WatchlistTable({
                   {formatCompact(q?.volume ?? null)}
                 </TableCell>
                 <TableCell className="text-right">
-                  {demo ? (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                      onClick={() => toast.error("Demo mode — add Supabase keys to edit watchlists.")}
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  ) : (
-                    <form action={removeFromWatchlist}>
-                      <input type="hidden" name="symbol" value={it.symbol} />
-                      <Button variant="ghost" size="icon" className="size-8" type="submit" aria-label="Remove">
-                        <X className="size-4" />
-                      </Button>
-                    </form>
-                  )}
+                  <RemoveWatchItem symbol={it.symbol} demo={demo} />
                 </TableCell>
               </TableRow>
             );
@@ -100,5 +95,43 @@ export function WatchlistTable({
         </TableBody>
       </Table>
     </div>
+  );
+}
+
+function RemoveWatchItem({ symbol, demo }: { symbol: string; demo?: boolean }) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="size-8" aria-label="Remove">
+          <X className="size-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove {symbol} from watchlist?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This only removes it from your watchlist. It does not affect any holdings or alerts.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          {demo ? (
+            <AlertDialogAction onClick={() => toast.error("Demo mode — add Supabase keys to edit watchlists.")}>
+              Remove
+            </AlertDialogAction>
+          ) : (
+            <form
+              action={async (formData) => {
+                await removeFromWatchlist(formData);
+                toast.success(`${symbol} removed from watchlist.`);
+              }}
+            >
+              <input type="hidden" name="symbol" value={symbol} />
+              <AlertDialogAction type="submit">Remove</AlertDialogAction>
+            </form>
+          )}
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

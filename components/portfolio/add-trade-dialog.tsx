@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SymbolField } from "./symbol-field";
 import { addHolding, sellHolding, type ActionState } from "@/lib/actions/portfolio";
+import { PSX_TIMEZONE } from "@/lib/constants";
 import type { Quote } from "@/lib/types";
 
 export function AddTradeDialog({
@@ -87,7 +88,7 @@ function TradeForm({
   defaultSymbol?: string;
   onDone: () => void;
 }) {
-  const today = "2026-06-22";
+  const today = React.useMemo(() => todayInPkt(), []);
   const [state, action, pending] = useActionState<ActionState, FormData>(
     kind === "buy" ? addHolding : sellHolding,
     {}
@@ -176,4 +177,15 @@ function TradeForm({
       </Button>
     </form>
   );
+}
+
+function todayInPkt(): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: PSX_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
