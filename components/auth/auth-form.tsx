@@ -13,10 +13,12 @@ export function AuthForm({
   mode,
   redirectTo,
   demo,
+  onModeChange,
 }: {
   mode: "login" | "signup";
   redirectTo?: string;
   demo?: boolean;
+  onModeChange?: (mode: "login" | "signup") => void;
 }) {
   const action = mode === "login" ? signIn : signUp;
   const [state, formAction, pending] = useActionState<AuthState, FormData>(
@@ -91,16 +93,36 @@ export function AuthForm({
         {mode === "login" ? (
           <>
             New here?{" "}
-            <Link href="/signup" className="font-medium text-foreground hover:underline">
-              Create an account
-            </Link>
+            {onModeChange ? (
+              <button
+                type="button"
+                onClick={() => onModeChange("signup")}
+                className="font-medium text-foreground underline-offset-2 hover:underline"
+              >
+                Create an account
+              </button>
+            ) : (
+              <Link href="/signup" className="font-medium text-foreground hover:underline">
+                Create an account
+              </Link>
+            )}
           </>
         ) : (
           <>
             Already have an account?{" "}
-            <Link href="/login" className="font-medium text-foreground hover:underline">
-              Sign in
-            </Link>
+            {onModeChange ? (
+              <button
+                type="button"
+                onClick={() => onModeChange("login")}
+                className="font-medium text-foreground underline-offset-2 hover:underline"
+              >
+                Sign in
+              </button>
+            ) : (
+              <Link href="/login" className="font-medium text-foreground hover:underline">
+                Sign in
+              </Link>
+            )}
           </>
         )}
       </p>

@@ -55,8 +55,21 @@ export async function updateSession(request: NextRequest) {
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("redirectTo", pathname);
+    const redirectTo = `${pathname}${request.nextUrl.search}`;
+    url.pathname = "/";
+    url.search = "";
+    url.searchParams.set("auth", "login");
+    url.searchParams.set("redirectTo", redirectTo);
+    return NextResponse.redirect(url);
+  }
+
+  if (!user && isAuthRoute) {
+    const url = request.nextUrl.clone();
+    const redirectTo = request.nextUrl.searchParams.get("redirectTo");
+    url.pathname = "/";
+    url.search = "";
+    url.searchParams.set("auth", pathname.startsWith("/signup") ? "signup" : "login");
+    if (redirectTo) url.searchParams.set("redirectTo", redirectTo);
     return NextResponse.redirect(url);
   }
 

@@ -1,9 +1,4 @@
-import type { Metadata } from "next";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AuthForm } from "@/components/auth/auth-form";
-import { isDemoMode } from "@/lib/config";
-
-export const metadata: Metadata = { title: "Sign in" };
+import { redirect } from "next/navigation";
 
 export default async function LoginPage({
   searchParams,
@@ -11,16 +6,8 @@ export default async function LoginPage({
   searchParams: Promise<{ redirectTo?: string }>;
 }) {
   const { redirectTo } = await searchParams;
+  const params = new URLSearchParams({ auth: "login" });
+  if (redirectTo) params.set("redirectTo", redirectTo);
 
-  return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle className="text-xl">Welcome back</CardTitle>
-        <CardDescription>Sign in to your portfolio dashboard.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <AuthForm mode="login" redirectTo={redirectTo} demo={isDemoMode} />
-      </CardContent>
-    </Card>
-  );
+  redirect(`/?${params.toString()}`);
 }
