@@ -174,7 +174,15 @@ export function MarketStrategyBoard({ data }: { data: MarketStrategyData }) {
                 </span>
               </div>
             </div>
-            <div className="overflow-x-auto scrollbar-thin">
+            <div className="space-y-3 p-3 sm:hidden">
+              {group.rows.map((row) => (
+                <StrategyMobileCard
+                  key={`${row.fundId ?? row.name}-${row.strategyClass}-mobile`}
+                  row={row}
+                />
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto scrollbar-thin sm:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -219,6 +227,40 @@ export function MarketStrategyBoard({ data }: { data: MarketStrategyData }) {
             No funds match the current strategy filters.
           </div>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+function StrategyMobileCard({ row }: { row: StrategyRowWithClass }) {
+  return (
+    <div className={cn("rounded-xl border border-border p-3", rowTint(row.estimatedReturn))}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          {row.fundId ? (
+            <Link
+              href={`/market/mutual-funds/${row.fundId}`}
+              className="block truncate font-semibold hover:underline"
+            >
+              {row.name}
+            </Link>
+          ) : (
+            <p className="truncate font-semibold">{row.name}</p>
+          )}
+          <p className="mt-1 line-clamp-2 text-xs opacity-75">{row.type}</p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-xs opacity-75">{row.strategyClass}</p>
+          <p className={cn("font-bold tabular-nums", plColorClass(row.estimatedReturn))}>
+            {formatPKR(row.estimatedReturn, { sign: true })}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+        <span className="text-muted-foreground">Return</span>
+        <span className={cn("font-semibold tabular-nums", plColorClass(row.returnPct))}>
+          {formatPercent(row.returnPct)}
+        </span>
       </div>
     </div>
   );

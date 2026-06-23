@@ -144,8 +144,8 @@ export function PLCalendar({
         </div>
       </div>
 
-      <div className="overflow-x-auto pb-1 scrollbar-thin">
-        <div className="grid min-w-[21rem] grid-cols-7 gap-1.5 sm:min-w-0 sm:gap-2">
+      <div className="pb-1">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {WEEKDAYS.map((w) => (
             <div key={w} className="pb-1 text-center text-[11px] font-medium text-muted-foreground sm:text-xs">
               <span className="sm:hidden">{w.slice(0, 1)}</span>
@@ -291,7 +291,7 @@ function DayCell({
           <>
             <span
               className={cn(
-                "w-fit max-w-full rounded px-1 py-0.5 text-[10px] font-bold tabular-nums sm:text-xs",
+                "w-fit max-w-full truncate rounded px-1 py-0.5 text-[9px] font-bold tabular-nums sm:text-xs",
                 active
                   ? "bg-background/85 text-foreground shadow-sm ring-1 ring-foreground/10"
                   : "text-muted-foreground"
@@ -303,7 +303,7 @@ function DayCell({
         ) : (
           <span
             className={cn(
-              "w-fit max-w-full rounded px-1 py-0.5 text-[11px] font-semibold tabular-nums sm:text-xs",
+              "w-fit max-w-full truncate rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums sm:text-xs",
               active
                 ? "bg-background/85 text-foreground shadow-sm ring-1 ring-foreground/10"
                 : up

@@ -303,7 +303,16 @@ export function MufapFundsBoard({
                   <span>Latest {group.latestDate ?? "—"}</span>
                 </div>
               </div>
-              <div className="overflow-x-auto scrollbar-thin">
+              <div className="space-y-3 p-3 sm:hidden">
+                {group.funds.map((fund) => (
+                  <FundMobileCard
+                    key={`${fund.fundId ?? fund.name}-${fund.type}-mobile`}
+                    fund={fund}
+                    etfMode={etfMode}
+                  />
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto scrollbar-thin sm:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -360,6 +369,65 @@ export function MufapFundsBoard({
           ) : null}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function FundMobileCard({ fund, etfMode }: { fund: MufapFund; etfMode: boolean }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          {fund.fundId ? (
+            <Link
+              href={`/${etfMode ? "market/etfs" : "market/mutual-funds"}/${fund.fundId}`}
+              className="block truncate font-semibold hover:text-primary"
+            >
+              {fund.name}
+            </Link>
+          ) : (
+            <p className="truncate font-semibold">{fund.name}</p>
+          )}
+          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{fund.type}</p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-xs text-muted-foreground">NAV</p>
+          <p className="font-semibold tabular-nums">{formatNumber(fund.nav, 4)}</p>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+        <MobileMetric label="1 day" value={formatPercent(fund.d1)} tone={fund.d1} />
+        <MobileMetric label="MTD" value={formatPercent(fund.mtd)} tone={fund.mtd} align="right" />
+        <MobileMetric label="YTD" value={formatPercent(fund.ytd)} tone={fund.ytd} />
+        <MobileMetric
+          label="Rs 100k P/L"
+          value={formatPKR(fund.profitOn100k, { sign: true })}
+          tone={fund.profitOn100k}
+          align="right"
+        />
+      </div>
+    </div>
+  );
+}
+
+function MobileMetric({
+  label,
+  value,
+  tone,
+  align = "left",
+}: {
+  label: string;
+  value: React.ReactNode;
+  tone?: number | null;
+  align?: "left" | "right";
+}) {
+  return (
+    <div className={align === "right" ? "text-right" : ""}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={cn("font-medium tabular-nums", tone == null ? "" : plColorClass(tone))}>
+        {value}
+      </p>
     </div>
   );
 }

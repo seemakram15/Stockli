@@ -165,7 +165,7 @@ export function PriceChart({
             ))}
           </div>
         )}
-        <div className="flex max-w-full overflow-x-auto rounded-lg border border-border p-0.5 scrollbar-thin">
+        <div className="flex max-w-full flex-wrap rounded-lg border border-border p-0.5">
           {RANGES.map((r) => {
             if (r === "1D" && !hasIntraday) return null;
             return (

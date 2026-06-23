@@ -89,14 +89,25 @@ export function GlobalIndexConstituentsTable({
         </label>
       </CardHeader>
 
-      <CardContent className="px-0 sm:px-2">
+      <CardContent className="px-3 pb-4 sm:px-2">
         {data.note ? (
           <div className="mx-4 mb-4 rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
             {data.note}
           </div>
         ) : null}
 
-        <div className="overflow-x-auto scrollbar-thin">
+        <div className="space-y-3 sm:hidden">
+          {rows.map((row) => (
+            <ConstituentMobileCard key={`${row.symbol}-${row.name}-mobile`} row={row} />
+          ))}
+          {rows.length === 0 ? (
+            <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
+              No constituents match the current search.
+            </div>
+          ) : null}
+        </div>
+
+        <div className="hidden overflow-x-auto scrollbar-thin sm:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -131,6 +142,44 @@ export function GlobalIndexConstituentsTable({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function ConstituentMobileCard({ row }: { row: GlobalIndexConstituent }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold tabular-nums">{row.symbol}</p>
+          <p className="mt-0.5 truncate text-sm font-medium">{row.name}</p>
+        </div>
+        <p className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+          {row.country ?? "—"}
+        </p>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+        <MobileMetric label="Sector" value={row.sector ?? "—"} />
+        <MobileMetric label="Exchange" value={row.exchange ?? "—"} align="right" />
+        <MobileMetric label="Industry" value={row.industry ?? "—"} />
+      </div>
+    </div>
+  );
+}
+
+function MobileMetric({
+  label,
+  value,
+  align = "left",
+}: {
+  label: string;
+  value: React.ReactNode;
+  align?: "left" | "right";
+}) {
+  return (
+    <div className={align === "right" ? "text-right" : ""}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="font-medium">{value}</p>
+    </div>
   );
 }
 

@@ -77,8 +77,8 @@ export default async function PortfolioDetailPage({
             <Card className="lg:col-span-2">
               <CardContent className="px-0 pt-0 sm:px-2">
                 <Tabs defaultValue="holdings">
-                  <div className="overflow-x-auto px-4 pt-4 scrollbar-thin sm:px-2">
-                    <TabsList className="min-w-max">
+                  <div className="px-4 pt-4 sm:px-2">
+                    <TabsList className="h-auto w-full flex-wrap justify-start">
                       <TabsTrigger value="holdings">Holdings</TabsTrigger>
                       <TabsTrigger value="transactions">
                         Transactions ({transactions.length})

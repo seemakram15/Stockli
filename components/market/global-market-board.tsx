@@ -153,8 +153,22 @@ export function GlobalMarketBoard({
             </Select>
           </div>
         </CardHeader>
-        <CardContent className="px-0 sm:px-2">
-          <div className="overflow-x-auto scrollbar-thin">
+        <CardContent className="px-3 pb-4 sm:px-2">
+          <div className="space-y-3 sm:hidden">
+            {rows.map((quote) => (
+              <MarketMobileCard
+                key={`${quote.symbol}-mobile`}
+                quote={quote}
+                universe={data.universe}
+              />
+            ))}
+            {rows.length === 0 ? (
+              <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
+                No markets match the current filters.
+              </div>
+            ) : null}
+          </div>
+          <div className="hidden overflow-x-auto scrollbar-thin sm:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -227,6 +241,73 @@ export function GlobalMarketBoard({
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function MarketMobileCard({
+  quote,
+  universe,
+}: {
+  quote: GlobalMarketQuote;
+  universe: GlobalMarketData["universe"];
+}) {
+  const href = indexHref(universe, quote);
+  return (
+    <div className="rounded-xl border border-border bg-card p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          {href ? (
+            <Link href={href} className="block truncate font-semibold hover:text-primary">
+              {quote.name}
+            </Link>
+          ) : (
+            <p className="truncate font-semibold">{quote.name}</p>
+          )}
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {displayTicker(quote)}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="font-semibold tabular-nums">
+            {formatMarketPrice(quote.price, quote.currency)}
+          </p>
+          <p className={cn("text-xs font-semibold tabular-nums", plColorClass(quote.changePct))}>
+            {formatPercent(quote.changePct)}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+        <MobileMarketMetric label="Type" value={quote.type} />
+        <MobileMarketMetric label="Country" value={quote.country ?? quote.region ?? "Global"} align="right" />
+        <MobileMarketMetric label="Change" value={formatSigned(quote.change)} tone={quote.change} />
+        <MobileMarketMetric label="Volume" value={formatCompact(quote.volume)} align="right" />
+      </div>
+      <p className="mt-3 text-right text-xs text-muted-foreground">
+        Updated {timeAgo(quote.updatedAt)}
+      </p>
+    </div>
+  );
+}
+
+function MobileMarketMetric({
+  label,
+  value,
+  tone,
+  align = "left",
+}: {
+  label: string;
+  value: React.ReactNode;
+  tone?: number | null;
+  align?: "left" | "right";
+}) {
+  return (
+    <div className={align === "right" ? "text-right" : ""}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={cn("font-medium tabular-nums", tone == null ? "" : plColorClass(tone))}>
+        {value}
+      </p>
     </div>
   );
 }

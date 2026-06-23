@@ -61,7 +61,7 @@ export function IndicesPanel({
   return (
     <div className="space-y-4">
       {/* Index cards */}
-      <div className="flex gap-3 overflow-x-auto scrollbar-thin pb-1">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {cards.map((idx) => {
           const isActive = idx.symbol === selected;
           return (
@@ -69,7 +69,7 @@ export function IndicesPanel({
               key={idx.symbol}
               onClick={() => select(idx.symbol)}
               className={cn(
-                "flex min-w-44 shrink-0 items-center justify-between gap-3 rounded-xl border bg-card p-3 text-left transition-colors sm:min-w-52 sm:p-4",
+                "flex min-w-0 items-center justify-between gap-3 rounded-xl border bg-card p-3 text-left transition-colors sm:p-4",
                 isActive ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/40"
               )}
             >
