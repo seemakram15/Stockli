@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { ChangeBadge } from "@/components/change-badge";
-import { formatPKR, formatCompact, formatNumber } from "@/lib/format";
+import { formatPKR, formatCompact, formatNumber, plColorClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { IndexConstituent } from "@/lib/types";
 
@@ -89,7 +89,7 @@ export function ConstituentsTable({
               </div>
               <div className="text-right">
                 <p className="font-medium tabular-nums">{formatPKR(c.current)}</p>
-                <ChangeBadge pct={c.changePct} className="justify-end text-xs" />
+                <PriceChange change={c.change} pct={c.changePct} />
               </div>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
@@ -136,7 +136,7 @@ export function ConstituentsTable({
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{formatPKR(c.current)}</TableCell>
                 <TableCell className="text-right">
-                  <ChangeBadge pct={c.changePct} className="justify-end" />
+                  <PriceChange change={c.change} pct={c.changePct} />
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
@@ -157,6 +157,17 @@ export function ConstituentsTable({
           </TableBody>
         </Table>
       </div>
+    </div>
+  );
+}
+
+function PriceChange({ change, pct }: { change: number; pct: number }) {
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <span className={cn("font-semibold tabular-nums", plColorClass(change))}>
+        {formatPKR(change, { sign: true })}
+      </span>
+      <ChangeBadge pct={pct} className="justify-end text-xs" />
     </div>
   );
 }

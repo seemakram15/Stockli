@@ -10,9 +10,10 @@ import type {
 
 /** Enrich a raw holding with its live quote + computed P/L metrics. */
 export function computeHoldingMetrics(
-  holding: Holding,
+  holding: Holding | HoldingWithMetrics,
   ticker: Ticker | null,
-  quote: Quote | null
+  quote: Quote | null,
+  historicalPLBase?: number | null
 ): HoldingWithMetrics {
   const price = effectiveQuotePrice(quote) ?? holding.avg_buy_price;
   const marketValue = price * holding.quantity;
@@ -20,7 +21,15 @@ export function computeHoldingMetrics(
   const dayChange = (quote?.change ?? 0) * holding.quantity;
   const dayChangePct = quote?.changePct ?? 0;
   const rawUnrealizedPL = marketValue - costBasis;
-  const unrealizedPL = adjustedUnrealizedPL(rawUnrealizedPL, dayChange);
+  const storedHistoricalBase =
+    "historicalPLBase" in holding ? holding.historicalPLBase : null;
+  const plBase = historicalPLBase ?? storedHistoricalBase ?? null;
+  const historicalTotalPL = plBase == null ? null : plBase + dayChange;
+  const unrealizedPL = adjustedUnrealizedPL(
+    rawUnrealizedPL,
+    dayChange,
+    historicalTotalPL
+  );
   const unrealizedPLPct = costBasis !== 0 ? (unrealizedPL / costBasis) * 100 : 0;
 
   return {
@@ -30,6 +39,7 @@ export function computeHoldingMetrics(
     livePrice: price,
     marketValue,
     costBasis,
+    historicalPLBase: plBase,
     unrealizedPL,
     unrealizedPLPct,
     dayChange,
@@ -72,7 +82,18 @@ export function computeSummary(
   };
 }
 
-function adjustedUnrealizedPL(rawUnrealizedPL: number, dayChange: number): number {
+function adjustedUnrealizedPL(
+  rawUnrealizedPL: number,
+  dayChange: number,
+  historicalTotalPL: number | null
+): number {
+  if (
+    historicalTotalPL != null &&
+    Math.abs(rawUnrealizedPL) < 0.005 &&
+    Math.abs(historicalTotalPL) >= 0.005
+  ) {
+    return historicalTotalPL;
+  }
   // When a seeded/imported holding uses the current quote as its saved cost,
   // the strict cost-basis result is flat even though the position moved today.
   if (Math.abs(rawUnrealizedPL) < 0.005 && Math.abs(dayChange) >= 0.005) {

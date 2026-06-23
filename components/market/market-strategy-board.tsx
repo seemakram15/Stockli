@@ -21,6 +21,9 @@ import type { MarketStrategyData, StrategyFundRow } from "@/lib/services/market-
 type ClassFilter = "all" | "islamic" | "conventional";
 type ToneFilter = "all" | "gain" | "loss";
 type SortKey = "name" | "amc" | "class" | "type" | "returnPct" | "estimatedReturn";
+type StrategyRowWithClass = StrategyFundRow & {
+  strategyClass: "Islamic" | "Conventional";
+};
 
 export function MarketStrategyBoard({ data }: { data: MarketStrategyData }) {
   const [query, setQuery] = React.useState("");
@@ -59,6 +62,28 @@ export function MarketStrategyBoard({ data }: { data: MarketStrategyData }) {
       })
       .sort((a, b) => compareRows(a, b, sortKey, sortDir));
   }, [allRows, classFilter, query, sortDir, sortKey, toneFilter]);
+
+  const groups = React.useMemo(() => {
+    const map = new Map<string, StrategyRowWithClass[]>();
+    for (const row of rows) {
+      const key = row.amcShort || row.amc;
+      map.set(key, [...(map.get(key) ?? []), row]);
+    }
+    return Array.from(map.entries())
+      .map(([label, groupRows]) => {
+        const total = groupRows.reduce((sum, row) => sum + (row.estimatedReturn ?? 0), 0);
+        return {
+          label,
+          amc: groupRows[0]?.amc ?? label,
+          logoUrl: groupRows.find((row) => row.amcLogoUrl)?.amcLogoUrl ?? null,
+          rows: groupRows,
+          total,
+          gains: groupRows.filter((row) => (row.estimatedReturn ?? 0) >= 0).length,
+          losses: groupRows.filter((row) => (row.estimatedReturn ?? 0) < 0).length,
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [rows]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -124,61 +149,76 @@ export function MarketStrategyBoard({ data }: { data: MarketStrategyData }) {
         </label>
       </div>
 
-      <div className="overflow-x-auto scrollbar-thin">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <SortableHead label="Fund" active={sortKey === "name"} onClick={() => toggleSort("name")} />
-              <SortableHead label="AMC" active={sortKey === "amc"} onClick={() => toggleSort("amc")} />
-              <SortableHead label="Class" active={sortKey === "class"} onClick={() => toggleSort("class")} />
-              <SortableHead label="Type" active={sortKey === "type"} onClick={() => toggleSort("type")} />
-              <SortableHead label="Return" active={sortKey === "returnPct"} onClick={() => toggleSort("returnPct")} align="right" />
-              <SortableHead label="Rs 100k estimate" active={sortKey === "estimatedReturn"} onClick={() => toggleSort("estimatedReturn")} align="right" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={`${row.fundId ?? row.name}-${row.strategyClass}`} className={rowTint(row.estimatedReturn)}>
-                <TableCell>
-                  <div className="min-w-[280px]">
-                    {row.fundId ? (
-                      <Link href={`/market/mutual-funds/${row.fundId}`} className="font-semibold hover:underline">
-                        {row.name}
-                      </Link>
-                    ) : (
-                      <p className="font-semibold">{row.name}</p>
-                    )}
-                    <p className="text-xs opacity-75">{row.type}</p>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex min-w-[190px] items-center gap-2">
-                    <AmcBrandMark label={row.amc} size="sm" />
-                    <div className="min-w-0">
-                      <p className="font-medium">{row.amcShort}</p>
-                      <p className="truncate text-xs opacity-75">{row.amc}</p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>{row.strategyClass}</TableCell>
-                <TableCell className="max-w-56 truncate">{row.type}</TableCell>
-                <TableCell className={cn("text-right font-semibold tabular-nums", plColorClass(row.returnPct))}>
-                  {formatPercent(row.returnPct)}
-                </TableCell>
-                <TableCell className={cn("text-right text-base font-bold tabular-nums", plColorClass(row.estimatedReturn))}>
-                  {formatPKR(row.estimatedReturn, { sign: true })}
-                </TableCell>
-              </TableRow>
-            ))}
-            {rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-28 text-center text-sm text-muted-foreground">
-                  No funds match the current strategy filters.
-                </TableCell>
-              </TableRow>
-            ) : null}
-          </TableBody>
-        </Table>
+      <div className="space-y-4 p-3 sm:p-4">
+        {groups.map((group) => (
+          <section
+            key={group.label}
+            className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm"
+          >
+            <div className="flex flex-col gap-3 border-b border-border bg-muted/25 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <AmcBrandMark label={group.amc} size="md" logoUrl={group.logoUrl} />
+                <div className="min-w-0">
+                  <h3 className="truncate text-base font-semibold">{group.label}</h3>
+                  <p className="truncate text-xs text-muted-foreground">{group.amc}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <span className="text-muted-foreground">{group.rows.length} stock funds</span>
+                <span>
+                  <span className="text-gain">{group.gains}</span> gain ·{" "}
+                  <span className="text-loss">{group.losses}</span> loss
+                </span>
+                <span className={cn("font-semibold tabular-nums", plColorClass(group.total))}>
+                  {formatPKR(group.total, { sign: true })}
+                </span>
+              </div>
+            </div>
+            <div className="overflow-x-auto scrollbar-thin">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <SortableHead label="Fund" active={sortKey === "name"} onClick={() => toggleSort("name")} />
+                    <SortableHead label="Class" active={sortKey === "class"} onClick={() => toggleSort("class")} />
+                    <SortableHead label="Type" active={sortKey === "type"} onClick={() => toggleSort("type")} />
+                    <SortableHead label="Return" active={sortKey === "returnPct"} onClick={() => toggleSort("returnPct")} align="right" />
+                    <SortableHead label="Rs 100k estimate" active={sortKey === "estimatedReturn"} onClick={() => toggleSort("estimatedReturn")} align="right" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {group.rows.map((row) => (
+                    <TableRow key={`${row.fundId ?? row.name}-${row.strategyClass}`} className={rowTint(row.estimatedReturn)}>
+                      <TableCell>
+                        <div className="min-w-[280px]">
+                          {row.fundId ? (
+                            <Link href={`/market/mutual-funds/${row.fundId}`} className="font-semibold hover:underline">
+                              {row.name}
+                            </Link>
+                          ) : (
+                            <p className="font-semibold">{row.name}</p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{row.strategyClass}</TableCell>
+                      <TableCell className="max-w-64 truncate">{row.type}</TableCell>
+                      <TableCell className={cn("text-right font-semibold tabular-nums", plColorClass(row.returnPct))}>
+                        {formatPercent(row.returnPct)}
+                      </TableCell>
+                      <TableCell className={cn("text-right text-base font-bold tabular-nums", plColorClass(row.estimatedReturn))}>
+                        {formatPKR(row.estimatedReturn, { sign: true })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </section>
+        ))}
+        {rows.length === 0 ? (
+          <div className="flex h-28 items-center justify-center rounded-2xl border border-dashed border-border text-sm text-muted-foreground">
+            No funds match the current strategy filters.
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -213,8 +253,8 @@ function SortableHead({
 }
 
 function compareRows(
-  a: StrategyFundRow & { strategyClass: "Islamic" | "Conventional" },
-  b: StrategyFundRow & { strategyClass: "Islamic" | "Conventional" },
+  a: StrategyRowWithClass,
+  b: StrategyRowWithClass,
   key: SortKey,
   dir: "asc" | "desc"
 ) {

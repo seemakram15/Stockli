@@ -71,8 +71,8 @@ export function HoldingsTable({
               </div>
               <MobileMetric label="Avg cost" value={formatPKR(h.avg_buy_price)} />
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Day</p>
-                <ChangeBadge pct={h.dayChangePct} className="justify-end" />
+                <p className="text-xs text-muted-foreground">Day P/L</p>
+                <DailyPLValue value={h.dayChange} pct={h.dayChangePct} />
               </div>
             </div>
           </div>
@@ -88,7 +88,7 @@ export function HoldingsTable({
             <TableHead className="text-right">Qty</TableHead>
             <TableHead className="hidden text-right sm:table-cell">Avg Cost</TableHead>
             <TableHead className="text-right">Last</TableHead>
-            <TableHead className="text-right">Day</TableHead>
+            <TableHead className="text-right">Day P/L</TableHead>
             <TableHead className="text-right">Mkt Value</TableHead>
             <TableHead className="text-right">Unreal. P/L</TableHead>
             {rowActions && <TableHead className="w-10" />}
@@ -120,7 +120,7 @@ export function HoldingsTable({
                 {formatPKR(h.livePrice)}
               </TableCell>
               <TableCell className="text-right">
-                <ChangeBadge pct={h.dayChangePct} className="justify-end" />
+                <DailyPLValue value={h.dayChange} pct={h.dayChangePct} />
               </TableCell>
               <TableCell className="text-right tabular-nums font-medium">
                 {formatPKR(h.marketValue)}
@@ -147,6 +147,17 @@ export function HoldingsTable({
       </Table>
     </div>
     </>
+  );
+}
+
+function DailyPLValue({ value, pct }: { value: number; pct: number }) {
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <span className={cn("font-semibold tabular-nums", plColorClass(value))}>
+        {formatPKR(value, { sign: true })}
+      </span>
+      <ChangeBadge pct={pct} className="justify-end text-xs" />
+    </div>
   );
 }
 

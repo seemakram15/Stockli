@@ -73,9 +73,11 @@ export function MufapFundsBoard({
   title: string;
   etfMode?: boolean;
 }) {
+  const defaultFundClass: FundClassFilter = etfMode ? "all" : "islamic";
+  const defaultStrategy: StrategyFilter = etfMode ? "all" : "stock";
   const [query, setQuery] = React.useState("");
-  const [fundClass, setFundClass] = React.useState<FundClassFilter>("all");
-  const [strategy, setStrategy] = React.useState<StrategyFilter>("all");
+  const [fundClass, setFundClass] = React.useState<FundClassFilter>(defaultFundClass);
+  const [strategy, setStrategy] = React.useState<StrategyFilter>(defaultStrategy);
   const [amc, setAmc] = React.useState("all");
   const [sortKey, setSortKey] = React.useState<SortKey>("d1");
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
@@ -115,13 +117,33 @@ export function MufapFundsBoard({
   }, [amc, data.funds, fundClass, query, sortDir, sortKey, strategy]);
 
   const summary = React.useMemo(() => {
-    const visible = rows.filter((fund) => fund.d1 != null);
-    const avg1d = visible.length
-      ? visible.reduce((sum, fund) => sum + (fund.d1 ?? 0), 0) / visible.length
-      : 0;
-    const best = [...visible].sort((a, b) => (b.d1 ?? 0) - (a.d1 ?? 0))[0] ?? null;
-    const worst = [...visible].sort((a, b) => (a.d1 ?? 0) - (b.d1 ?? 0))[0] ?? null;
-    return { avg1d, best, worst };
+    const amcCount = new Set(rows.map((fund) => fund.amc)).size;
+    const classCount = new Set(rows.map((fund) => fund.classFilter)).size;
+    const pricedCount = rows.filter((fund) => fund.nav != null).length;
+    return { amcCount, classCount, pricedCount };
+  }, [rows]);
+
+  const groups = React.useMemo(() => {
+    const map = new Map<string, MufapFund[]>();
+    for (const fund of rows) {
+      const key = fund.amcShort || identifyAmcBrand(fund.amc).shortName || fund.amc;
+      map.set(key, [...(map.get(key) ?? []), fund]);
+    }
+    return Array.from(map.entries())
+      .map(([label, funds]) => ({
+        label,
+        amc: funds[0]?.amc ?? label,
+        logoUrl: funds.find((fund) => fund.amcLogoUrl)?.amcLogoUrl ?? null,
+        funds,
+        stockFunds: funds.filter((fund) => strategyMatches(fund, "stock")).length,
+        latestDate:
+          funds
+            .map((fund) => fund.validityDate)
+            .filter(Boolean)
+            .sort()
+            .at(-1) ?? null,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   }, [rows]);
 
   function toggleSort(key: SortKey) {
@@ -136,18 +158,10 @@ export function MufapFundsBoard({
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric label="Funds" value={rows.length.toLocaleString("en-US")} />
-        <Metric label="Average 1 day" value={formatPercent(summary.avg1d)} tone={summary.avg1d} />
-        <Metric
-          label="Best 1 day"
-          value={summary.best ? `${summary.best.amcShort} ${formatPercent(summary.best.d1)}` : "—"}
-          tone={summary.best?.d1}
-        />
-        <Metric
-          label="Rs 100k P/L"
-          value={formatPKR(rows.reduce((sum, fund) => sum + (fund.profitOn100k ?? 0), 0), { sign: true })}
-          tone={rows.reduce((sum, fund) => sum + (fund.profitOn100k ?? 0), 0)}
-        />
+        <Metric label="Visible funds" value={rows.length.toLocaleString("en-US")} />
+        <Metric label="AMCs shown" value={summary.amcCount.toLocaleString("en-US")} />
+        <Metric label="Priced NAVs" value={summary.pricedCount.toLocaleString("en-US")} />
+        <Metric label="Fund classes" value={summary.classCount.toLocaleString("en-US")} />
       </div>
 
       <Card className="overflow-hidden">
@@ -190,8 +204,8 @@ export function MufapFundsBoard({
                 onClick={() => {
                   setQuery("");
                   setAmc("all");
-                  setFundClass("all");
-                  setStrategy("all");
+                  setFundClass(defaultFundClass);
+                  setStrategy(defaultStrategy);
                 }}
               >
                 Clear filters
@@ -269,70 +283,81 @@ export function MufapFundsBoard({
           </div>
         </CardHeader>
 
-        <CardContent className="px-0 sm:px-2">
-          <div className="overflow-x-auto scrollbar-thin">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <SortableHead label="Fund name" active={sortKey === "name"} onClick={() => toggleSort("name")} />
-                  <SortableHead label="AMC" active={sortKey === "amc"} onClick={() => toggleSort("amc")} />
-                  <TableHead>Type</TableHead>
-                  <SortableHead label="NAV" active={sortKey === "nav"} onClick={() => toggleSort("nav")} align="right" />
-                  <SortableHead label="1 day" active={sortKey === "d1"} onClick={() => toggleSort("d1")} align="right" />
-                  <SortableHead label="MTD" active={sortKey === "mtd"} onClick={() => toggleSort("mtd")} align="right" />
-                  <SortableHead label="YTD" active={sortKey === "ytd"} onClick={() => toggleSort("ytd")} align="right" />
-                  <SortableHead label="365 days" active={sortKey === "d365"} onClick={() => toggleSort("d365")} align="right" />
-                  <SortableHead label="Rs 100k P/L" active={sortKey === "profitOn100k"} onClick={() => toggleSort("profitOn100k")} align="right" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((fund) => (
-                  <TableRow key={`${fund.fundId ?? fund.name}-${fund.type}`}>
-                    <TableCell>
-                      <div className="flex min-w-[280px] items-start gap-3">
-                        <AmcBrandMark label={fund.amc} size="md" logoUrl={fund.amcLogoUrl} />
-                        <div className="min-w-0">
-                        {fund.fundId ? (
-                          <Link
-                            href={`/${etfMode ? "market/etfs" : "market/mutual-funds"}/${fund.fundId}`}
-                            className="font-semibold hover:text-primary"
-                          >
-                            {fund.name}
-                          </Link>
-                        ) : (
-                          <p className="font-semibold">{fund.name}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          {fund.amcShort} · {fund.validityDate ?? "—"} · {fund.riskProfile ?? "Risk N/A"}
-                        </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-56">
-                      <span className="font-medium">{fund.amcShort}</span>
-                      <p className="truncate text-xs text-muted-foreground">{fund.amc}</p>
-                    </TableCell>
-                    <TableCell>{fund.type}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatNumber(fund.nav, 4)}</TableCell>
-                    <ReturnCell value={fund.d1} />
-                    <ReturnCell value={fund.mtd} />
-                    <ReturnCell value={fund.ytd} />
-                    <ReturnCell value={fund.d365} />
-                    <TableCell className={cn("text-right font-semibold tabular-nums", plColorClass(fund.profitOn100k))}>
-                      {formatPKR(fund.profitOn100k, { sign: true })}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {rows.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={9} className="h-24 text-center text-sm text-muted-foreground">
-                      No funds match the current filters.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+        <CardContent className="space-y-4 p-3 sm:p-4">
+          {groups.map((group) => (
+            <section
+              key={group.label}
+              className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm"
+            >
+              <div className="flex flex-col gap-3 border-b border-border bg-muted/25 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
+                  <AmcBrandMark label={group.amc} size="md" logoUrl={group.logoUrl} />
+                  <div className="min-w-0">
+                    <h3 className="truncate text-base font-semibold">{group.label}</h3>
+                    <p className="truncate text-xs text-muted-foreground">{group.amc}</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                  <span>{group.funds.length} funds</span>
+                  <span>{group.stockFunds} stock funds</span>
+                  <span>Latest {group.latestDate ?? "—"}</span>
+                </div>
+              </div>
+              <div className="overflow-x-auto scrollbar-thin">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <SortableHead label="Fund name" active={sortKey === "name"} onClick={() => toggleSort("name")} />
+                      <TableHead>Type</TableHead>
+                      <SortableHead label="NAV" active={sortKey === "nav"} onClick={() => toggleSort("nav")} align="right" />
+                      <SortableHead label="1 day" active={sortKey === "d1"} onClick={() => toggleSort("d1")} align="right" />
+                      <SortableHead label="MTD" active={sortKey === "mtd"} onClick={() => toggleSort("mtd")} align="right" />
+                      <SortableHead label="YTD" active={sortKey === "ytd"} onClick={() => toggleSort("ytd")} align="right" />
+                      <SortableHead label="365 days" active={sortKey === "d365"} onClick={() => toggleSort("d365")} align="right" />
+                      <SortableHead label="Rs 100k P/L" active={sortKey === "profitOn100k"} onClick={() => toggleSort("profitOn100k")} align="right" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {group.funds.map((fund) => (
+                      <TableRow key={`${fund.fundId ?? fund.name}-${fund.type}`}>
+                        <TableCell>
+                          <div className="min-w-[280px]">
+                            {fund.fundId ? (
+                              <Link
+                                href={`/${etfMode ? "market/etfs" : "market/mutual-funds"}/${fund.fundId}`}
+                                className="font-semibold hover:text-primary"
+                              >
+                                {fund.name}
+                              </Link>
+                            ) : (
+                              <p className="font-semibold">{fund.name}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              {fund.validityDate ?? "—"} · {fund.riskProfile ?? "Risk N/A"}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-72 truncate">{fund.type}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatNumber(fund.nav, 4)}</TableCell>
+                        <ReturnCell value={fund.d1} />
+                        <ReturnCell value={fund.mtd} />
+                        <ReturnCell value={fund.ytd} />
+                        <ReturnCell value={fund.d365} />
+                        <TableCell className={cn("text-right font-semibold tabular-nums", plColorClass(fund.profitOn100k))}>
+                          {formatPKR(fund.profitOn100k, { sign: true })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </section>
+          ))}
+          {rows.length === 0 ? (
+            <div className="flex h-28 items-center justify-center rounded-2xl border border-dashed border-border text-sm text-muted-foreground">
+              No funds match the current filters.
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>
@@ -426,7 +451,7 @@ function Metric({
     <Card>
       <CardContent className="p-4">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={cn("mt-2 text-2xl font-bold tabular-nums", plColorClass(tone))}>
+        <p className={cn("mt-2 text-2xl font-bold tabular-nums", tone == null ? "text-foreground" : plColorClass(tone))}>
           {value}
         </p>
       </CardContent>

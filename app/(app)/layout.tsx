@@ -56,7 +56,7 @@ export default async function AppLayout({
 
       {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
-        <header className="sticky top-0 z-20 flex h-14 min-w-0 items-center gap-1.5 border-b border-border bg-background/80 px-3 backdrop-blur sm:h-16 sm:gap-2 sm:px-6">
+        <header className="sticky top-0 z-20 flex h-[calc(3.5rem+env(safe-area-inset-top))] min-w-0 items-center gap-1.5 border-b border-border bg-background/80 px-3 pt-[env(safe-area-inset-top)] backdrop-blur sm:h-[calc(4rem+env(safe-area-inset-top))] sm:gap-2 sm:px-6 lg:h-16 lg:pt-0">
           <MobileNav showAdmin={showAdmin} />
           <div className="flex min-w-0 flex-1 items-center">
             <GlobalSearch />

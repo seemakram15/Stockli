@@ -1,6 +1,8 @@
 import "server-only";
+import { isDemoMode } from "@/lib/config";
 import { getEodCandlesCached } from "@/lib/services/history";
-import type { Holding, Transaction } from "@/lib/types";
+import { createClient } from "@/lib/supabase/server";
+import type { DailyPL, Holding, Transaction } from "@/lib/types";
 
 export interface CalendarDay {
   date: string; // YYYY-MM-DD (UTC day of the candle)
@@ -42,11 +44,9 @@ function isoDay(unixSeconds: number): string {
  */
 export async function getStockCalendar(
   symbol: string,
-  transactions: Transaction[]
+  transactions: Transaction[],
+  options: { skipPersisted?: boolean } = {}
 ): Promise<StockCalendar> {
-  const candles = await getEodCandlesCached(symbol);
-  if (candles.length === 0) return { days: [], hasPosition: false, firstDate: null };
-
   const trades = transactions
     .filter((t) => t.type === "BUY" || t.type === "SELL")
     .map((t) => ({
@@ -57,6 +57,22 @@ export async function getStockCalendar(
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const hasPosition = trades.some((t) => t.qty > 0);
+  const persisted = options.skipPersisted
+    ? []
+    : await getPersistedCalendarDays(
+        Array.from(new Set(transactions.map((t) => t.portfolio_id))),
+        symbol
+      );
+  const persistedFirstDate = persisted[0]?.date ?? null;
+
+  const candles = await getEodCandlesCached(symbol);
+  if (candles.length === 0) {
+    return {
+      days: persisted,
+      hasPosition: hasPosition || persisted.length > 0,
+      firstDate: trades.find((t) => t.qty > 0)?.date ?? persistedFirstDate,
+    };
+  }
 
   if (!hasPosition) {
     const days: CalendarDay[] = candles.map((c, i) => {
@@ -69,12 +85,22 @@ export async function getStockCalendar(
         dayPLPct: 0,
       };
     });
-    return { days, hasPosition: false, firstDate: null };
+    return {
+      days: mergeCalendarDays(days, persisted),
+      hasPosition: persisted.length > 0,
+      firstDate: persistedFirstDate,
+    };
   }
 
   const firstBuyDate = trades.find((t) => t.qty > 0)!.date;
   const startIdx = candles.findIndex((c) => isoDay(c.time) >= firstBuyDate);
-  if (startIdx === -1) return { days: [], hasPosition: true, firstDate: firstBuyDate };
+  if (startIdx === -1) {
+    return {
+      days: persisted,
+      hasPosition: true,
+      firstDate: firstBuyDate ?? persistedFirstDate,
+    };
+  }
 
   const days: CalendarDay[] = [];
   let shares = 0;
@@ -107,7 +133,14 @@ export async function getStockCalendar(
     prevClose = c.close;
   }
 
-  return { days, hasPosition: true, firstDate: firstBuyDate };
+  return {
+    days: mergeCalendarDays(days, persisted),
+    hasPosition: true,
+    firstDate:
+      persistedFirstDate && persistedFirstDate < firstBuyDate
+        ? persistedFirstDate
+        : firstBuyDate,
+  };
 }
 
 /**
@@ -119,16 +152,19 @@ export async function getStockCalendar(
  * are published.
  */
 export async function getPortfolioCalendar(
-  holdings: Pick<Holding, "symbol">[],
+  holdings: Pick<Holding, "symbol" | "portfolio_id">[],
   transactions: Transaction[]
 ): Promise<StockCalendar> {
   const symbols = Array.from(new Set(holdings.map((h) => h.symbol.toUpperCase())));
   if (symbols.length === 0) return { days: [], hasPosition: false, firstDate: null };
+  const persisted = await getPersistedCalendarDays(
+    Array.from(new Set(holdings.map((h) => h.portfolio_id)))
+  );
 
   const calendars = await Promise.all(
     symbols.map(async (symbol) => {
       const symbolTxns = transactions.filter((t) => t.symbol.toUpperCase() === symbol);
-      return getStockCalendar(symbol, symbolTxns);
+      return getStockCalendar(symbol, symbolTxns, { skipPersisted: true });
     })
   );
 
@@ -156,8 +192,83 @@ export async function getPortfolioCalendar(
   }
 
   return {
-    days: Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date)),
+    days: mergeCalendarDays(
+      Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date)),
+      persisted
+    ),
     hasPosition: true,
-    firstDate,
+    firstDate:
+      persisted[0]?.date && (!firstDate || persisted[0].date < firstDate)
+        ? persisted[0].date
+        : firstDate,
   };
+}
+
+async function getPersistedCalendarDays(
+  portfolioIds: string[],
+  symbol?: string
+): Promise<CalendarDay[]> {
+  if (isDemoMode) return [];
+  const ids = Array.from(new Set(portfolioIds.filter(Boolean)));
+  if (ids.length === 0) return [];
+
+  const supabase = await createClient();
+  let query = supabase
+    .from("daily_pl")
+    .select("portfolio_id,symbol,date,open_value,close_value,day_pl,day_pl_pct")
+    .in("portfolio_id", ids)
+    .order("date", { ascending: true });
+  if (symbol) query = query.eq("symbol", symbol.toUpperCase());
+
+  const { data } = await query;
+  return aggregatePersistedRows(
+    (data as Pick<
+      DailyPL,
+      "portfolio_id" | "symbol" | "date" | "open_value" | "close_value" | "day_pl" | "day_pl_pct"
+    >[] | null) ?? []
+  );
+}
+
+function aggregatePersistedRows(
+  rows: Pick<
+    DailyPL,
+    "date" | "open_value" | "close_value" | "day_pl" | "day_pl_pct"
+  >[]
+): CalendarDay[] {
+  const byDate = new Map<
+    string,
+    { date: string; openValue: number; closeValue: number; dayPL: number }
+  >();
+
+  for (const row of rows) {
+    const existing =
+      byDate.get(row.date) ??
+      ({
+        date: row.date,
+        openValue: 0,
+        closeValue: 0,
+        dayPL: 0,
+      } satisfies { date: string; openValue: number; closeValue: number; dayPL: number });
+    existing.openValue += Number(row.open_value ?? 0);
+    existing.closeValue += Number(row.close_value ?? 0);
+    existing.dayPL += Number(row.day_pl ?? 0);
+    byDate.set(row.date, existing);
+  }
+
+  return Array.from(byDate.values())
+    .map((row) => ({
+      date: row.date,
+      close: row.closeValue,
+      changePct: row.openValue ? (row.dayPL / row.openValue) * 100 : 0,
+      dayPL: row.dayPL,
+      dayPLPct: row.openValue ? (row.dayPL / row.openValue) * 100 : 0,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function mergeCalendarDays(calculated: CalendarDay[], persisted: CalendarDay[]) {
+  if (persisted.length === 0) return calculated;
+  const byDate = new Map(calculated.map((day) => [day.date, day]));
+  for (const day of persisted) byDate.set(day.date, day);
+  return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
 }

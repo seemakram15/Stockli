@@ -2,6 +2,7 @@ import "server-only";
 import { isDemoMode } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
 import { getQuotes } from "@/lib/services/prices";
+import { PSX_TIMEZONE } from "@/lib/constants";
 import {
   allocationBySector,
   allocationByHolding,
@@ -24,6 +25,7 @@ import { sectorName } from "@/lib/psx/sectors";
 import { normalizeSymbol, normalizeSymbols } from "@/lib/security/validation";
 import type {
   Alert,
+  DailyPL,
   Holding,
   HoldingWithMetrics,
   Portfolio,
@@ -175,17 +177,55 @@ export async function enrichHoldings(
 ): Promise<HoldingWithMetrics[]> {
   if (holdings.length === 0) return [];
   const symbols = holdings.map((h) => h.symbol);
-  const [tickerMap, quoteMap] = await Promise.all([
+  const [tickerMap, quoteMap, historicalPLMap] = await Promise.all([
     getTickerMap(symbols),
     getQuotes(symbols),
+    getHistoricalPLBaseMap(holdings),
   ]);
   return holdings.map((h) =>
     computeHoldingMetrics(
       h,
       tickerMap.get(h.symbol.toUpperCase()) ?? null,
-      quoteMap.get(h.symbol.toUpperCase()) ?? null
+      quoteMap.get(h.symbol.toUpperCase()) ?? null,
+      historicalPLMap.get(holdingPLKey(h.portfolio_id, h.symbol)) ?? null
     )
   );
+}
+
+async function getHistoricalPLBaseMap(holdings: Holding[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (isDemoMode || holdings.length === 0) return map;
+
+  const portfolioIds = Array.from(new Set(holdings.map((h) => h.portfolio_id).filter(Boolean)));
+  if (portfolioIds.length === 0) return map;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("daily_pl")
+    .select("portfolio_id,symbol,day_pl")
+    .in("portfolio_id", portfolioIds)
+    .lt("date", todayInPkt());
+
+  for (const row of (data as Pick<DailyPL, "portfolio_id" | "symbol" | "day_pl">[] | null) ?? []) {
+    const key = holdingPLKey(row.portfolio_id, row.symbol);
+    map.set(key, (map.get(key) ?? 0) + Number(row.day_pl ?? 0));
+  }
+  return map;
+}
+
+function holdingPLKey(portfolioId: string, symbol: string) {
+  return `${portfolioId}:${symbol.toUpperCase()}`;
+}
+
+function todayInPkt(): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: PSX_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 /** A single portfolio with enriched holdings + summary. */

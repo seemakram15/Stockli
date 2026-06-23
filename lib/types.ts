@@ -197,6 +197,7 @@ export interface HoldingWithMetrics extends Holding {
   livePrice: number;
   marketValue: number;
   costBasis: number;
+  historicalPLBase?: number | null;
   unrealizedPL: number;
   unrealizedPLPct: number;
   dayChange: number; // value change today

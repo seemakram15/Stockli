@@ -4,6 +4,7 @@ import { CalendarRange } from "lucide-react";
 import { getStockDetail } from "@/lib/services/stock";
 import { getStockCalendar } from "@/lib/services/daily-pl";
 import {
+  enrichHoldings,
   getPortfolios,
   getWatchlistSymbols,
   getTransactionsForSymbol,
@@ -18,7 +19,6 @@ import { WatchButton } from "@/components/watch-button";
 import { CreateAlertDialog } from "@/components/alerts/create-alert-dialog";
 import { AddTradeDialog } from "@/components/portfolio/add-trade-dialog";
 import { DataDelayBadge } from "@/components/status-badges";
-import { computeHoldingMetrics } from "@/lib/services/metrics";
 import { formatPKR, formatCompact, formatPercent, formatDate, plColorClass } from "@/lib/format";
 import { normalizeSymbol } from "@/lib/security/validation";
 
@@ -50,12 +50,15 @@ export default async function StockPage({
   ]);
   const { ticker, quote, candles, intraday, holdings } = detail;
 
-  const positionRows = holdings.map((h) => computeHoldingMetrics(h, ticker, quote));
+  const positionRows = await enrichHoldings(holdings);
   const totalQty = positionRows.reduce((a, h) => a + h.quantity, 0);
   const hasPosition = totalQty > 0;
   const costBasis = positionRows.reduce((a, h) => a + h.costBasis, 0);
   const avgCost = hasPosition ? costBasis / totalQty : 0;
   const marketValue = positionRows.reduce((a, h) => a + h.marketValue, 0);
+  const dayUnrealizedPL = positionRows.reduce((a, h) => a + h.dayChange, 0);
+  const prevValue = marketValue - dayUnrealizedPL;
+  const dayUnrealizedPLPct = prevValue ? (dayUnrealizedPL / prevValue) * 100 : 0;
   const unrealizedPL = positionRows.reduce((a, h) => a + h.unrealizedPL, 0);
   const unrealizedPLPct = costBasis ? (unrealizedPL / costBasis) * 100 : 0;
 
@@ -111,8 +114,15 @@ export default async function StockPage({
               <Stat label="Volume" value={formatCompact(quote?.volume ?? null)} />
               <Stat
                 label="Change"
-                value={formatPercent(quote?.changePct)}
-                className={plColorClass(quote?.changePct)}
+                value={
+                  <span className="inline-flex flex-wrap justify-end gap-x-1">
+                    <span>{formatPKR(quote?.change ?? null, { sign: true })}</span>
+                    <span className="text-muted-foreground">
+                      ({formatPercent(quote?.changePct)})
+                    </span>
+                  </span>
+                }
+                className={plColorClass(quote?.change)}
               />
             </CardContent>
           </Card>
@@ -128,12 +138,24 @@ export default async function StockPage({
                 <Stat label="Market value" value={formatPKR(marketValue)} />
                 <Stat label="Cost basis" value={formatPKR(costBasis)} />
                 <Stat
-                  label="Unrealized P/L"
+                  label="Day unrealized P/L"
+                  value={
+                    <>
+                      {formatPKR(dayUnrealizedPL, { sign: true })}
+                      <span className="ml-1 text-muted-foreground">
+                        ({formatPercent(dayUnrealizedPLPct)})
+                      </span>
+                    </>
+                  }
+                  className={plColorClass(dayUnrealizedPL)}
+                />
+                <Stat
+                  label="Total unrealized P/L"
                   value={formatPKR(unrealizedPL, { sign: true })}
                   className={plColorClass(unrealizedPL)}
                 />
                 <Stat
-                  label="Return"
+                  label="Total return"
                   value={formatPercent(unrealizedPLPct)}
                   className={plColorClass(unrealizedPLPct)}
                 />

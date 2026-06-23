@@ -9,8 +9,8 @@ import { MarketStrategyBoard } from "@/components/market/market-strategy-board";
 import {
   formatDateTime,
   formatNumber,
-  formatPercent,
   formatPKR,
+  formatSigned,
   plColorClass,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -52,8 +52,8 @@ export default async function MarketStrategyPage() {
           >
             <span className="text-muted-foreground">{index.symbol}</span>{" "}
             <span className="tabular-nums">{formatNumber(index.current, 0)}</span>{" "}
-            <span className={cn("tabular-nums", plColorClass(index.changePct))}>
-              {formatPercent(index.changePct)}
+            <span className={cn("tabular-nums", plColorClass(index.change))}>
+              {formatSigned(index.change, 2)}
             </span>
           </span>
         ))}

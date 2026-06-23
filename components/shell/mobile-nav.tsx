@@ -24,7 +24,7 @@ export function MobileNav({ showAdmin = false }: { showAdmin?: boolean }) {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-72 max-w-[calc(100vw-2rem)] p-0">
-        <SheetHeader className="border-b border-border px-4 py-4">
+        <SheetHeader className="border-b border-border px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))]">
           <SheetTitle asChild>
             <Logo />
           </SheetTitle>
@@ -32,7 +32,7 @@ export function MobileNav({ showAdmin = false }: { showAdmin?: boolean }) {
         <div className="flex-1 px-3 py-4">
           <NavLinks onNavigate={() => setOpen(false)} showAdmin={showAdmin} />
         </div>
-        <div className="border-t border-border p-3">
+        <div className="border-t border-border p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <InstallAppButton className="w-full justify-start" />
         </div>
       </SheetContent>

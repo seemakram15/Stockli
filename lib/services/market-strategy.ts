@@ -7,6 +7,7 @@ export interface StrategyFundRow {
   name: string;
   amc: string;
   amcShort: string;
+  amcLogoUrl: string | null;
   type: string;
   classFilter: MufapFund["classFilter"];
   returnPct: number | null;
@@ -22,6 +23,7 @@ export interface MarketStrategyData {
   indexBadges: Array<{
     symbol: string;
     current: number;
+    change: number;
     changePct: number;
   }>;
   summary: {
@@ -59,6 +61,7 @@ export async function getMarketStrategyData(): Promise<MarketStrategyData> {
     indexBadges: indexCards.slice(0, 3).map((card) => ({
       symbol: card.symbol,
       current: card.current,
+      change: card.change,
       changePct: card.changePct,
     })),
     summary: {
@@ -77,6 +80,7 @@ function toStrategyRow(fund: MufapFund): StrategyFundRow {
     name: fund.name,
     amc: fund.amc,
     amcShort: fund.amcShort || fund.amc,
+    amcLogoUrl: fund.amcLogoUrl,
     type: fund.type,
     classFilter: fund.classFilter,
     returnPct: fund.d1,
@@ -85,6 +89,8 @@ function toStrategyRow(fund: MufapFund): StrategyFundRow {
 }
 
 function isStockFund(fund: MufapFund) {
+  if (fund.classFilter === "pension") return false;
   const haystack = `${fund.name} ${fund.type} ${fund.category} ${fund.sector}`.toLowerCase();
+  if (/\b(income|money market|cash|sovereign|pension|vps)\b/.test(haystack)) return false;
   return /\b(stock|equity|index|sector)\b/.test(haystack);
 }
