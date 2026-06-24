@@ -1,25 +1,42 @@
-import {
-  PSX_TIMEZONE,
-  PSX_MARKET_OPEN,
-  PSX_MARKET_CLOSE,
-  PSX_TRADING_DAYS,
-} from "@/lib/constants";
+import { PSX_TIMEZONE, PSX_TRADING_DAYS } from "@/lib/constants";
 
 /**
- * Market-hours / holiday awareness for PSX (Pakistan Standard Time, UTC+5,
- * no DST). Used to pause scraping when the market is closed and to show a
- * "market closed / last updated" state.
+ * PSX market-hours / holiday awareness.
  *
- * Holidays are announced in advance by the Exchange — extend this list each
- * year (YYYY-MM-DD in PKT).
+ * Source checked from the official PSX Trading Hours page on 24 Jun 2026:
+ * - Mon-Thu regular market pre-open 09:15-09:32, open 09:32-15:30 PKT.
+ * - Friday regular market pre-open/open runs in two sessions:
+ *   09:00-09:17 / 09:17-12:00 and 14:15-14:32 / 14:32-16:30 PKT.
+ *
+ * The cache helpers below let the app keep PSX screens fast after close: serve
+ * the latest known quote/cache while the exchange is closed, then resume normal
+ * short polling from pre-open onward.
  */
+
+const MINUTE = 60;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+
+const OPEN_CACHE_TTL_SECONDS = 60;
+const CLOSED_MAX_STALE_SECONDS = 7 * DAY;
+const REFRESH_WINDOW_BUFFER_SECONDS = 5 * MINUTE;
+
 export const PSX_HOLIDAYS_2026: string[] = [
   "2026-02-05", // Kashmir Day
-  "2026-03-23", // Pakistan Day
+  "2026-03-20", // Juma-Tul-Wida
+  "2026-03-21", // Eid-ul-Fitr
+  "2026-03-22", // Eid-ul-Fitr
+  "2026-03-23", // Eid-ul-Fitr / Pakistan Day
   "2026-05-01", // Labour Day
+  "2026-05-26", // Eid-ul-Azha
+  "2026-05-27", // Eid-ul-Azha
+  "2026-05-28", // Eid-ul-Azha / Youm-e-Takbeer
+  "2026-06-25", // Ashura
+  "2026-06-26", // Ashura
   "2026-08-14", // Independence Day
+  "2026-08-25", // Eid Milad-un-Nabi (SAW)
+  "2026-11-09", // Allama Iqbal Day
   "2026-12-25", // Quaid-e-Azam Day / Christmas
-  // Religious holidays (Eid etc.) are moon-dependent — add when announced.
 ];
 
 interface PktParts {
@@ -30,6 +47,14 @@ interface PktParts {
   hour: number;
   minute: number;
 }
+
+interface MarketSession {
+  kind: "pre-open" | "open";
+  start: number;
+  end: number;
+}
+
+export type MarketStatus = "open" | "closed" | "pre-open" | "weekend" | "holiday";
 
 /** Decompose a Date into Pakistan-local parts without external tz libs. */
 function pktParts(date: Date): PktParts {
@@ -44,7 +69,7 @@ function pktParts(date: Date): PktParts {
     weekday: "short",
   });
   const parts = fmt.formatToParts(date);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
   const weekdayMap: Record<string, number> = {
     Sun: 0,
     Mon: 1,
@@ -55,7 +80,7 @@ function pktParts(date: Date): PktParts {
     Sat: 6,
   };
   let hour = parseInt(get("hour"), 10);
-  if (hour === 24) hour = 0; // hour12:false can yield "24"
+  if (hour === 24) hour = 0;
   return {
     year: parseInt(get("year"), 10),
     month: parseInt(get("month"), 10),
@@ -66,10 +91,52 @@ function pktParts(date: Date): PktParts {
   };
 }
 
-function pktDateString(p: PktParts): string {
-  const mm = String(p.month).padStart(2, "0");
-  const dd = String(p.day).padStart(2, "0");
-  return `${p.year}-${mm}-${dd}`;
+function pktDateString(parts: PktParts): string {
+  const mm = String(parts.month).padStart(2, "0");
+  const dd = String(parts.day).padStart(2, "0");
+  return `${parts.year}-${mm}-${dd}`;
+}
+
+function minutes(hour: number, minute: number) {
+  return hour * 60 + minute;
+}
+
+function sessionsForWeekday(weekday: number): MarketSession[] {
+  if (weekday === 5) {
+    return [
+      { kind: "pre-open", start: minutes(9, 0), end: minutes(9, 17) },
+      { kind: "open", start: minutes(9, 17), end: minutes(12, 0) },
+      { kind: "pre-open", start: minutes(14, 15), end: minutes(14, 32) },
+      { kind: "open", start: minutes(14, 32), end: minutes(16, 30) },
+    ];
+  }
+
+  if (PSX_TRADING_DAYS.includes(weekday)) {
+    return [
+      { kind: "pre-open", start: minutes(9, 15), end: minutes(9, 32) },
+      { kind: "open", start: minutes(9, 32), end: minutes(15, 30) },
+    ];
+  }
+
+  return [];
+}
+
+function pktInstant(parts: Pick<PktParts, "year" | "month" | "day">, minuteOfDay: number) {
+  const hour = Math.floor(minuteOfDay / 60);
+  const minute = minuteOfDay % 60;
+  // Pakistan is fixed UTC+5 with no DST.
+  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day, hour - 5, minute));
+}
+
+function addPktDays(parts: PktParts, days: number): PktParts {
+  const noonUtc = Date.UTC(parts.year, parts.month - 1, parts.day + days, 12 - 5, 0);
+  return pktParts(new Date(noonUtc));
+}
+
+function tradingSessionsForDate(parts: PktParts): MarketSession[] {
+  if (!PSX_TRADING_DAYS.includes(parts.weekday)) return [];
+  if (PSX_HOLIDAYS_2026.includes(pktDateString(parts))) return [];
+  return sessionsForWeekday(parts.weekday);
 }
 
 export function isHoliday(date: Date = new Date()): boolean {
@@ -77,36 +144,99 @@ export function isHoliday(date: Date = new Date()): boolean {
 }
 
 export function isTradingDay(date: Date = new Date()): boolean {
-  const p = pktParts(date);
-  return PSX_TRADING_DAYS.includes(p.weekday) && !isHoliday(date);
+  return tradingSessionsForDate(pktParts(date)).length > 0;
 }
 
-/** True when PSX is currently in a trading session. */
+/** True only during regular continuous market trading. */
 export function isMarketOpen(date: Date = new Date()): boolean {
-  if (!isTradingDay(date)) return false;
-  const p = pktParts(date);
-  const mins = p.hour * 60 + p.minute;
-  const open = PSX_MARKET_OPEN.hour * 60 + PSX_MARKET_OPEN.minute;
-  const close = PSX_MARKET_CLOSE.hour * 60 + PSX_MARKET_CLOSE.minute;
-  return mins >= open && mins <= close;
+  const parts = pktParts(date);
+  const mins = parts.hour * 60 + parts.minute;
+  return tradingSessionsForDate(parts).some(
+    (session) => session.kind === "open" && mins >= session.start && mins <= session.end
+  );
 }
 
-export type MarketStatus = "open" | "closed" | "pre-open" | "weekend" | "holiday";
+/** True during pre-open or regular open; this is when PSX caches may refresh. */
+export function shouldRefreshPsxData(date: Date = new Date()): boolean {
+  const parts = pktParts(date);
+  const mins = parts.hour * 60 + parts.minute;
+  return tradingSessionsForDate(parts).some(
+    (session) => mins >= session.start && mins <= session.end
+  );
+}
 
 export function marketStatus(date: Date = new Date()): {
   status: MarketStatus;
   label: string;
+  nextRefreshAt: string | null;
 } {
-  const p = pktParts(date);
-  if (isHoliday(date)) return { status: "holiday", label: "Closed — holiday" };
-  if (!PSX_TRADING_DAYS.includes(p.weekday))
-    return { status: "weekend", label: "Closed — weekend" };
+  const parts = pktParts(date);
+  if (isHoliday(date)) {
+    return {
+      status: "holiday",
+      label: "Closed — holiday",
+      nextRefreshAt: nextPsxRefreshAt(date)?.toISOString() ?? null,
+    };
+  }
+  if (!PSX_TRADING_DAYS.includes(parts.weekday)) {
+    return {
+      status: "weekend",
+      label: "Closed — weekend",
+      nextRefreshAt: nextPsxRefreshAt(date)?.toISOString() ?? null,
+    };
+  }
 
-  const mins = p.hour * 60 + p.minute;
-  const open = PSX_MARKET_OPEN.hour * 60 + PSX_MARKET_OPEN.minute;
-  const close = PSX_MARKET_CLOSE.hour * 60 + PSX_MARKET_CLOSE.minute;
+  const mins = parts.hour * 60 + parts.minute;
+  for (const session of tradingSessionsForDate(parts)) {
+    if (mins >= session.start && mins <= session.end) {
+      return {
+        status: session.kind,
+        label: session.kind === "open" ? "Market open" : "Pre-open",
+        nextRefreshAt: null,
+      };
+    }
+  }
 
-  if (mins < open) return { status: "pre-open", label: "Pre-open" };
-  if (mins > close) return { status: "closed", label: "Closed" };
-  return { status: "open", label: "Market open" };
+  const hasLaterSession = tradingSessionsForDate(parts).some((session) => mins < session.start);
+  return {
+    status: "closed",
+    label: hasLaterSession ? "Closed — between sessions" : "Closed",
+    nextRefreshAt: nextPsxRefreshAt(date)?.toISOString() ?? null,
+  };
 }
+
+export function nextPsxRefreshAt(date: Date = new Date()): Date | null {
+  const now = date.getTime();
+  const today = pktParts(date);
+
+  for (let offset = 0; offset < 14; offset += 1) {
+    const day = addPktDays(today, offset);
+    for (const session of tradingSessionsForDate(day)) {
+      const candidate = pktInstant(day, session.start);
+      if (candidate.getTime() >= now - 1_000) return candidate;
+    }
+  }
+
+  return null;
+}
+
+export function secondsUntilNextPsxRefresh(date: Date = new Date()): number | null {
+  const next = nextPsxRefreshAt(date);
+  if (!next) return null;
+  return Math.max(0, Math.ceil((next.getTime() - date.getTime()) / 1000));
+}
+
+export function psxLiveCacheTtlSeconds(date: Date = new Date()): number {
+  if (shouldRefreshPsxData(date)) return OPEN_CACHE_TTL_SECONDS;
+  const untilNext = secondsUntilNextPsxRefresh(date);
+  if (untilNext == null) return CLOSED_MAX_STALE_SECONDS;
+  return Math.min(
+    CLOSED_MAX_STALE_SECONDS,
+    Math.max(5 * MINUTE, untilNext + REFRESH_WINDOW_BUFFER_SECONDS)
+  );
+}
+
+export function psxClosedMaxStaleSeconds(): number {
+  return CLOSED_MAX_STALE_SECONDS;
+}
+

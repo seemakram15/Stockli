@@ -8,6 +8,7 @@ import { MufapFundsBoard } from "@/components/market/mufap-funds-board";
 import { PageHeader } from "@/components/page-header";
 import { DataDelayBadge } from "@/components/status-badges";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { MufapFundsData } from "@/lib/services/mufap";
 
 export function CachedMufapPage({ kind }: { kind: "mutual" | "etfs" }) {
@@ -24,6 +25,8 @@ export function CachedMufapPage({ kind }: { kind: "mutual" | "etfs" }) {
       cacheKey: `public:mufap:${kind}`,
       url: `/api/public/mufap?kind=${etfMode ? "etfs" : "mutual"}`,
       refreshInterval: 5 * 60_000,
+      pauseWhen: () => !shouldRefreshPsxData(),
+      acceptCacheWhen: () => !shouldRefreshPsxData(),
     });
 
   return (

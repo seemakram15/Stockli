@@ -2,6 +2,7 @@ import "server-only";
 import { psx } from "@/lib/psx/adapter";
 import { getRedis } from "@/lib/cache/redis";
 import { getOrSetMemoryCache } from "@/lib/cache/memory";
+import { psxLiveCacheTtlSeconds, shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { Candle, IndexConstituent, IndexSummary, SeriesPoint } from "@/lib/types";
 
 /**
@@ -14,11 +15,23 @@ const EOD_TTL = 6 * 60 * 60; // 6 hours
 const INTRADAY_TTL = 5 * 60; // 5 minutes
 const INDEX_TTL = 3 * 60; // 3 minutes (live-ish index data)
 
+function eodCacheTtl() {
+  return shouldRefreshPsxData() ? EOD_TTL : Math.max(EOD_TTL, psxLiveCacheTtlSeconds());
+}
+
+function intradayCacheTtl() {
+  return shouldRefreshPsxData() ? INTRADAY_TTL : psxLiveCacheTtlSeconds();
+}
+
+function indexCacheTtl() {
+  return shouldRefreshPsxData() ? INDEX_TTL : psxLiveCacheTtlSeconds();
+}
+
 export async function getEodCandlesCached(symbol: string): Promise<Candle[]> {
   const sym = symbol.toUpperCase();
   return getOrSetMemoryCache(
     `psx:eod:${sym}`,
-    EOD_TTL,
+    eodCacheTtl(),
     () => loadEodCandles(sym),
     (candles) => candles.length > 0
   );
@@ -38,7 +51,7 @@ async function loadEodCandles(sym: string): Promise<Candle[]> {
   const candles = await psx.getEodCandles(sym);
   if (redis && candles.length) {
     try {
-      await redis.set(key, candles, { ex: EOD_TTL });
+      await redis.set(key, candles, { ex: eodCacheTtl() });
     } catch {
       /* best effort */
     }
@@ -50,7 +63,7 @@ export async function getIntradayCached(symbol: string): Promise<SeriesPoint[]> 
   const sym = symbol.toUpperCase();
   return getOrSetMemoryCache(
     `psx:int:${sym}`,
-    INTRADAY_TTL,
+    intradayCacheTtl(),
     () => loadIntraday(sym),
     (points) => points.length > 0
   );
@@ -70,7 +83,7 @@ async function loadIntraday(sym: string): Promise<SeriesPoint[]> {
   const pts = await psx.getIntraday(sym);
   if (redis && pts.length) {
     try {
-      await redis.set(key, pts, { ex: INTRADAY_TTL });
+      await redis.set(key, pts, { ex: intradayCacheTtl() });
     } catch {
       /* best effort */
     }
@@ -82,7 +95,7 @@ async function loadIntraday(sym: string): Promise<SeriesPoint[]> {
 export async function getIndexSummariesCached(): Promise<IndexSummary[]> {
   return getOrSetMemoryCache(
     "psx:indices",
-    INDEX_TTL,
+    indexCacheTtl(),
     loadIndexSummaries,
     (rows) => rows.length > 0
   );
@@ -102,7 +115,7 @@ async function loadIndexSummaries(): Promise<IndexSummary[]> {
   const rows = await psx.getIndexSummaries();
   if (redis && rows.length) {
     try {
-      await redis.set(key, rows, { ex: INDEX_TTL });
+      await redis.set(key, rows, { ex: indexCacheTtl() });
     } catch {
       /* best effort */
     }
@@ -117,7 +130,7 @@ export async function getIndexConstituentsCached(
   const sym = symbol.toUpperCase();
   return getOrSetMemoryCache(
     `psx:cons:${sym}`,
-    INDEX_TTL,
+    indexCacheTtl(),
     () => loadIndexConstituents(sym),
     (rows) => rows.length > 0
   );
@@ -137,7 +150,7 @@ async function loadIndexConstituents(sym: string): Promise<IndexConstituent[]> {
   const rows = await psx.getIndexConstituents(sym);
   if (redis && rows.length) {
     try {
-      await redis.set(key, rows, { ex: INDEX_TTL });
+      await redis.set(key, rows, { ex: indexCacheTtl() });
     } catch {
       /* best effort */
     }

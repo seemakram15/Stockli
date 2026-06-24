@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDateTime, formatNumber, formatPKR, formatSigned, plColorClass } from "@/lib/format";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import { cn } from "@/lib/utils";
 import type { MarketStrategyData } from "@/lib/services/market-strategy";
 
@@ -20,6 +21,8 @@ export function CachedMarketStrategyPage() {
       cacheKey: "public:market-strategy",
       url: "/api/public/market-strategy",
       refreshInterval: 5 * 60_000,
+      pauseWhen: () => !shouldRefreshPsxData(),
+      acceptCacheWhen: () => !shouldRefreshPsxData(),
     });
 
   return (
@@ -77,7 +80,7 @@ export function CachedMarketStrategyPage() {
             </span>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Metric label="Average estimate" value={formatPKR(data.summary.avgEstimatedReturn, { sign: true })} tone={data.summary.avgEstimatedReturn} />
             <Metric label="Positive funds" value={String(data.summary.positiveCount)} tone={1} />
             <Metric label="Negative funds" value={String(data.summary.negativeCount)} tone={-1} />
@@ -120,9 +123,9 @@ function Metric({
 }) {
   return (
     <Card>
-      <CardContent className="p-4">
+      <CardContent className="min-w-0 p-3 sm:p-4">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={cn("mt-2 text-2xl font-bold tabular-nums", plColorClass(tone))}>
+        <p className={cn("mt-2 text-lg font-bold tabular-nums [overflow-wrap:anywhere] sm:text-2xl", plColorClass(tone))}>
           {value}
         </p>
         {caption ? <p className="mt-1 truncate text-xs text-muted-foreground">{caption}</p> : null}

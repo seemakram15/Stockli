@@ -134,7 +134,7 @@ export function AllocationExplorer({
             />
           </TabsContent>
         </Tabs>
-        <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2 text-sm">
           <MiniStat label="Invested" value={formatPKR(summary.totalInvested)} />
           <MiniStat
             label="Total P/L"
@@ -396,7 +396,7 @@ function allocationByHoldingName(holdings: HoldingWithMetrics[]) {
 
 function SummaryGrid({ summary }: { summary: ReturnType<typeof computeSummary> }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <SummaryCard icon={<Wallet className="size-4" />} label="Market value" value={formatPKR(summary.totalValue)} />
       <SummaryCard icon={<Coins className="size-4" />} label="Invested" value={formatPKR(summary.totalInvested)} />
       <SummaryCard
@@ -431,12 +431,12 @@ function SummaryCard({
   tone?: number;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-muted/20 p-4">
+    <div className="min-w-0 rounded-xl border border-border bg-muted/20 p-3 sm:p-4">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         {icon}
         {label}
       </div>
-      <p className={`mt-2 text-lg font-semibold tabular-nums ${tone == null ? "" : plColorClass(tone)}`}>
+      <p className={`mt-2 text-lg font-semibold tabular-nums [overflow-wrap:anywhere] ${tone == null ? "" : plColorClass(tone)}`}>
         {value}
       </p>
       {sub && <p className={`text-xs tabular-nums ${plColorClass(tone)}`}>{sub}</p>}
@@ -454,9 +454,9 @@ function MiniStat({
   className?: string;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
+    <div className="min-w-0 rounded-lg border border-border bg-muted/20 px-3 py-2">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={`font-semibold tabular-nums ${className ?? ""}`}>{value}</p>
+      <p className={`font-semibold tabular-nums [overflow-wrap:anywhere] ${className ?? ""}`}>{value}</p>
     </div>
   );
 }

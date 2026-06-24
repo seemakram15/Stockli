@@ -47,7 +47,7 @@ export default async function MarketSectorPage({
         actions={<DataDelayBadge />}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <SectorMetric
           icon={<BarChart3 className="size-4" />}
           label="Sector move"
@@ -125,12 +125,12 @@ function SectorMetric({
 }) {
   return (
     <Card>
-      <CardContent className="p-4">
+      <CardContent className="min-w-0 p-3 sm:p-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {icon}
           {label}
         </div>
-        <p className={cn("mt-2 text-2xl font-bold tabular-nums", tone == null ? "" : plColorClass(tone))}>
+        <p className={cn("mt-2 text-lg font-bold tabular-nums [overflow-wrap:anywhere] sm:text-2xl", tone == null ? "" : plColorClass(tone))}>
           {value}
         </p>
         {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}

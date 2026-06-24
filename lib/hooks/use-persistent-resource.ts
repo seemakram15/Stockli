@@ -7,7 +7,7 @@ type ResourceResponse<T> = {
   data: T;
 };
 
-type CachedRecord<T> = {
+export type CachedRecord<T> = {
   key: string;
   value: T;
   savedAt: string;
@@ -30,13 +30,19 @@ export function usePersistentResource<T>({
   cacheKey,
   url,
   refreshInterval = 60_000,
+  pauseWhen,
+  acceptCacheWhen,
 }: {
   cacheKey: string;
   url: string;
-  refreshInterval?: number;
+  refreshInterval?: number | ((data: T | null) => number);
+  pauseWhen?: (data: T | null) => boolean;
+  acceptCacheWhen?: (record: CachedRecord<T>) => boolean;
 }) {
   const [cached, setCached] = React.useState<CachedRecord<T> | null>(null);
   const [cacheReady, setCacheReady] = React.useState(false);
+  const [, setClockTick] = React.useState(0);
+  const hasPauseRule = Boolean(pauseWhen);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -52,35 +58,79 @@ export function usePersistentResource<T>({
     };
   }, [cacheKey]);
 
-  const swr = useSWR<T>(url, fetchResource, {
+  React.useEffect(() => {
+    if (!hasPauseRule) return undefined;
+    const id = window.setInterval(() => setClockTick((tick) => tick + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, [hasPauseRule]);
+
+  const usableCached = cached && (!acceptCacheWhen || acceptCacheWhen(cached)) ? cached : null;
+  const cachedValue = usableCached?.value ?? null;
+  const rawCachedValue = cached?.value ?? null;
+  const isPaused = Boolean(cacheReady && rawCachedValue && pauseWhen?.(rawCachedValue));
+  const swrKey = cacheReady && !isPaused ? url : null;
+
+  const swr = useSWR<T>(swrKey, fetchResource, {
     dedupingInterval: 15_000,
     keepPreviousData: true,
-    revalidateOnFocus: true,
-    revalidateOnReconnect: true,
-    refreshInterval,
+    revalidateOnFocus: !isPaused,
+    revalidateOnReconnect: !isPaused,
+    refreshInterval: (latest) => {
+      const value = latest ?? rawCachedValue;
+      if (pauseWhen?.(value ?? null)) return 0;
+      return typeof refreshInterval === "function"
+        ? refreshInterval(value ?? null)
+        : refreshInterval;
+    },
   });
 
   React.useEffect(() => {
     if (!swr.data) return;
-    const record = {
-      key: cacheKey,
-      value: swr.data,
-      savedAt: new Date().toISOString(),
-    };
+    const record = makeCachedRecord(cacheKey, swr.data);
     setCached(record);
     writeCached(record).catch(() => undefined);
   }, [cacheKey, swr.data]);
 
-  const data = swr.data ?? cached?.value ?? null;
+  const refreshNow = React.useCallback(async () => {
+    const value = await fetchResource<T>(url);
+    const record = makeCachedRecord(cacheKey, value);
+    setCached(record);
+    await Promise.all([
+      writeCached(record).catch(() => undefined),
+      swr.mutate(value, { revalidate: false }),
+    ]);
+    return value;
+  }, [cacheKey, swr, url]);
+
+  const data = swr.data ?? cachedValue;
 
   return {
     data,
     error: swr.error as Error | undefined,
     isLoading: !data && (!cacheReady || swr.isLoading),
     isRefreshing: Boolean(data && swr.isValidating),
-    isFromDeviceCache: Boolean(!swr.data && cached?.value),
-    cachedAt: cached?.savedAt ?? null,
+    isFromDeviceCache: Boolean(!swr.data && usableCached?.value),
+    cachedAt: usableCached?.savedAt ?? null,
+    lastCachedAt: cached?.savedAt ?? null,
     mutate: swr.mutate,
+    refreshNow,
+  };
+}
+
+export async function writePersistentResourceCache<T>(
+  cacheKey: string,
+  value: T
+): Promise<CachedRecord<T>> {
+  const record = makeCachedRecord(cacheKey, value);
+  await writeCached(record);
+  return record;
+}
+
+function makeCachedRecord<T>(key: string, value: T): CachedRecord<T> {
+  return {
+    key,
+    value,
+    savedAt: new Date().toISOString(),
   };
 }
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { psxLiveCacheTtlSeconds, shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import { getIndexDetail } from "@/lib/services/market";
 import { normalizeSymbol } from "@/lib/security/validation";
 
@@ -15,7 +16,12 @@ export async function GET(
   if (!symbol) return NextResponse.json({ error: "Unknown index" }, { status: 404 });
   const detail = await getIndexDetail(symbol);
   if (!detail) return NextResponse.json({ error: "Unknown index" }, { status: 404 });
+  const ttl = psxLiveCacheTtlSeconds();
   return NextResponse.json(detail, {
-    headers: { "Cache-Control": "s-maxage=60, stale-while-revalidate=180" },
+    headers: {
+      "Cache-Control": shouldRefreshPsxData()
+        ? "s-maxage=60, stale-while-revalidate=180"
+        : `s-maxage=${ttl}, stale-while-revalidate=${ttl}`,
+    },
   });
 }

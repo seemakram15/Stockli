@@ -87,7 +87,7 @@ export function GlobalMarketBoard({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MetricCard label="Average move" value={formatPercent(data.summary.avgChangePct)} tone={data.summary.avgChangePct} />
         <MetricCard label="Advancers" value={String(data.summary.advancers)} tone={1} />
         <MetricCard label="Decliners" value={String(data.summary.decliners)} tone={-1} />
@@ -512,9 +512,9 @@ function MetricCard({
 }) {
   return (
     <Card>
-      <CardContent className="p-4">
+      <CardContent className="min-w-0 p-3 sm:p-4">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={cn("mt-2 text-2xl font-bold tabular-nums", plColorClass(tone))}>
+        <p className={cn("mt-2 text-lg font-bold tabular-nums [overflow-wrap:anywhere] sm:text-2xl", plColorClass(tone))}>
           {value}
         </p>
       </CardContent>

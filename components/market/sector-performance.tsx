@@ -59,7 +59,7 @@ export function SectorPerformancePanel({
           </FilterPanel>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <SectorStat label="Sectors" value={data.length.toLocaleString("en-US")} />
           <SectorStat label="Stocks tracked" value={marketStats.stocks.toLocaleString("en-US")} />
           <SectorStat label="Advancing sectors" value={marketStats.advancing.toLocaleString("en-US")} tone="gain" />
@@ -175,11 +175,11 @@ function SectorStat({
   tone?: "gain" | "loss";
 }) {
   return (
-    <div className="rounded-xl border border-border bg-muted/20 p-3">
+    <div className="min-w-0 rounded-xl border border-border bg-muted/20 p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p
         className={cn(
-          "mt-1 text-lg font-semibold tabular-nums",
+          "mt-1 text-lg font-semibold tabular-nums [overflow-wrap:anywhere]",
           tone === "gain" && "text-gain",
           tone === "loss" && "text-loss"
         )}
