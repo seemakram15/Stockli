@@ -30,7 +30,7 @@ export default async function AdminDashboardPage() {
         description="Platform overview and every user's account. Superadmin only."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Users" value={formatNumber(stats.userCount, 0)} icon={<Users className="size-4" />} />
         <StatCard label="Portfolios" value={formatNumber(stats.portfolioCount, 0)} icon={<Layers className="size-4" />} />
         <StatCard label="Holdings" value={formatNumber(stats.holdingCount, 0)} icon={<Wallet className="size-4" />} />

@@ -1,6 +1,6 @@
 import "server-only";
 import { getStaleCached } from "@/lib/cache/stale";
-import { marketStatus } from "@/lib/psx/market-hours";
+import { marketStatus, psxLiveCacheTtlSeconds, shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import {
   getIndexCards,
   getIndexDetail,
@@ -21,8 +21,8 @@ export interface PublicMarketPageData {
 export async function getPublicMarketPageData(): Promise<PublicMarketPageData> {
   const cached = await getStaleCached({
     key: "public-page:psx-market",
-    ttlSeconds: 60,
-    staleSeconds: 15 * 60,
+    ttlSeconds: psxLiveCacheTtlSeconds(),
+    staleSeconds: shouldRefreshPsxData() ? 15 * 60 : psxLiveCacheTtlSeconds(),
     load: loadPublicMarketPageData,
     isUsable: (data) => Boolean(data.detail && data.cards.length),
   });

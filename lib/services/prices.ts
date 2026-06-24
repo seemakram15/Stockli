@@ -6,6 +6,11 @@ import { getMemoryCache, getOrSetMemoryCache, setMemoryCache } from "@/lib/cache
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured } from "@/lib/config";
 import { PRICE_CACHE_TTL_SECONDS } from "@/lib/constants";
+import {
+  psxClosedMaxStaleSeconds,
+  psxLiveCacheTtlSeconds,
+  shouldRefreshPsxData,
+} from "@/lib/psx/market-hours";
 import { normalizeSymbol, normalizeSymbols } from "@/lib/security/validation";
 import { sectorName } from "@/lib/psx/sectors";
 
@@ -45,7 +50,10 @@ function isFreshTimestamp(value: string | undefined): boolean {
   const capturedAt = Date.parse(value);
   if (!Number.isFinite(capturedAt)) return false;
   const ageMs = Date.now() - capturedAt;
-  return ageMs >= -5_000 && ageMs <= PRICE_CACHE_TTL_SECONDS * 1000 + 10_000;
+  const ttlSeconds = shouldRefreshPsxData()
+    ? PRICE_CACHE_TTL_SECONDS
+    : psxClosedMaxStaleSeconds();
+  return ageMs >= -5_000 && ageMs <= ttlSeconds * 1000 + 10_000;
 }
 
 function isFreshQuote(quote: Quote): boolean {
@@ -90,16 +98,17 @@ async function readCache(symbols: string[]): Promise<Map<string, Quote>> {
 async function writeCache(quotes: Quote[]): Promise<void> {
   const redis = getRedis();
   if (quotes.length === 0) return;
+  const ttlSeconds = psxLiveCacheTtlSeconds();
 
   for (const quote of quotes) {
-    setMemoryCache(priceKey(quote.symbol), quote, PRICE_CACHE_TTL_SECONDS);
+    setMemoryCache(priceKey(quote.symbol), quote, ttlSeconds);
   }
 
   if (!redis) return;
   try {
     const pipe = redis.pipeline();
     for (const q of quotes) {
-      pipe.set(priceKey(q.symbol), q, { ex: PRICE_CACHE_TTL_SECONDS });
+      pipe.set(priceKey(q.symbol), q, { ex: ttlSeconds });
     }
     await pipe.exec();
   } catch (err) {
@@ -135,19 +144,26 @@ async function scrapeAndStore(): Promise<MarketWatchRow[]> {
   const rows = await psx.getMarketWatch();
   const capturedAt = new Date().toISOString();
   const stampedRows = rows.map((row) => ({ ...row, capturedAt }));
-  const quotes = stampedRows.map((row) => marketWatchRowToQuote(row));
+  await cacheMarketRows(stampedRows, { persist: true });
+  return stampedRows;
+}
+
+async function cacheMarketRows(
+  rows: MarketWatchRow[],
+  { persist = false }: { persist?: boolean } = {}
+): Promise<void> {
+  if (rows.length === 0) return;
+  const ttlSeconds = psxLiveCacheTtlSeconds();
+  const quotes = rows.map((row) => marketWatchRowToQuote(row));
   const redis = getRedis();
-  setMemoryCache(MARKET_WATCH_KEY, stampedRows, PRICE_CACHE_TTL_SECONDS);
+  setMemoryCache(MARKET_WATCH_KEY, rows, ttlSeconds);
   await Promise.all([
     writeCache(quotes),
-    persistSnapshots(quotes),
+    persist ? persistSnapshots(quotes) : Promise.resolve(),
     redis
-      ? redis
-          .set(MARKET_WATCH_KEY, stampedRows, { ex: PRICE_CACHE_TTL_SECONDS })
-          .catch(() => undefined)
+      ? redis.set(MARKET_WATCH_KEY, rows, { ex: ttlSeconds }).catch(() => undefined)
       : Promise.resolve(),
   ]);
-  return stampedRows;
 }
 
 /**
@@ -166,7 +182,7 @@ export async function refreshMarketWatch(): Promise<Map<string, Quote>> {
 export async function getMarketRows(): Promise<MarketWatchRow[]> {
   return getOrSetMemoryCache(
     MARKET_WATCH_KEY,
-    PRICE_CACHE_TTL_SECONDS,
+    psxLiveCacheTtlSeconds(),
     loadMarketRows,
     areFreshMarketRows
   );
@@ -178,11 +194,19 @@ async function loadMarketRows(): Promise<MarketWatchRow[]> {
     try {
       const cached = await redis.get<MarketWatchRow[]>(MARKET_WATCH_KEY);
       if (cached && areFreshMarketRows(cached)) {
-        setMemoryCache(MARKET_WATCH_KEY, cached, PRICE_CACHE_TTL_SECONDS);
+        setMemoryCache(MARKET_WATCH_KEY, cached, psxLiveCacheTtlSeconds());
         return cached;
       }
     } catch {
       /* fall through */
+    }
+  }
+
+  if (!shouldRefreshPsxData()) {
+    const snapshots = await readLatestSnapshotRows();
+    if (snapshots.length) {
+      await cacheMarketRows(snapshots);
+      return snapshots;
     }
   }
 

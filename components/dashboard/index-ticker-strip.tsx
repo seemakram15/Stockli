@@ -19,24 +19,36 @@ export function IndexTickerStrip({
   const rows = items.filter((item) => Number.isFinite(item.current));
   if (!headline && rows.length === 0) return null;
 
-  const loop = [...rows, ...rows];
+  const mobileRows = headline ? [headline, ...rows] : rows;
+  const desktopRows = rows;
+  const mobileLoop = [...mobileRows, ...mobileRows];
+  const desktopLoop = [...desktopRows, ...desktopRows];
 
   return (
     <div className="flex overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       {headline && (
-        <div className="z-20 flex shrink-0 items-center border-r border-border bg-card px-3 py-2 sm:px-4">
+        <div className="z-20 hidden shrink-0 items-center border-r border-border bg-card px-3 py-2 sm:px-4 md:flex">
           <TickerItem item={headline} featured />
         </div>
       )}
       <div className="relative min-w-0 flex-1 overflow-hidden">
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-card to-transparent" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-card to-transparent" />
-        <div className="flex w-max gap-2 py-2 [animation:stockli-index-marquee_40s_linear_infinite] hover:[animation-play-state:paused]">
-          {loop.map((item, idx) => (
+        <div className="flex w-max gap-2 py-2 [animation:stockli-index-marquee_40s_linear_infinite] hover:[animation-play-state:paused] md:hidden">
+          {mobileLoop.map((item, idx) => (
             <TickerItem
-              key={`${item.symbol}-${idx}`}
+              key={`mobile-${item.symbol}-${idx}`}
               item={item}
-              ariaHidden={idx >= rows.length}
+              ariaHidden={idx >= mobileRows.length}
+            />
+          ))}
+        </div>
+        <div className="hidden w-max gap-2 py-2 [animation:stockli-index-marquee_40s_linear_infinite] hover:[animation-play-state:paused] md:flex">
+          {desktopLoop.map((item, idx) => (
+            <TickerItem
+              key={`desktop-${item.symbol}-${idx}`}
+              item={item}
+              ariaHidden={idx >= desktopRows.length}
             />
           ))}
         </div>

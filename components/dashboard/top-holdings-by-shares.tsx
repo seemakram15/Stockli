@@ -42,7 +42,8 @@ export function TopHoldingsByShares({ holdings }: { holdings: HoldingWithMetrics
         </div>
         <span className="text-xs text-muted-foreground">Top 8</span>
       </div>
-      <div className="rounded-xl border border-border bg-background/70 p-2">
+      <MobileHoldingsBars rows={rows} maxShares={maxShares} />
+      <div className="hidden rounded-xl border border-border bg-background/70 p-2 sm:block">
         <svg
           role="img"
           aria-label="Top holdings by share count candle chart"
@@ -157,6 +158,41 @@ export function TopHoldingsByShares({ holdings }: { holdings: HoldingWithMetrics
           </text>
         </svg>
       </div>
+    </div>
+  );
+}
+
+function MobileHoldingsBars({
+  rows,
+  maxShares,
+}: {
+  rows: { symbol: string; shares: number }[];
+  maxShares: number;
+}) {
+  return (
+    <div className="space-y-3 rounded-xl border border-border bg-background/70 p-3 sm:hidden">
+      {rows.map((row, index) => {
+        const width = `${Math.max(12, (row.shares / maxShares) * 100)}%`;
+        const color = COLORS[index % COLORS.length];
+        return (
+          <div key={row.symbol} className="space-y-1.5">
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <span className="font-semibold">{row.symbol}</span>
+              <span className="tabular-nums text-muted-foreground">
+                {formatNumber(row.shares, 0)} shares
+              </span>
+            </div>
+            <div className="h-9 overflow-hidden rounded-lg border border-border bg-muted/30">
+              <div
+                className="flex h-full min-w-12 items-center justify-end rounded-md pr-2 text-[11px] font-semibold text-white shadow-sm"
+                style={{ width, background: color }}
+              >
+                {formatNumber(row.shares, 0)}
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

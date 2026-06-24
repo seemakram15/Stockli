@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getQuotes } from "@/lib/services/prices";
-import { marketStatus } from "@/lib/psx/market-hours";
+import { marketStatus, psxLiveCacheTtlSeconds, shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import { normalizeSymbols } from "@/lib/security/validation";
 
 export const runtime = "nodejs";
@@ -23,12 +23,14 @@ export async function GET(request: Request) {
   try {
     const map = await getQuotes(symbols);
     const quotes = symbols.map((s) => map.get(s)).filter(Boolean);
+    const ttl = psxLiveCacheTtlSeconds();
     return NextResponse.json(
       { quotes, market: marketStatus() },
       {
         headers: {
-          // SWR already polls this endpoint; avoid CDN/browser stale quote copies.
-          "Cache-Control": "no-store, max-age=0",
+          "Cache-Control": shouldRefreshPsxData()
+            ? "no-store, max-age=0"
+            : `public, s-maxage=${ttl}, max-age=60, stale-while-revalidate=${ttl}`,
         },
       }
     );

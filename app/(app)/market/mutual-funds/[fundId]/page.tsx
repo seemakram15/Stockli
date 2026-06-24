@@ -46,7 +46,7 @@ export default async function MutualFundDetailPage({
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Metric label="NAV" value={formatNumber(fund.nav, 4)} />
         <Metric label="1 day" value={formatPercent(fund.d1)} tone={fund.d1} />
         <Metric label="MTD" value={formatPercent(fund.mtd)} tone={fund.mtd} />
@@ -58,7 +58,7 @@ export default async function MutualFundDetailPage({
           <CardHeader>
             <CardTitle>Returns</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <CardContent className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Return label="YTD" value={fund.ytd} />
             <Return label="15 days" value={fund.d15} />
             <Return label="30 days" value={fund.d30} />
@@ -168,9 +168,9 @@ function Metric({
 }) {
   return (
     <Card>
-      <CardContent className="p-4">
+      <CardContent className="min-w-0 p-3 sm:p-4">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={cn("mt-2 text-2xl font-bold tabular-nums", plColorClass(tone))}>
+        <p className={cn("mt-2 text-lg font-bold tabular-nums [overflow-wrap:anywhere] sm:text-2xl", plColorClass(tone))}>
           {value}
         </p>
       </CardContent>

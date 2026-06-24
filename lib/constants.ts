@@ -18,7 +18,7 @@ export const CURRENCY_SYMBOL = "Rs";
 
 /** PSX trading hours (Pakistan Standard Time, UTC+5, no DST). */
 export const PSX_TIMEZONE = "Asia/Karachi";
-export const PSX_MARKET_OPEN = { hour: 9, minute: 30 };
+export const PSX_MARKET_OPEN = { hour: 9, minute: 32 };
 export const PSX_MARKET_CLOSE = { hour: 15, minute: 30 };
 /** Mon–Fri trading; Sat/Sun closed. (0 = Sunday) */
 export const PSX_TRADING_DAYS = [1, 2, 3, 4, 5];

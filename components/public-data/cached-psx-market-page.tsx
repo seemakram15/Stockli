@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/page-header";
 import { MarketStatusBadge } from "@/components/status-badges";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { PublicMarketPageData } from "@/lib/services/public-market-page";
 
 export function CachedPsxMarketPage() {
@@ -21,6 +22,8 @@ export function CachedPsxMarketPage() {
       cacheKey: "public:psx-market",
       url: "/api/public/market",
       refreshInterval: 60_000,
+      pauseWhen: () => !shouldRefreshPsxData(),
+      acceptCacheWhen: () => !shouldRefreshPsxData(),
     });
 
   return (

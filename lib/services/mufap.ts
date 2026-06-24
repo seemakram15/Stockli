@@ -2,6 +2,7 @@ import "server-only";
 import { parse } from "node-html-parser";
 import { identifyAmcBrand, shortAmcName } from "@/lib/amc-brands";
 import { getStaleCached } from "@/lib/cache/stale";
+import { psxLiveCacheTtlSeconds, shouldRefreshPsxData } from "@/lib/psx/market-hours";
 
 const MUFAP_BASE = "https://www.mufap.com.pk";
 const INVESTMENT_AMOUNT = 100_000;
@@ -78,8 +79,8 @@ export async function getMufapFunds({
   try {
     const cached = await getStaleCached({
       key: `mufap:funds:${includeEtfs ? "etfs" : "mutual"}`,
-      ttlSeconds: MUFAP_TTL_SECONDS,
-      staleSeconds: MUFAP_STALE_SECONDS,
+      ttlSeconds: shouldRefreshPsxData() ? MUFAP_TTL_SECONDS : psxLiveCacheTtlSeconds(),
+      staleSeconds: Math.max(MUFAP_STALE_SECONDS, psxLiveCacheTtlSeconds()),
       load: () => loadMufapFunds({ includeEtfs }),
       isUsable: (data) => data.funds.length > 0,
     });
@@ -131,8 +132,8 @@ export async function getMufapFundById(fundId: string): Promise<MufapFund | null
   try {
     const { value: detail } = await getStaleCached({
       key: `mufap:detail:${fundId}`,
-      ttlSeconds: MUFAP_DETAIL_TTL_SECONDS,
-      staleSeconds: MUFAP_STALE_SECONDS,
+      ttlSeconds: shouldRefreshPsxData() ? MUFAP_DETAIL_TTL_SECONDS : psxLiveCacheTtlSeconds(),
+      staleSeconds: Math.max(MUFAP_STALE_SECONDS, psxLiveCacheTtlSeconds()),
       load: () => fetchMufapFundDetail(fundId),
     });
     return {

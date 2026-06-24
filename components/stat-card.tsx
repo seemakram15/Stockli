@@ -15,14 +15,14 @@ interface StatCardProps {
 
 export function StatCard({ label, value, sub, icon, tone = "default", className }: StatCardProps) {
   return (
-    <Card className={cn("gap-0 p-4 sm:p-5", className)}>
-      <div className="flex items-center justify-between">
+    <Card className={cn("min-w-0 gap-0 p-3 sm:p-5", className)}>
+      <div className="flex min-w-0 items-center justify-between gap-2">
         <p className="text-sm font-medium text-muted-foreground">{label}</p>
         {icon && <span className="text-muted-foreground">{icon}</span>}
       </div>
       <p
         className={cn(
-          "mt-2 text-lg font-semibold tracking-tight tabular-nums sm:text-2xl",
+          "mt-2 text-lg font-semibold tracking-tight tabular-nums [overflow-wrap:anywhere] sm:text-2xl",
           tone === "gain" && "text-gain",
           tone === "loss" && "text-loss"
         )}

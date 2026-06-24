@@ -96,7 +96,7 @@ export default function Home() {
       <Suspense fallback={null}>
         <UrlAuthDialog demo={isDemoMode} />
       </Suspense>
-      <section className="relative min-h-[92svh] overflow-hidden bg-[#06120f] text-white">
+      <section className="relative min-h-[96svh] overflow-hidden bg-[#06120f] text-white sm:min-h-[98svh]">
         <Image
           src="/landing/market-command-center.webp"
           alt=""
@@ -106,7 +106,7 @@ export default function Home() {
           className="object-cover object-center opacity-90"
         />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_26%_28%,rgba(14,165,132,0.28),transparent_28%),linear-gradient(90deg,rgba(3,9,8,0.96)_0%,rgba(3,9,8,0.82)_43%,rgba(3,9,8,0.38)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/70 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-background via-background/70 to-transparent" />
 
         <header className="relative z-20 mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-5 sm:px-6 lg:px-8">
           <Link href="/" aria-label={`${APP_NAME} home`}>
@@ -148,7 +148,7 @@ export default function Home() {
           </div>
         </header>
 
-        <div className="relative z-10 mx-auto flex min-h-[calc(92svh-5rem)] max-w-7xl flex-col justify-center px-4 pb-12 pt-8 sm:px-6 lg:px-8">
+        <div className="relative z-10 mx-auto flex min-h-[calc(96svh-5rem)] max-w-7xl flex-col justify-center px-4 pb-24 pt-8 sm:min-h-[calc(98svh-5rem)] sm:px-6 sm:pb-28 lg:px-8">
           <div className="max-w-4xl">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-emerald-50 backdrop-blur-md">
               <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_18px_rgba(110,231,183,0.9)]" />

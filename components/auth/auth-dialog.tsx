@@ -74,7 +74,7 @@ export function AuthDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="top-[calc(env(safe-area-inset-top)+5.5rem)] sm:top-[calc(env(safe-area-inset-top)+6.75rem)] sm:max-w-md lg:top-[7.25rem]">
         <AuthDialogPanel
           mode={mode}
           redirectTo={redirectTo}

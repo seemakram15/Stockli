@@ -92,7 +92,6 @@ function MarketDropdown({ active, pathname }: { active: boolean; pathname: strin
   function openMenu() {
     clearCloseTimer();
     setOpen(true);
-    setOpenGroup((current) => current ?? firstChildGroup());
   }
 
   function closeMenu() {
@@ -159,7 +158,7 @@ function MarketDropdown({ active, pathname }: { active: boolean; pathname: strin
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 pt-3" role="menu">
+        <div className="absolute left-0 top-full z-[120] pt-3" role="menu">
           <div className="w-80 rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-lg">
             <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Markets
@@ -169,7 +168,7 @@ function MarketDropdown({ active, pathname }: { active: boolean; pathname: strin
                 const ParentIcon = ICONS[item.icon];
                 if ("children" in item) {
                   const childActive = item.children.some(
-                    (child) => pathname === child.href || pathname.startsWith(child.href + "/")
+                    (child) => isMarketRouteActive(pathname, child.href)
                   );
                   const groupOpen = openGroup === item.label;
                   return (
@@ -182,7 +181,8 @@ function MarketDropdown({ active, pathname }: { active: boolean; pathname: strin
                         type="button"
                         className={cn(
                           "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground",
-                          (childActive || groupOpen) && "bg-accent text-accent-foreground"
+                          childActive && "text-foreground",
+                          groupOpen && "bg-muted/70 text-foreground"
                         )}
                       >
                         {ParentIcon ? <ParentIcon className="size-4 text-muted-foreground" /> : null}
@@ -190,7 +190,7 @@ function MarketDropdown({ active, pathname }: { active: boolean; pathname: strin
                         <ChevronDown className="-rotate-90 size-4 text-muted-foreground" />
                       </button>
                       {groupOpen && (
-                        <div className="absolute left-full top-0 z-50 pl-2">
+                        <div className="absolute left-full top-0 z-[130] pl-2">
                           <div className="w-72 rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-lg">
                             {item.children.map((child) => (
                               <DesktopMarketItem
@@ -198,7 +198,7 @@ function MarketDropdown({ active, pathname }: { active: boolean; pathname: strin
                                 href={child.href}
                                 label={child.label}
                                 icon={child.icon}
-                                active={pathname === child.href || pathname.startsWith(child.href + "/")}
+                                active={isMarketRouteActive(pathname, child.href)}
                                 onNavigate={closeMenu}
                               />
                             ))}
@@ -215,7 +215,7 @@ function MarketDropdown({ active, pathname }: { active: boolean; pathname: strin
                       href={item.href}
                       label={item.label}
                       icon={item.icon}
-                      active={pathname === item.href || pathname.startsWith(item.href + "/")}
+                      active={isMarketRouteActive(pathname, item.href)}
                       onNavigate={closeMenu}
                     />
                   </div>
@@ -229,8 +229,9 @@ function MarketDropdown({ active, pathname }: { active: boolean; pathname: strin
   );
 }
 
-function firstChildGroup() {
-  return MARKET_NAV_ITEMS.find((item) => "children" in item)?.label ?? null;
+function isMarketRouteActive(pathname: string, href: string) {
+  if (href === "/market") return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 function DesktopNavLink({
