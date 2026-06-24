@@ -31,6 +31,7 @@ export const NAV_ITEMS = [
   { href: "/portfolios", label: "Portfolios", icon: "Wallet" },
   { href: "/watchlist", label: "Watchlist", icon: "Star" },
   { href: "/market", label: "Market", icon: "TrendingUp" },
+  { href: "/youtubers", label: "Youtubers", icon: "PlaySquare" },
   { href: "/alerts", label: "Alerts", icon: "Bell" },
 ] as const;
 
