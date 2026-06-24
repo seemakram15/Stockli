@@ -14,6 +14,7 @@ import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { PLCalendar } from "@/components/charts/pl-calendar";
 import { PriceChart } from "@/components/charts/price-chart";
 import { SmartBackLink } from "@/components/smart-back-link";
+import { StockFinancialsPanel } from "@/components/stock/stock-financials-panel";
 import { WatchButton } from "@/components/watch-button";
 import { useLiveHoldings } from "@/lib/hooks/use-live-holdings";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
@@ -184,6 +185,8 @@ function StockPageView({
           )}
         </div>
       </div>
+
+      <StockFinancialsPanel symbol={symbol} companyName={ticker?.company_name} />
 
       <Card>
         <CardHeader className="flex-col items-start gap-2 sm:flex-row sm:justify-between">
