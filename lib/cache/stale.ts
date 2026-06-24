@@ -1,6 +1,6 @@
 import "server-only";
 import { getMemoryCache, setMemoryCache } from "@/lib/cache/memory";
-import { getRedis } from "@/lib/cache/redis";
+import { getRedisClients } from "@/lib/cache/redis";
 
 type CacheStatus = "fresh" | "stale" | "miss";
 
@@ -46,8 +46,7 @@ export async function getStaleCached<T>({
     }
   }
 
-  const redis = getRedis();
-  if (redis) {
+  for (const redis of getRedisClients()) {
     try {
       const cached = await redis.get<Envelope<T>>(key);
       if (cached && now < cached.staleUntil) {
@@ -86,14 +85,15 @@ async function refresh<T>(
   };
   setMemoryCache(key, envelope, staleSeconds);
 
-  const redis = getRedis();
-  if (redis) {
-    try {
-      await redis.set(key, envelope, { ex: staleSeconds });
-    } catch (error) {
-      console.warn(`[cache] Redis write failed for ${key}:`, error);
+  await Promise.allSettled(
+    getRedisClients().map((redis) => redis.set(key, envelope, { ex: staleSeconds }))
+  ).then((results) => {
+    for (const result of results) {
+      if (result.status === "rejected") {
+        console.warn(`[cache] Redis write failed for ${key}:`, result.reason);
+      }
     }
-  }
+  });
 
   return envelope;
 }

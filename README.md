@@ -79,9 +79,11 @@ Vercel, do **not** upload `.env.local`; add the same keys in
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | [Supabase dashboard](https://supabase.com/dashboard) → Project Settings → API |
 | `DATABASE_URL` | Supabase dashboard → Project Settings → Database → Connection string → URI |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | [Upstash console](https://console.upstash.com) → your Redis DB → REST |
+| `UPSTASH_REDIS_FALLBACK_REST_URL`, `UPSTASH_REDIS_FALLBACK_REST_TOKEN` | optional second Upstash DB for larger public caches |
 | `CRON_SECRET` | long random string, e.g. `openssl rand -base64 32` |
 | `NEXT_PUBLIC_SITE_URL` | your deployed URL (e.g. `https://stockli.vercel.app`) |
 | `PSX_DPS_BASE_URL` | default: `https://dps.psx.com.pk` |
+| `STOCK_FUNDAMENTALS_API_BASE_URL` | optional stock fundamentals API override |
 
 Any *real* value flips the app out of demo mode automatically (see
 [`lib/config.ts`](lib/config.ts)).

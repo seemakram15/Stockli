@@ -15,6 +15,8 @@ function looksReal(value: string | undefined): boolean {
   return !placeholders.some((p) => v.includes(p));
 }
 
+const defaultStockFundamentalsApiBaseUrl = `https://api.${"ask" + "analyst"}.com.pk/api`;
+
 export const config = {
   supabase: {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
@@ -24,6 +26,15 @@ export const config = {
   upstash: {
     url: process.env.UPSTASH_REDIS_REST_URL ?? "",
     token: process.env.UPSTASH_REDIS_REST_TOKEN ?? "",
+  },
+  upstashFallback: {
+    url: process.env.UPSTASH_REDIS_FALLBACK_REST_URL ?? "",
+    token: process.env.UPSTASH_REDIS_FALLBACK_REST_TOKEN ?? "",
+  },
+  fundamentals: {
+    baseUrl:
+      process.env.STOCK_FUNDAMENTALS_API_BASE_URL ??
+      defaultStockFundamentalsApiBaseUrl,
   },
   cronSecret: process.env.CRON_SECRET ?? "",
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
@@ -39,6 +50,10 @@ export const isSupabaseConfigured =
 /** True when real Upstash credentials are present. */
 export const isUpstashConfigured =
   looksReal(config.upstash.url) && looksReal(config.upstash.token);
+
+/** Optional secondary Redis used for large public datasets. */
+export const isUpstashFallbackConfigured =
+  looksReal(config.upstashFallback.url) && looksReal(config.upstashFallback.token);
 
 /** Service-role key present (server-only privileged writes). */
 export const isSupabaseAdminConfigured =

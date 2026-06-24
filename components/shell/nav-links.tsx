@@ -20,6 +20,7 @@ import {
   Globe2,
   Droplets,
   Bell,
+  FileText,
   ShieldCheck,
   Loader2,
   PlaySquare,
@@ -44,6 +45,7 @@ const ICONS: Record<string, LucideIcon> = {
   Target,
   TrendingUp,
   Bell,
+  FileText,
   ShieldCheck,
   PlaySquare,
 };
