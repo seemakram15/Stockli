@@ -10,6 +10,7 @@ import {
   Boxes,
   CandlestickChart,
   ChevronDown,
+  FileText,
   Droplets,
   Globe2,
   Landmark,
@@ -35,6 +36,7 @@ const ICONS: Record<string, LucideIcon> = {
   Boxes,
   CandlestickChart,
   Droplets,
+  FileText,
   Globe2,
   Landmark,
   Layers3,
@@ -51,15 +53,26 @@ const ICONS: Record<string, LucideIcon> = {
 export function DesktopNav({ showAdmin = false }: { showAdmin?: boolean }) {
   const pathname = usePathname() ?? "/";
   const marketActive = pathname === "/market" || pathname.startsWith("/market/");
-  const items = showAdmin
-    ? [...NAV_ITEMS, { href: "/admin", label: "Admin", icon: "ShieldCheck" } as const]
-    : NAV_ITEMS;
+  const analysisActive =
+    pathname.startsWith("/analysis") || pathname.startsWith("/youtubers") || pathname.startsWith("/admin");
+  const items = NAV_ITEMS.filter(
+    (item) => item.href !== "/analysis/fundamentals" && item.href !== "/youtubers"
+  );
 
   return (
     <nav className="hidden min-w-0 items-center gap-1 lg:flex">
       {items.map((item) => {
         if (item.href === "/market") {
-          return <MarketDropdown key={item.href} active={marketActive} pathname={pathname} />;
+          return (
+            <React.Fragment key={item.href}>
+              <MarketDropdown active={marketActive} pathname={pathname} />
+              <AnalysisDropdown
+                active={analysisActive}
+                pathname={pathname}
+                showAdmin={showAdmin}
+              />
+            </React.Fragment>
+          );
         }
 
         return (
@@ -73,6 +86,119 @@ export function DesktopNav({ showAdmin = false }: { showAdmin?: boolean }) {
         );
       })}
     </nav>
+  );
+}
+
+function AnalysisDropdown({
+  active,
+  pathname,
+  showAdmin,
+}: {
+  active: boolean;
+  pathname: string;
+  showAdmin: boolean;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const closeTimer = React.useRef<number | null>(null);
+  const links = React.useMemo(
+    () => [
+      {
+        href: "/analysis/fundamentals",
+        label: "Stock Fundamentals & comparisons",
+        icon: "FileText",
+      },
+      { href: "/youtubers", label: "Youtuber videos", icon: "PlaySquare" },
+      ...(showAdmin ? [{ href: "/admin", label: "Admin", icon: "ShieldCheck" }] : []),
+    ],
+    [showAdmin]
+  );
+
+  function clearCloseTimer() {
+    if (closeTimer.current != null) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }
+
+  function openMenu() {
+    clearCloseTimer();
+    setOpen(true);
+  }
+
+  function closeMenu() {
+    clearCloseTimer();
+    setOpen(false);
+  }
+
+  function scheduleClose() {
+    clearCloseTimer();
+    closeTimer.current = window.setTimeout(closeMenu, 90);
+  }
+
+  function handlePointerLeave(event: React.PointerEvent<HTMLDivElement>) {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && menuRef.current?.contains(nextTarget)) return;
+    scheduleClose();
+  }
+
+  function handleBlur(event: React.FocusEvent<HTMLDivElement>) {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) return;
+    closeMenu();
+  }
+
+  React.useEffect(() => clearCloseTimer, []);
+  React.useEffect(() => {
+    closeMenu();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  return (
+    <div
+      ref={menuRef}
+      className="relative"
+      onPointerEnter={openMenu}
+      onPointerLeave={handlePointerLeave}
+      onFocus={openMenu}
+      onBlur={handleBlur}
+    >
+      <button
+        type="button"
+        onClick={() => (open ? closeMenu() : openMenu())}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={cn(
+          "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+          active ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        )}
+      >
+        Analysis
+        <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full z-[120] pt-3" role="menu">
+          <div className="w-80 rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-lg">
+            <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Analysis
+            </p>
+            <div className="space-y-1">
+              {links.map((item) => (
+                <DesktopMarketItem
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  icon={item.icon}
+                  active={pathname === item.href || pathname.startsWith(item.href + "/")}
+                  onNavigate={closeMenu}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
