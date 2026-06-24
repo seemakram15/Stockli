@@ -1,12 +1,13 @@
 import "server-only";
 import { parse } from "node-html-parser";
 import { identifyAmcBrand, shortAmcName } from "@/lib/amc-brands";
-import { getOrSetMemoryCache } from "@/lib/cache/memory";
+import { getStaleCached } from "@/lib/cache/stale";
 
 const MUFAP_BASE = "https://www.mufap.com.pk";
 const INVESTMENT_AMOUNT = 100_000;
 const MUFAP_TTL_SECONDS = 15 * 60;
 const MUFAP_DETAIL_TTL_SECONDS = 60 * 60;
+const MUFAP_STALE_SECONDS = 24 * 60 * 60;
 
 export type FundClassFilter = "all" | "islamic" | "conventional" | "pension";
 
@@ -75,12 +76,14 @@ export async function getMufapFunds({
   includeEtfs?: boolean;
 } = {}): Promise<MufapFundsData> {
   try {
-    return await getOrSetMemoryCache(
-      `mufap:funds:${includeEtfs ? "etfs" : "mutual"}`,
-      MUFAP_TTL_SECONDS,
-      () => loadMufapFunds({ includeEtfs }),
-      (data) => data.funds.length > 0
-    );
+    const cached = await getStaleCached({
+      key: `mufap:funds:${includeEtfs ? "etfs" : "mutual"}`,
+      ttlSeconds: MUFAP_TTL_SECONDS,
+      staleSeconds: MUFAP_STALE_SECONDS,
+      load: () => loadMufapFunds({ includeEtfs }),
+      isUsable: (data) => data.funds.length > 0,
+    });
+    return cached.value;
   } catch (error) {
     console.warn("[mufap] source unavailable:", error);
     return emptyMufapFundsData(includeEtfs, error);
@@ -126,11 +129,12 @@ export async function getMufapFundById(fundId: string): Promise<MufapFund | null
   if (!fund) return null;
 
   try {
-    const detail = await getOrSetMemoryCache(
-      `mufap:detail:${fundId}`,
-      MUFAP_DETAIL_TTL_SECONDS,
-      () => fetchMufapFundDetail(fundId)
-    );
+    const { value: detail } = await getStaleCached({
+      key: `mufap:detail:${fundId}`,
+      ttlSeconds: MUFAP_DETAIL_TTL_SECONDS,
+      staleSeconds: MUFAP_STALE_SECONDS,
+      load: () => fetchMufapFundDetail(fundId),
+    });
     return {
       ...fund,
       ...detail,

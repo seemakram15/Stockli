@@ -1,4 +1,5 @@
 import "server-only";
+import { getStaleCached } from "@/lib/cache/stale";
 import { getIndexCards } from "@/lib/services/market";
 import { getMufapFunds, type MufapFund } from "@/lib/services/mufap";
 
@@ -36,6 +37,17 @@ export interface MarketStrategyData {
 }
 
 export async function getMarketStrategyData(): Promise<MarketStrategyData> {
+  const cached = await getStaleCached({
+    key: "market-strategy:stock-funds",
+    ttlSeconds: 5 * 60,
+    staleSeconds: 6 * 60 * 60,
+    load: loadMarketStrategyData,
+    isUsable: (data) => data.islamic.length + data.conventional.length > 0,
+  });
+  return cached.value;
+}
+
+async function loadMarketStrategyData(): Promise<MarketStrategyData> {
   const [fundsData, indexCards] = await Promise.all([
     getMufapFunds(),
     getIndexCards().catch(() => []),

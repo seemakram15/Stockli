@@ -6,6 +6,11 @@ import { isTradingDay, marketStatus } from "@/lib/psx/market-hours";
 import { getRedis } from "@/lib/cache/redis";
 import { psx } from "@/lib/psx/adapter";
 import { isAuthorizedCronRequest } from "@/lib/auth/cron";
+import { getGlobalMarketData, type MarketUniverse } from "@/lib/services/global-markets";
+import { getMarketStrategyData } from "@/lib/services/market-strategy";
+import { getMufapFunds } from "@/lib/services/mufap";
+import { getPublicMarketPageData } from "@/lib/services/public-market-page";
+import { getYoutubeVideos } from "@/lib/services/youtube";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,6 +42,7 @@ export async function GET(request: Request) {
   };
 
   if (!isSupabaseAdminConfigured) {
+    result.publicCaches = await warmPublicCaches();
     result.note = "Demo mode — cache warmed, no DB writes (add Supabase keys to persist).";
     return NextResponse.json(result);
   }
@@ -156,7 +162,27 @@ export async function GET(request: Request) {
     result.marketStatusError = String(err);
   }
 
+  result.publicCaches = await warmPublicCaches();
   return NextResponse.json(result);
+}
+
+async function warmPublicCaches() {
+  const globalMarkets: MarketUniverse[] = ["us", "india", "world", "commodities", "crypto", "oil"];
+  const jobs = [
+    ["psx-market", () => getPublicMarketPageData()],
+    ["mufap-mutual", () => getMufapFunds()],
+    ["mufap-etfs", () => getMufapFunds({ includeEtfs: true })],
+    ["market-strategy", () => getMarketStrategyData()],
+    ["youtubers", () => getYoutubeVideos()],
+    ...globalMarkets.map((market) => [`global-${market}`, () => getGlobalMarketData(market)] as const),
+  ] as const;
+
+  const results = await Promise.allSettled(jobs.map(([, run]) => run()));
+  return jobs.map(([name], index) => ({
+    name,
+    ok: results[index].status === "fulfilled",
+    error: results[index].status === "rejected" ? String(results[index].reason) : undefined,
+  }));
 }
 
 /** Format a number with grouping for notification text. */

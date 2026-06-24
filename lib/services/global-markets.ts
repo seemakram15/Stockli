@@ -1,5 +1,5 @@
 import "server-only";
-import { getOrSetMemoryCache } from "@/lib/cache/memory";
+import { getStaleCached } from "@/lib/cache/stale";
 
 export type MarketUniverse =
   | "us"
@@ -56,6 +56,7 @@ const COINGECKO_MARKETS =
   "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h";
 const COINGECKO_TRENDING = "https://api.coingecko.com/api/v3/search/trending";
 const GLOBAL_MARKET_TTL_SECONDS = 60;
+const GLOBAL_MARKET_STALE_SECONDS = 15 * 60;
 
 const UNIVERSES: Record<Exclude<MarketUniverse, "crypto">, { title: string; description: string; items: MarketInstrument[] }> = {
   us: {
@@ -164,11 +165,13 @@ export function getGlobalMarketMeta(universe: MarketUniverse) {
 }
 
 export async function getGlobalMarketData(universe: MarketUniverse): Promise<GlobalMarketData> {
-  return getOrSetMemoryCache(
-    `global-market:${universe}`,
-    GLOBAL_MARKET_TTL_SECONDS,
-    () => loadGlobalMarketData(universe)
-  );
+  const cached = await getStaleCached({
+    key: `global-market:${universe}`,
+    ttlSeconds: GLOBAL_MARKET_TTL_SECONDS,
+    staleSeconds: GLOBAL_MARKET_STALE_SECONDS,
+    load: () => loadGlobalMarketData(universe),
+  });
+  return cached.value;
 }
 
 async function loadGlobalMarketData(universe: MarketUniverse): Promise<GlobalMarketData> {

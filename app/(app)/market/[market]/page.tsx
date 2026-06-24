@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
-  getGlobalMarketData,
   getGlobalMarketMeta,
   type MarketUniverse,
 } from "@/lib/services/global-markets";
-import { PageHeader } from "@/components/page-header";
-import { GlobalMarketBoard } from "@/components/market/global-market-board";
-import { DataDelayBadge } from "@/components/status-badges";
-
-export const dynamic = "force-dynamic";
+import { CachedGlobalMarketPage } from "@/components/public-data/cached-global-market-page";
 
 const SUPPORTED = ["us", "india", "world", "commodities", "crypto", "oil"] as const;
 
@@ -30,19 +25,9 @@ export default async function GlobalMarketPage({
 }) {
   const { market } = await params;
   if (!isSupported(market)) notFound();
+  const meta = getGlobalMarketMeta(market);
 
-  const data = await getGlobalMarketData(market);
-
-  return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <PageHeader
-        title={data.title}
-        description={data.description}
-        actions={<DataDelayBadge />}
-      />
-      <GlobalMarketBoard data={data} showMap={market === "world"} />
-    </div>
-  );
+  return <CachedGlobalMarketPage market={market} title={meta.title} description={meta.description} />;
 }
 
 function isSupported(value: string): value is MarketUniverse {

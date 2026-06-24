@@ -1,8 +1,9 @@
 import "server-only";
-import { getOrSetMemoryCache } from "@/lib/cache/memory";
+import { getStaleCached } from "@/lib/cache/stale";
 
 const YOUTUBE_BASE = "https://www.youtube.com";
 const YOUTUBE_TTL_SECONDS = 10 * 60;
+const YOUTUBE_STALE_SECONDS = 6 * 60 * 60;
 
 export interface YoutubeChannelConfig {
   id: string;
@@ -112,7 +113,14 @@ export const YOUTUBE_CHANNELS: YoutubeChannelConfig[] = [
 ];
 
 export async function getYoutubeVideos(): Promise<YoutubeVideosData> {
-  return getOrSetMemoryCache("youtube:videos:selected", YOUTUBE_TTL_SECONDS, loadYoutubeVideos);
+  const cached = await getStaleCached({
+    key: "youtube:videos:selected",
+    ttlSeconds: YOUTUBE_TTL_SECONDS,
+    staleSeconds: YOUTUBE_STALE_SECONDS,
+    load: loadYoutubeVideos,
+    isUsable: (data) => data.videos.length > 0,
+  });
+  return cached.value;
 }
 
 async function loadYoutubeVideos(): Promise<YoutubeVideosData> {

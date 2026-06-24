@@ -1,73 +1,8 @@
 import type { Metadata } from "next";
-import {
-  getIndexCards,
-  getIndexDetail,
-  getMarketAnalytics,
-} from "@/lib/services/market";
-import { marketStatus } from "@/lib/psx/market-hours";
-import { PageHeader } from "@/components/page-header";
-import { IndicesPanel } from "@/components/market/indices-panel";
-import { MarketPerformers } from "@/components/market/market-performers";
-import { SectorPerformancePanel } from "@/components/market/sector-performance";
-import { ConstituentsTable } from "@/components/market/constituents-table";
-import { MarketAccordion } from "@/components/market/market-accordion";
-import { MarketStatusBadge } from "@/components/status-badges";
-import { EmptyState } from "@/components/empty-state";
-import { Card, CardContent } from "@/components/ui/card";
-import { TrendingUp } from "lucide-react";
+import { CachedPsxMarketPage } from "@/components/public-data/cached-psx-market-page";
 
 export const metadata: Metadata = { title: "Market" };
-export const dynamic = "force-dynamic";
 
-export default async function MarketPage() {
-  const [cards, detail, analytics] = await Promise.all([
-    getIndexCards(),
-    getIndexDetail("KSE100"),
-    getMarketAnalytics(),
-  ]);
-  const market = marketStatus();
-
-  return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <PageHeader
-        title="Pakistan Stock Exchange"
-        description="Live PSX indices, constituents, market performers and sector performance."
-        actions={<MarketStatusBadge status={market.status} label={market.label} />}
-      />
-
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold tracking-tight">Market Overview</h2>
-        {detail ? (
-          <IndicesPanel cards={cards} initialDetail={detail} />
-        ) : (
-          <EmptyState
-            icon={<TrendingUp className="size-6" />}
-            title="Index data unavailable"
-            description="The PSX feed is temporarily unreachable. Please try again shortly."
-          />
-        )}
-      </section>
-
-      <MarketAccordion title="Market Performers">
-        <MarketPerformers data={analytics.performers} showHeader={false} />
-      </MarketAccordion>
-
-      {detail && (
-        <MarketAccordion
-          title={`${detail.symbol} constituents (${detail.constituents.length})`}
-          meta="Sorted by index weight"
-        >
-          <Card>
-            <CardContent>
-              <ConstituentsTable constituents={detail.constituents} />
-            </CardContent>
-          </Card>
-        </MarketAccordion>
-      )}
-
-      <MarketAccordion title="Sector Performance">
-        <SectorPerformancePanel data={analytics.sectors} showHeader={false} />
-      </MarketAccordion>
-    </div>
-  );
+export default function MarketPage() {
+  return <CachedPsxMarketPage />;
 }
