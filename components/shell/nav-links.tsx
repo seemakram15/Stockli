@@ -22,6 +22,7 @@ import {
   Bell,
   ShieldCheck,
   Loader2,
+  PlaySquare,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,7 @@ const ICONS: Record<string, LucideIcon> = {
   TrendingUp,
   Bell,
   ShieldCheck,
+  PlaySquare,
 };
 
 /** Swaps the nav icon for a spinner while that link's navigation is pending. */
