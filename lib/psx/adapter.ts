@@ -55,8 +55,8 @@ const BROWSER_HEADERS: Record<string, string> = {
 /** Fetch with up to `attempts` exponential-backoff retries. */
 async function fetchWithRetry(
   url: string,
-  attempts = 3,
-  timeoutMs = 12_000
+  attempts = 2,
+  timeoutMs = 4_000
 ): Promise<Response> {
   let lastErr: unknown;
   for (let i = 0; i < attempts; i++) {
@@ -74,8 +74,9 @@ async function fetchWithRetry(
     } catch (err) {
       lastErr = err;
       if (i < attempts - 1) {
-        // 400ms, 800ms, 1600ms ...
-        await delay(400 * 2 ** i);
+        // Keep page loads responsive; stale cache/mock fallback is better
+        // than holding the UI for a slow upstream scrape.
+        await delay(300 * 2 ** i);
       }
     }
   }

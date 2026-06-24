@@ -1,9 +1,12 @@
 import "server-only";
 import { parse } from "node-html-parser";
 import { identifyAmcBrand, shortAmcName } from "@/lib/amc-brands";
+import { getOrSetMemoryCache } from "@/lib/cache/memory";
 
 const MUFAP_BASE = "https://www.mufap.com.pk";
 const INVESTMENT_AMOUNT = 100_000;
+const MUFAP_TTL_SECONDS = 15 * 60;
+const MUFAP_DETAIL_TTL_SECONDS = 60 * 60;
 
 export type FundClassFilter = "all" | "islamic" | "conventional" | "pension";
 
@@ -62,9 +65,29 @@ export interface MufapFundsData {
   updatedAt: string;
   sourceUrl: string;
   investmentAmount: number;
+  unavailable?: boolean;
+  errorMessage?: string;
 }
 
 export async function getMufapFunds({
+  includeEtfs = false,
+}: {
+  includeEtfs?: boolean;
+} = {}): Promise<MufapFundsData> {
+  try {
+    return await getOrSetMemoryCache(
+      `mufap:funds:${includeEtfs ? "etfs" : "mutual"}`,
+      MUFAP_TTL_SECONDS,
+      () => loadMufapFunds({ includeEtfs }),
+      (data) => data.funds.length > 0
+    );
+  } catch (error) {
+    console.warn("[mufap] source unavailable:", error);
+    return emptyMufapFundsData(includeEtfs, error);
+  }
+}
+
+async function loadMufapFunds({
   includeEtfs = false,
 }: {
   includeEtfs?: boolean;
@@ -103,7 +126,11 @@ export async function getMufapFundById(fundId: string): Promise<MufapFund | null
   if (!fund) return null;
 
   try {
-    const detail = await fetchMufapFundDetail(fundId);
+    const detail = await getOrSetMemoryCache(
+      `mufap:detail:${fundId}`,
+      MUFAP_DETAIL_TTL_SECONDS,
+      () => fetchMufapFundDetail(fundId)
+    );
     return {
       ...fund,
       ...detail,
@@ -122,7 +149,8 @@ async function fetchMufap(path: string) {
       "User-Agent":
         "Mozilla/5.0 (compatible; Stockli/1.0; +https://stock-portfolio-khaki.vercel.app)",
     },
-    cache: "no-store",
+    next: { revalidate: MUFAP_TTL_SECONDS },
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`MUFAP request failed: ${res.status}`);
   return res.text();
@@ -263,7 +291,7 @@ async function fetchMufapFundDetail(fundId: string): Promise<Partial<MufapFund>>
       FundID: fundId,
       Date: firstDayOfMonth(),
     }),
-    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`MUFAP detail request failed: ${res.status}`);
 
@@ -292,6 +320,23 @@ async function fetchMufapFundDetail(fundId: string): Promise<Partial<MufapFund>>
       ? "MUFAP has published holding weights for this period, but not readable stock names. Stockli is showing the official allocation data without guessing names."
       : null,
     detailDate: nullableUnknown(allocationRow.Date ?? summary.Date ?? summary.ReportDate),
+  };
+}
+
+function emptyMufapFundsData(includeEtfs: boolean, error: unknown): MufapFundsData {
+  const performancePath = `/Industry/IndustryStatDaily?tab=${includeEtfs ? "2" : "1"}`;
+  return {
+    funds: [],
+    amcs: [],
+    types: [],
+    updatedAt: new Date().toISOString(),
+    sourceUrl: `${MUFAP_BASE}${performancePath}`,
+    investmentAmount: INVESTMENT_AMOUNT,
+    unavailable: true,
+    errorMessage:
+      error instanceof Error && error.name === "TimeoutError"
+        ? "MUFAP is taking too long to respond. Please refresh in a moment."
+        : "MUFAP data is temporarily unavailable. Please refresh in a moment.",
   };
 }
 

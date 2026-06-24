@@ -1,6 +1,7 @@
 import "server-only";
 import { psx } from "@/lib/psx/adapter";
 import { getRedis } from "@/lib/cache/redis";
+import { getOrSetMemoryCache } from "@/lib/cache/memory";
 import type { Candle, IndexConstituent, IndexSummary, SeriesPoint } from "@/lib/types";
 
 /**
@@ -15,6 +16,15 @@ const INDEX_TTL = 3 * 60; // 3 minutes (live-ish index data)
 
 export async function getEodCandlesCached(symbol: string): Promise<Candle[]> {
   const sym = symbol.toUpperCase();
+  return getOrSetMemoryCache(
+    `psx:eod:${sym}`,
+    EOD_TTL,
+    () => loadEodCandles(sym),
+    (candles) => candles.length > 0
+  );
+}
+
+async function loadEodCandles(sym: string): Promise<Candle[]> {
   const redis = getRedis();
   const key = `psx:eod:${sym}`;
   if (redis) {
@@ -38,6 +48,15 @@ export async function getEodCandlesCached(symbol: string): Promise<Candle[]> {
 
 export async function getIntradayCached(symbol: string): Promise<SeriesPoint[]> {
   const sym = symbol.toUpperCase();
+  return getOrSetMemoryCache(
+    `psx:int:${sym}`,
+    INTRADAY_TTL,
+    () => loadIntraday(sym),
+    (points) => points.length > 0
+  );
+}
+
+async function loadIntraday(sym: string): Promise<SeriesPoint[]> {
   const redis = getRedis();
   const key = `psx:int:${sym}`;
   if (redis) {
@@ -61,6 +80,15 @@ export async function getIntradayCached(symbol: string): Promise<SeriesPoint[]> 
 
 /** Live index summaries (all indices), cached ~3 min. */
 export async function getIndexSummariesCached(): Promise<IndexSummary[]> {
+  return getOrSetMemoryCache(
+    "psx:indices",
+    INDEX_TTL,
+    loadIndexSummaries,
+    (rows) => rows.length > 0
+  );
+}
+
+async function loadIndexSummaries(): Promise<IndexSummary[]> {
   const redis = getRedis();
   const key = "psx:indices";
   if (redis) {
@@ -87,6 +115,15 @@ export async function getIndexConstituentsCached(
   symbol: string
 ): Promise<IndexConstituent[]> {
   const sym = symbol.toUpperCase();
+  return getOrSetMemoryCache(
+    `psx:cons:${sym}`,
+    INDEX_TTL,
+    () => loadIndexConstituents(sym),
+    (rows) => rows.length > 0
+  );
+}
+
+async function loadIndexConstituents(sym: string): Promise<IndexConstituent[]> {
   const redis = getRedis();
   const key = `psx:cons:${sym}`;
   if (redis) {

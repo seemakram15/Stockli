@@ -1,4 +1,5 @@
 import "server-only";
+import { getOrSetMemoryCache } from "@/lib/cache/memory";
 
 export type MarketUniverse =
   | "us"
@@ -54,6 +55,7 @@ const YAHOO_CHART_BASE = "https://query2.finance.yahoo.com/v8/finance/chart";
 const COINGECKO_MARKETS =
   "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h";
 const COINGECKO_TRENDING = "https://api.coingecko.com/api/v3/search/trending";
+const GLOBAL_MARKET_TTL_SECONDS = 60;
 
 const UNIVERSES: Record<Exclude<MarketUniverse, "crypto">, { title: string; description: string; items: MarketInstrument[] }> = {
   us: {
@@ -162,6 +164,14 @@ export function getGlobalMarketMeta(universe: MarketUniverse) {
 }
 
 export async function getGlobalMarketData(universe: MarketUniverse): Promise<GlobalMarketData> {
+  return getOrSetMemoryCache(
+    `global-market:${universe}`,
+    GLOBAL_MARKET_TTL_SECONDS,
+    () => loadGlobalMarketData(universe)
+  );
+}
+
+async function loadGlobalMarketData(universe: MarketUniverse): Promise<GlobalMarketData> {
   if (universe === "crypto") return getCryptoMarketData();
 
   const meta = UNIVERSES[universe];
@@ -239,6 +249,7 @@ async function fetchCoinGeckoMarketRows(url: string) {
   const res = await fetch(url, {
     headers: coinGeckoHeaders(),
     next: { revalidate: 60 },
+    signal: AbortSignal.timeout(6_000),
   });
   if (!res.ok) throw new Error(`CoinGecko request failed: ${res.status}`);
   return (await res.json()) as CoinGeckoMarketRow[];
@@ -248,6 +259,7 @@ async function fetchCoinGeckoTrending() {
   const res = await fetch(COINGECKO_TRENDING, {
     headers: coinGeckoHeaders(),
     next: { revalidate: 60 },
+    signal: AbortSignal.timeout(6_000),
   });
   if (!res.ok) return [];
   const json = (await res.json()) as {
@@ -288,6 +300,7 @@ async function fetchYahooQuote(item: MarketInstrument): Promise<GlobalMarketQuot
           "Mozilla/5.0 (compatible; Stockli/1.0; +https://stock-portfolio-khaki.vercel.app)",
       },
       next: { revalidate: 60 },
+      signal: AbortSignal.timeout(5_000),
     });
     if (!res.ok) throw new Error(`Yahoo request failed: ${res.status}`);
     const json = (await res.json()) as YahooChartResponse;

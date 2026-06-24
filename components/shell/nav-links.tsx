@@ -131,6 +131,7 @@ export function NavLinks({
           <Link
             key={item.href}
             href={item.href}
+            prefetch={false}
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
             className={cn(
@@ -272,6 +273,7 @@ function MarketNavLink({
   return (
     <Link
       href={href}
+      prefetch={false}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(

@@ -364,7 +364,9 @@ export function MufapFundsBoard({
           ))}
           {rows.length === 0 ? (
             <div className="flex h-28 items-center justify-center rounded-2xl border border-dashed border-border text-sm text-muted-foreground">
-              No funds match the current filters.
+              {data.unavailable
+                ? data.errorMessage ?? "MUFAP data is temporarily unavailable. Please refresh in a moment."
+                : "No funds match the current filters."}
             </div>
           ) : null}
         </CardContent>
