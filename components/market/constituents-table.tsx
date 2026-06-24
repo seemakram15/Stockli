@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { FilterPanel } from "@/components/ui/filter-panel";
 import { Input } from "@/components/ui/input";
 import { ChangeBadge } from "@/components/change-badge";
 import { formatPKR, formatCompact, formatNumber, plColorClass } from "@/lib/format";
@@ -60,16 +61,22 @@ export function ConstituentsTable({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter constituents…"
-            className="pl-9"
-          />
-        </div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <FilterPanel
+          title="Constituent filters"
+          summary={`${rows.length} of ${constituents.length}`}
+          className="w-full sm:max-w-xs"
+        >
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Filter constituents…"
+              className="pl-9"
+            />
+          </div>
+        </FilterPanel>
         <span className="shrink-0 text-xs text-muted-foreground">
           {rows.length} of {constituents.length}
         </span>

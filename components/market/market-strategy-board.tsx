@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowDownUp, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { FilterPanel } from "@/components/ui/filter-panel";
 import { AmcBrandMark } from "@/components/market/amc-brand-mark";
 import {
   Table,
@@ -84,6 +85,9 @@ export function MarketStrategyBoard({ data }: { data: MarketStrategyData }) {
       })
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [rows]);
+  const filterSummary = `${rows.length} fund${rows.length === 1 ? "" : "s"} · ${
+    classFilter === "all" ? "All classes" : classFilter
+  } · ${toneFilter === "all" ? "All returns" : toneFilter}`;
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -104,49 +108,54 @@ export function MarketStrategyBoard({ data }: { data: MarketStrategyData }) {
               Color rows by estimated return per {formatPKR(data.investmentAmount)}. Green is gain, red is loss.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {[
-              ["all", "All funds"],
-              ["islamic", "Islamic"],
-              ["conventional", "Conventional"],
-            ].map(([value, label]) => (
-              <Button
-                key={value}
-                type="button"
-                variant={classFilter === value ? "default" : "outline"}
-                size="sm"
-                onClick={() => setClassFilter(value as ClassFilter)}
-              >
-                {label}
-              </Button>
-            ))}
-            {[
-              ["all", "All returns"],
-              ["gain", "Gainers"],
-              ["loss", "Losses"],
-            ].map(([value, label]) => (
-              <Button
-                key={value}
-                type="button"
-                variant={toneFilter === value ? "secondary" : "outline"}
-                size="sm"
-                onClick={() => setToneFilter(value as ToneFilter)}
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
         </div>
 
-        <label className="relative mt-4 block max-w-2xl">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search fund, AMC, strategy..."
-            className="pl-9"
-          />
-        </label>
+        <FilterPanel title="Strategy filters" summary={filterSummary} className="mt-4">
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {[
+                ["all", "All funds"],
+                ["islamic", "Islamic"],
+                ["conventional", "Conventional"],
+              ].map(([value, label]) => (
+                <Button
+                  key={value}
+                  type="button"
+                  variant={classFilter === value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setClassFilter(value as ClassFilter)}
+                >
+                  {label}
+                </Button>
+              ))}
+              {[
+                ["all", "All returns"],
+                ["gain", "Gainers"],
+                ["loss", "Losses"],
+              ].map(([value, label]) => (
+                <Button
+                  key={value}
+                  type="button"
+                  variant={toneFilter === value ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setToneFilter(value as ToneFilter)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+
+            <label className="relative block max-w-2xl">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search fund, AMC, strategy..."
+                className="pl-9"
+              />
+            </label>
+          </div>
+        </FilterPanel>
       </div>
 
       <div className="space-y-4 p-3 sm:p-4">
