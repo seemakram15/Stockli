@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ArrowDownUp, ExternalLink, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FilterPanel } from "@/components/ui/filter-panel";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -78,15 +79,21 @@ export function GlobalIndexConstituentsTable({
           </a>
         </div>
 
-        <label className="relative max-w-xl">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search symbol, stock, sector..."
-            className="pl-9"
-          />
-        </label>
+        <FilterPanel
+          title="Stock filters"
+          summary={`${rows.length} of ${data.constituents.length}`}
+          className="max-w-xl"
+        >
+          <label className="relative block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search symbol, stock, sector..."
+              className="pl-9"
+            />
+          </label>
+        </FilterPanel>
       </CardHeader>
 
       <CardContent className="px-3 pb-4 sm:px-2">

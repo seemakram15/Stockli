@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowUpDown, Search } from "lucide-react";
 import { ChangeBadge } from "@/components/change-badge";
+import { FilterPanel } from "@/components/ui/filter-panel";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -50,15 +51,21 @@ export function SectorStocksTable({
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search stocks..."
-            className="pl-9"
-          />
-        </div>
+        <FilterPanel
+          title="Stock filters"
+          summary={`Showing ${rows.length} of ${stocks.length}`}
+          className="w-full sm:max-w-xs"
+        >
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search stocks..."
+              className="pl-9"
+            />
+          </div>
+        </FilterPanel>
         <p className="text-sm text-muted-foreground">
           Showing {rows.length} of {stocks.length}
         </p>

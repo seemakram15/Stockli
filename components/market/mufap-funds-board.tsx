@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FilterPanel } from "@/components/ui/filter-panel";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -122,6 +123,9 @@ export function MufapFundsBoard({
     const pricedCount = rows.filter((fund) => fund.nav != null).length;
     return { amcCount, classCount, pricedCount };
   }, [rows]);
+  const filterSummary = `${amc === "all" ? "All AMCs" : identifyAmcBrand(amc).shortName} · ${
+    rows.length
+  } fund${rows.length === 1 ? "" : "s"}`;
 
   const groups = React.useMemo(() => {
     const map = new Map<string, MufapFund[]>();
@@ -187,100 +191,102 @@ export function MufapFundsBoard({
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="grid gap-2 xl:grid-cols-[minmax(260px,1fr)_auto]">
-              <label className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search fund name..."
-                  className="pl-9"
-                />
-              </label>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setQuery("");
-                  setAmc("all");
-                  setFundClass(defaultFundClass);
-                  setStrategy(defaultStrategy);
-                }}
-              >
-                Clear filters
-              </Button>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-background p-4 shadow-sm">
-              <FilterGroup label="AMC">
-                <div className="grid max-h-56 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6">
-                  <FilterPill
-                    active={amc === "all"}
-                    onClick={() => setAmc("all")}
-                    label="All"
-                    count={data.funds.length}
+          <FilterPanel title="Fund filters" summary={filterSummary}>
+            <div className="space-y-4">
+              <div className="grid gap-2 xl:grid-cols-[minmax(260px,1fr)_auto]">
+                <label className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search fund name..."
+                    className="pl-9"
                   />
-                  {amcOptions.map((item) => (
-                    <FilterPill
-                      key={item.value}
-                      active={amc === item.value}
-                      onClick={() => setAmc(item.value)}
-                      label={item.brand.shortName}
-                      count={item.count}
-                      icon={
-                        <AmcBrandMark
-                          label={item.value}
-                          selected={amc === item.value}
-                          size="sm"
-                          logoUrl={item.logoUrl}
-                        />
-                      }
-                    />
-                  ))}
-                </div>
-              </FilterGroup>
+                </label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setQuery("");
+                    setAmc("all");
+                    setFundClass(defaultFundClass);
+                    setStrategy(defaultStrategy);
+                  }}
+                >
+                  Clear filters
+                </Button>
+              </div>
 
-              {!etfMode && (
-                <FilterGroup label="Fund class">
-                  <div className="flex flex-wrap gap-2">
-                    {CLASS_FILTERS.map((item) => (
+              <div className="rounded-2xl border border-border bg-background p-4 shadow-sm">
+                <FilterGroup label="AMC">
+                  <div className="grid max-h-56 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6">
+                    <FilterPill
+                      active={amc === "all"}
+                      onClick={() => setAmc("all")}
+                      label="All"
+                      count={data.funds.length}
+                    />
+                    {amcOptions.map((item) => (
                       <FilterPill
                         key={item.value}
-                        active={fundClass === item.value}
-                        onClick={() => setFundClass(item.value)}
-                        label={item.label}
+                        active={amc === item.value}
+                        onClick={() => setAmc(item.value)}
+                        label={item.brand.shortName}
+                        count={item.count}
+                        icon={
+                          <AmcBrandMark
+                            label={item.value}
+                            selected={amc === item.value}
+                            size="sm"
+                            logoUrl={item.logoUrl}
+                          />
+                        }
                       />
                     ))}
                   </div>
                 </FilterGroup>
-              )}
 
-              <FilterGroup label="Type" isLast>
-                <div className="flex flex-wrap gap-2">
-                  {STRATEGY_FILTERS.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <FilterPill
-                        key={item.value}
-                        active={strategy === item.value}
-                        onClick={() => setStrategy(item.value)}
-                        label={item.label}
-                        icon={
-                          <Icon
-                            className={cn(
-                              "size-4",
-                              strategy === item.value ? "text-primary-foreground" : "text-muted-foreground"
-                            )}
-                          />
-                        }
-                      />
-                    );
-                  })}
-                </div>
-              </FilterGroup>
+                {!etfMode && (
+                  <FilterGroup label="Fund class">
+                    <div className="flex flex-wrap gap-2">
+                      {CLASS_FILTERS.map((item) => (
+                        <FilterPill
+                          key={item.value}
+                          active={fundClass === item.value}
+                          onClick={() => setFundClass(item.value)}
+                          label={item.label}
+                        />
+                      ))}
+                    </div>
+                  </FilterGroup>
+                )}
+
+                <FilterGroup label="Type" isLast>
+                  <div className="flex flex-wrap gap-2">
+                    {STRATEGY_FILTERS.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <FilterPill
+                          key={item.value}
+                          active={strategy === item.value}
+                          onClick={() => setStrategy(item.value)}
+                          label={item.label}
+                          icon={
+                            <Icon
+                              className={cn(
+                                "size-4",
+                                strategy === item.value ? "text-primary-foreground" : "text-muted-foreground"
+                              )}
+                            />
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                </FilterGroup>
+              </div>
             </div>
-          </div>
+          </FilterPanel>
         </CardHeader>
 
         <CardContent className="space-y-4 p-3 sm:p-4">

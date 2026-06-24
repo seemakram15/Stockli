@@ -4,6 +4,7 @@ import * as React from "react";
 import { ArrowDownUp, Globe2, Search } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FilterPanel } from "@/components/ui/filter-panel";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -71,6 +72,9 @@ export function GlobalMarketBoard({
       })
       .sort((a, b) => compareQuotes(a, b, sortKey, sortDir));
   }, [data.quotes, query, region, sortDir, sortKey, type]);
+  const filterSummary = `${rows.length} market${rows.length === 1 ? "" : "s"} · ${
+    type === "all" ? "All types" : type
+  }`;
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -115,43 +119,45 @@ export function GlobalMarketBoard({
             </a>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-3">
-            <label className="relative sm:col-span-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search symbol, country..."
-                className="pl-9"
-              />
-            </label>
-            <Select value={type} onValueChange={setType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                {types.map((item) => (
-                  <SelectItem key={item} value={item}>
-                    {item}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={region} onValueChange={setRegion}>
-              <SelectTrigger>
-                <SelectValue placeholder="Region" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All regions</SelectItem>
-                {regions.map((item) => (
-                  <SelectItem key={item} value={item}>
-                    {item}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <FilterPanel title="Market filters" summary={filterSummary}>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <label className="relative sm:col-span-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search symbol, country..."
+                  className="pl-9"
+                />
+              </label>
+              <Select value={type} onValueChange={setType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  {types.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={region} onValueChange={setRegion}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Region" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All regions</SelectItem>
+                  {regions.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </FilterPanel>
         </CardHeader>
         <CardContent className="px-3 pb-4 sm:px-2">
           <div className="space-y-3 sm:hidden">

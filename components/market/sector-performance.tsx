@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowRight, Search, TrendingDown, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FilterPanel } from "@/components/ui/filter-panel";
 import { Input } from "@/components/ui/input";
 import { formatCompact, formatPercent, plColorClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -41,15 +42,21 @@ export function SectorPerformancePanel({
               Search sectors and open one to inspect every stock in that group.
             </p>
           )}
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search sectors..."
-              className="pl-9"
-            />
-          </div>
+          <FilterPanel
+            title="Sector filters"
+            summary={`${filtered.length} sector${filtered.length === 1 ? "" : "s"}`}
+            className="w-full sm:max-w-xs"
+          >
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search sectors..."
+                className="pl-9"
+              />
+            </div>
+          </FilterPanel>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { FilterPanel } from "@/components/ui/filter-panel";
 import {
   Dialog,
   DialogContent,
@@ -38,55 +39,66 @@ export function YoutubeVideosBoard({ data }: { data: YoutubeVideosData }) {
       return matchesChannel && matchesQuery;
     });
   }, [channelId, data.videos, query]);
+  const selectedChannelName =
+    channelId === "all"
+      ? "All channels"
+      : data.channels.find((feed) => feed.channel.id === channelId)?.channel.name ?? "Channel";
+  const filterSummary = `${selectedChannelName} · ${filteredVideos.length} video${
+    filteredVideos.length === 1 ? "" : "s"
+  }`;
 
   return (
     <div className="space-y-5">
       <Card className="overflow-hidden">
         <CardContent className="space-y-4 p-4 sm:p-5">
-          <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_auto] lg:items-center">
-            <label className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search videos or channels..."
-                className="h-11 pl-9"
-              />
-            </label>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setChannelId("all");
-                setQuery("");
-              }}
-            >
-              Clear filters
-            </Button>
-          </div>
+          <FilterPanel title="Video filters" summary={filterSummary}>
+            <div className="space-y-4">
+              <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_auto] lg:items-center">
+                <label className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search videos or channels..."
+                    className="h-11 pl-9"
+                  />
+                </label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setChannelId("all");
+                    setQuery("");
+                  }}
+                >
+                  Clear filters
+                </Button>
+              </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <ChannelPill
-              active={channelId === "all"}
-              onClick={() => setChannelId("all")}
-              name="All channels"
-              handle={`${data.videos.length} latest videos`}
-              subscriberCount={`${data.channels.length} channels`}
-              avatarUrl={null}
-            />
-            {data.channels.map((feed) => (
-              <ChannelPill
-                key={feed.channel.id}
-                active={channelId === feed.channel.id}
-                onClick={() => setChannelId(feed.channel.id)}
-                name={feed.channel.name}
-                handle={feed.channel.displayHandle}
-                subscriberCount={`${feed.subscriberCount} subscribers`}
-                avatarUrl={feed.avatarUrl}
-                muted={feed.unavailable}
-              />
-            ))}
-          </div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                <ChannelPill
+                  active={channelId === "all"}
+                  onClick={() => setChannelId("all")}
+                  name="All channels"
+                  handle={`${data.videos.length} latest videos`}
+                  subscriberCount={`${data.channels.length} channels`}
+                  avatarUrl={null}
+                />
+                {data.channels.map((feed) => (
+                  <ChannelPill
+                    key={feed.channel.id}
+                    active={channelId === feed.channel.id}
+                    onClick={() => setChannelId(feed.channel.id)}
+                    name={feed.channel.name}
+                    handle={feed.channel.displayHandle}
+                    subscriberCount={`${feed.subscriberCount} subscribers`}
+                    avatarUrl={feed.avatarUrl}
+                    muted={feed.unavailable}
+                  />
+                ))}
+              </div>
+            </div>
+          </FilterPanel>
 
           {data.unavailableCount > 0 ? (
             <p className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
