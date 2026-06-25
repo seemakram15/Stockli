@@ -32,12 +32,14 @@ export function usePersistentResource<T>({
   refreshInterval = 60_000,
   pauseWhen,
   acceptCacheWhen,
+  keepPreviousData = true,
 }: {
   cacheKey: string;
   url: string;
   refreshInterval?: number | ((data: T | null) => number);
   pauseWhen?: (data: T | null) => boolean;
   acceptCacheWhen?: (record: CachedRecord<T>) => boolean;
+  keepPreviousData?: boolean;
 }) {
   const [cached, setCached] = React.useState<CachedRecord<T> | null>(null);
   const [cacheReady, setCacheReady] = React.useState(false);
@@ -46,6 +48,8 @@ export function usePersistentResource<T>({
 
   React.useEffect(() => {
     let cancelled = false;
+    setCached(null);
+    setCacheReady(false);
     readCached<T>(cacheKey)
       .then((record) => {
         if (!cancelled) setCached(record);
@@ -64,15 +68,17 @@ export function usePersistentResource<T>({
     return () => window.clearInterval(id);
   }, [hasPauseRule]);
 
-  const usableCached = cached && (!acceptCacheWhen || acceptCacheWhen(cached)) ? cached : null;
+  const activeCached = cached?.key === cacheKey ? cached : null;
+  const usableCached =
+    activeCached && (!acceptCacheWhen || acceptCacheWhen(activeCached)) ? activeCached : null;
   const cachedValue = usableCached?.value ?? null;
-  const rawCachedValue = cached?.value ?? null;
+  const rawCachedValue = activeCached?.value ?? null;
   const isPaused = Boolean(cacheReady && rawCachedValue && pauseWhen?.(rawCachedValue));
   const swrKey = cacheReady && !isPaused ? url : null;
 
   const swr = useSWR<T>(swrKey, fetchResource, {
     dedupingInterval: 15_000,
-    keepPreviousData: true,
+    keepPreviousData,
     revalidateOnFocus: !isPaused,
     revalidateOnReconnect: !isPaused,
     refreshInterval: (latest) => {
@@ -111,7 +117,7 @@ export function usePersistentResource<T>({
     isRefreshing: Boolean(data && swr.isValidating),
     isFromDeviceCache: Boolean(!swr.data && usableCached?.value),
     cachedAt: usableCached?.savedAt ?? null,
-    lastCachedAt: cached?.savedAt ?? null,
+    lastCachedAt: activeCached?.savedAt ?? null,
     mutate: swr.mutate,
     refreshNow,
   };

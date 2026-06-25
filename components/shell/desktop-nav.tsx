@@ -53,66 +53,97 @@ const ICONS: Record<string, LucideIcon> = {
 export function DesktopNav({ showAdmin = false }: { showAdmin?: boolean }) {
   const pathname = usePathname() ?? "/";
   const marketActive = pathname === "/market" || pathname.startsWith("/market/");
-  const analysisActive =
-    pathname.startsWith("/analysis") || pathname.startsWith("/youtubers") || pathname.startsWith("/admin");
-  const items = NAV_ITEMS.filter(
-    (item) => item.href !== "/analysis/fundamentals" && item.href !== "/youtubers"
-  );
-
-  return (
-    <nav className="hidden min-w-0 items-center gap-1 lg:flex">
-      {items.map((item) => {
-        if (item.href === "/market") {
-          return (
-            <React.Fragment key={item.href}>
-              <MarketDropdown active={marketActive} pathname={pathname} />
-              <AnalysisDropdown
-                active={analysisActive}
-                pathname={pathname}
-                showAdmin={showAdmin}
-              />
-            </React.Fragment>
-          );
-        }
-
-        return (
-          <DesktopNavLink
-            key={item.href}
-            href={item.href}
-            label={item.label}
-            icon={item.icon}
-            active={pathname === item.href || pathname.startsWith(item.href + "/")}
-          />
-        );
-      })}
-    </nav>
-  );
-}
-
-function AnalysisDropdown({
-  active,
-  pathname,
-  showAdmin,
-}: {
-  active: boolean;
-  pathname: string;
-  showAdmin: boolean;
-}) {
-  const [open, setOpen] = React.useState(false);
-  const menuRef = React.useRef<HTMLDivElement>(null);
-  const closeTimer = React.useRef<number | null>(null);
-  const links = React.useMemo(
+  const toolsActive = pathname.startsWith("/analysis");
+  const exploreActive = pathname.startsWith("/youtubers") || pathname.startsWith("/admin");
+  const dashboardItem = NAV_ITEMS.find((item) => item.href === "/dashboard")!;
+  const portfoliosItem = NAV_ITEMS.find((item) => item.href === "/portfolios")!;
+  const watchlistItem = NAV_ITEMS.find((item) => item.href === "/watchlist")!;
+  const alertsItem = NAV_ITEMS.find((item) => item.href === "/alerts")!;
+  const toolsLinks = React.useMemo<DropdownLink[]>(
     () => [
       {
         href: "/analysis/fundamentals",
-        label: "Stock Fundamentals & comparisons",
+        label: "Fundamentals & comparison",
         icon: "FileText",
       },
+    ],
+    []
+  );
+  const exploreLinks = React.useMemo<DropdownLink[]>(
+    () => [
       { href: "/youtubers", label: "Youtuber videos", icon: "PlaySquare" },
       ...(showAdmin ? [{ href: "/admin", label: "Admin", icon: "ShieldCheck" }] : []),
     ],
     [showAdmin]
   );
+
+  return (
+    <nav className="hidden min-w-0 items-center gap-1 lg:flex">
+      <DesktopNavLink
+        href={dashboardItem.href}
+        label={dashboardItem.label}
+        icon={dashboardItem.icon}
+        active={pathname === dashboardItem.href || pathname.startsWith(dashboardItem.href + "/")}
+      />
+      <DesktopNavLink
+        href={portfoliosItem.href}
+        label={portfoliosItem.label}
+        icon={portfoliosItem.icon}
+        active={pathname === portfoliosItem.href || pathname.startsWith(portfoliosItem.href + "/")}
+      />
+      <MarketDropdown active={marketActive} pathname={pathname} />
+      <NavDropdown
+        label="Tools"
+        sectionLabel="Tools"
+        active={toolsActive}
+        pathname={pathname}
+        links={toolsLinks}
+      />
+      <NavDropdown
+        label="Explore"
+        sectionLabel="Explore"
+        active={exploreActive}
+        pathname={pathname}
+        links={exploreLinks}
+      />
+      <DesktopNavLink
+        href={watchlistItem.href}
+        label={watchlistItem.label}
+        icon={watchlistItem.icon}
+        active={pathname === watchlistItem.href || pathname.startsWith(watchlistItem.href + "/")}
+      />
+      <DesktopNavLink
+        href={alertsItem.href}
+        label={alertsItem.label}
+        icon={alertsItem.icon}
+        active={pathname === alertsItem.href || pathname.startsWith(alertsItem.href + "/")}
+      />
+    </nav>
+  );
+}
+
+type DropdownLink = {
+  href: string;
+  label: string;
+  icon: string;
+};
+
+function NavDropdown({
+  label,
+  sectionLabel,
+  active,
+  pathname,
+  links,
+}: {
+  label: string;
+  sectionLabel: string;
+  active: boolean;
+  pathname: string;
+  links: DropdownLink[];
+}) {
+  const [open, setOpen] = React.useState(false);
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const closeTimer = React.useRef<number | null>(null);
 
   function clearCloseTimer() {
     if (closeTimer.current != null) {
@@ -173,7 +204,7 @@ function AnalysisDropdown({
           active ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
       >
-        Analysis
+        {label}
         <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} />
       </button>
 
@@ -181,7 +212,7 @@ function AnalysisDropdown({
         <div className="absolute left-0 top-full z-[120] pt-3" role="menu">
           <div className="w-80 rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-lg">
             <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Analysis
+              {sectionLabel}
             </p>
             <div className="space-y-1">
               {links.map((item) => (

@@ -36,7 +36,7 @@ const SEARCH_LIMIT = 48;
 
 const PAGE_RESULTS = [
   pageResult("page:psx", "Pakistan Stock Market", "Stocks, sectors, performers and PSX indexes", "/market"),
-  pageResult("page:strategy", "Market Strategy", "Estimated stock fund returns by AMC", "/market/strategy"),
+  pageResult("page:strategy", "Funds Daily Returns Report", "Estimated daily stock fund returns by AMC", "/market/strategy"),
   pageResult("page:mutual-funds", "Mutual Funds", "MUFAP funds, AMCs, NAVs and returns", "/market/mutual-funds"),
   pageResult("page:etfs", "Exchange Traded Funds", "ETF profiles, holdings and performance", "/market/etfs"),
   pageResult("page:us", "USA S&P 500", "US market indexes and large-cap stocks", "/market/us"),

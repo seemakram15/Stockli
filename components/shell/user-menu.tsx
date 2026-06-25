@@ -43,7 +43,7 @@ export function UserMenu({
           </span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" sideOffset={12} className="z-[150] w-64">
         <DropdownMenuLabel className="flex flex-col gap-0.5">
           <span className="truncate">{displayName ?? "Account"}</span>
           {email && (

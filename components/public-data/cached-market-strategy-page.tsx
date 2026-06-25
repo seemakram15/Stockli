@@ -31,7 +31,7 @@ export function CachedMarketStrategyPage() {
         title={
           <span className="flex items-center gap-2">
             <Target className="size-7 text-primary" />
-            Market Strategy
+            Funds Daily Returns Report
           </span>
         }
         description={
@@ -95,14 +95,14 @@ export function CachedMarketStrategyPage() {
           <MarketStrategyBoard data={data} />
         </>
       ) : isLoading ? (
-        <PageLoadingState message="Loading market strategy..." />
+        <PageLoadingState message="Loading funds daily returns report..." />
       ) : (
         <EmptyState
           icon={<Target className="size-6" />}
-          title="Market strategy unavailable"
+          title="Funds daily returns report unavailable"
           description={
             error?.message ??
-            "The saved cache is empty and fresh strategy data could not be loaded. Please try again shortly."
+            "The saved cache is empty and fresh fund return data could not be loaded. Please try again shortly."
           }
         />
       )}

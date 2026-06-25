@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { formatPKR, formatPercent } from "@/lib/format";
 import { usePrices } from "@/lib/hooks/use-prices";
 import { PSX_TIMEZONE } from "@/lib/constants";
+import { hasPsxTradingStartedToday } from "@/lib/psx/market-hours";
 import { effectiveQuotePrice } from "@/lib/services/metrics";
 import type { Quote } from "@/lib/types";
 import type { CalendarDay } from "@/lib/services/daily-pl";
@@ -193,10 +194,19 @@ function useLiveCalendarData(
     [active]
   );
   const { quotes } = usePrices(symbols, initial);
+  const [now, setNow] = React.useState(() => new Date());
+  const tradingStartedToday = hasPsxTradingStartedToday(now);
+
+  React.useEffect(() => {
+    if (!hasPosition || active.length === 0) return undefined;
+    const id = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(id);
+  }, [active.length, hasPosition]);
 
   return React.useMemo(() => {
     const empty = { liveData: data, positionSummary: null };
     if (!hasPosition || active.length === 0) return empty;
+    if (!tradingStartedToday) return empty;
 
     let dayPL = 0;
     let close = 0;
@@ -239,7 +249,7 @@ function useLiveCalendarData(
         totalPositions: found,
       },
     };
-  }, [active, data, hasPosition, quotes]);
+  }, [active, data, hasPosition, quotes, tradingStartedToday]);
 }
 
 function DayCell({

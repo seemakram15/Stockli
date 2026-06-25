@@ -20,6 +20,7 @@ import { useLiveHoldings } from "@/lib/hooks/use-live-holdings";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import { formatCompact, formatDate, formatPercent, formatPKR, plColorClass } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { StockPageData, StockPositionSummary } from "@/lib/services/stock-page";
 import type { HoldingWithMetrics } from "@/lib/types";
 
@@ -96,18 +97,30 @@ function StockPageView({
           ) : null}
         </div>
         <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
-          <MarketStatusBadge status={data.market.status} label={data.market.label} />
+          <MarketStatusBadge
+            status={data.market.status}
+            label={data.market.label}
+            className="w-full justify-center sm:w-auto sm:justify-start"
+          />
           <CacheStatusBadge
             updatedAt={data.updatedAt}
             cachedAt={cachedAt}
             isFromDeviceCache={isFromDeviceCache}
             isRefreshing={isRefreshing}
+            className="hidden sm:inline-flex"
           />
-          <WatchButton symbol={symbol} initialWatching={watchedSymbols.includes(symbol)} />
-          <CreateAlertDialog defaultSymbol={symbol} />
-          {portfolios.length > 0 && (
-            <AddTradeDialog portfolioId={portfolios[0].id} defaultSymbol={symbol} />
-          )}
+          <div
+            className={cn(
+              "grid gap-2 sm:contents [&_button]:min-w-0 [&_button]:w-full [&_form]:min-w-0 sm:[&_button]:w-auto",
+              portfolios.length > 0 ? "grid-cols-3" : "grid-cols-2"
+            )}
+          >
+            <WatchButton symbol={symbol} initialWatching={watchedSymbols.includes(symbol)} />
+            <CreateAlertDialog defaultSymbol={symbol} />
+            {portfolios.length > 0 && (
+              <AddTradeDialog portfolioId={portfolios[0].id} defaultSymbol={symbol} />
+            )}
+          </div>
         </div>
       </div>
 

@@ -27,7 +27,7 @@ const INITIAL_STEPS: RefreshStep[] = [
   { id: "backend", label: "Updating PSX prices and snapshots", state: "pending" },
   { id: "dashboard", label: "Updating dashboard and portfolios", state: "pending" },
   { id: "market", label: "Updating market pages", state: "pending" },
-  { id: "funds", label: "Updating funds and strategy", state: "pending" },
+  { id: "funds", label: "Updating funds and daily returns report", state: "pending" },
   { id: "global", label: "Updating global markets, crypto and oil", state: "pending" },
   { id: "finish", label: "Saving fresh device cache", state: "pending" },
 ];
@@ -127,7 +127,7 @@ export function ManualDataRefreshButton({
         failures.push(...(await refreshCacheJobs(MARKET_CACHE_JOBS)));
       });
 
-      await runStep("funds", "Refreshing funds and strategy", async () => {
+      await runStep("funds", "Refreshing funds and daily returns report", async () => {
         failures.push(...(await refreshCacheJobs(FUND_CACHE_JOBS)));
       });
 

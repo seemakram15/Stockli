@@ -156,6 +156,18 @@ export function isMarketOpen(date: Date = new Date()): boolean {
   );
 }
 
+/**
+ * True after the first regular open session has started for this Pakistan-local
+ * date. Holidays, weekends, and pre-open periods return false, so calendar
+ * overlays do not show a "today" P/L before any trading has actually happened.
+ */
+export function hasPsxTradingStartedToday(date: Date = new Date()): boolean {
+  const parts = pktParts(date);
+  const mins = parts.hour * 60 + parts.minute;
+  const firstOpen = tradingSessionsForDate(parts).find((session) => session.kind === "open");
+  return Boolean(firstOpen && mins >= firstOpen.start);
+}
+
 /** True during pre-open or regular open; this is when PSX caches may refresh. */
 export function shouldRefreshPsxData(date: Date = new Date()): boolean {
   const parts = pktParts(date);
@@ -239,4 +251,3 @@ export function psxLiveCacheTtlSeconds(date: Date = new Date()): number {
 export function psxClosedMaxStaleSeconds(): number {
   return CLOSED_MAX_STALE_SECONDS;
 }
-

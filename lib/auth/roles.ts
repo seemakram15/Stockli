@@ -19,7 +19,7 @@ export async function getSessionContext(): Promise<SessionContext> {
   if (isDemoMode) {
     return {
       user: { id: DEMO_USER.id, email: DEMO_USER.email, displayName: DEMO_USER.displayName },
-      role: "superadmin",
+      role: "user",
     };
   }
   const supabase = await createClient();
@@ -47,11 +47,10 @@ export async function getSessionContext(): Promise<SessionContext> {
  * the client). A user can read only their OWN profile row under RLS, so this
  * cannot be used to probe other users.
  *
- * In DEMO MODE there is no real auth, so the demo user is treated as a
- * superadmin purely so the admin UI is previewable.
+ * In DEMO MODE there is no real auth, so admin capabilities stay disabled.
  */
 export async function getCurrentRole(): Promise<Role> {
-  if (isDemoMode) return "superadmin";
+  if (isDemoMode) return "user";
   const supabase = await createClient();
   const {
     data: { user },

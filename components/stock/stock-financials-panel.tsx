@@ -1,15 +1,16 @@
 "use client";
 
-import Image from "next/image";
 import * as React from "react";
 import {
   BarChart3,
   ChartColumn,
+  ChevronDown,
+  ChevronsUpDown,
   Database,
-  FileText,
   LineChart as LineChartIcon,
   Loader2,
   RefreshCw,
+  TableProperties,
   UsersRound,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/empty-state";
+import { StockLogo } from "@/components/stock/stock-logo";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import { cn } from "@/lib/utils";
 import type {
@@ -59,25 +61,39 @@ export function StockFinancialsPanel({
   companyName?: string | null;
 }) {
   const normalizedSymbol = symbol.toUpperCase();
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
+  const { data, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<StockFinancialsData>({
       cacheKey: `public:stock-financials:v4:${normalizedSymbol}`,
       url: `/api/public/stock-financials/${encodeURIComponent(normalizedSymbol)}`,
       refreshInterval: 60 * 60 * 1000,
+      keepPreviousData: false,
     });
 
   return (
-    <Card className="bg-background shadow-sm">
-      <CardHeader className="gap-3 border-b px-4 py-4 sm:px-5">
+    <Card className="overflow-hidden border-primary/20 bg-background shadow-sm">
+      <CardHeader className="gap-3 border-b bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-4 py-5 sm:px-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <CardTitle>Financial fundamentals</CardTitle>
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+              <TableProperties className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle className="text-xl font-bold tracking-tight sm:text-2xl">
+                  Financial fundamentals
+                </CardTitle>
+                <Badge variant="secondary" className="rounded-full">
+                  {normalizedSymbol}
+                </Badge>
+              </div>
+              <CardDescription className="mt-1 max-w-4xl text-sm sm:text-base">
+                Historical company overview, results, statements, cash flows and ratios for{" "}
+                <span className="font-medium text-foreground">
+                  {data?.company?.name ?? companyName ?? normalizedSymbol}
+                </span>
+                .
+              </CardDescription>
             </div>
-            <CardDescription>
-              Historical company overview, results, statements, cash flows and ratios for{" "}
-              {data?.company?.name ?? companyName ?? normalizedSymbol}.
-            </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <StatusPill
@@ -98,26 +114,23 @@ export function StockFinancialsPanel({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="px-4 py-5 sm:px-5">
+      <CardContent className="px-4 py-5 sm:px-6">
         {!data ? (
           <EmptyState
-            icon={<FileText className="size-6" />}
-            title={isLoading ? "Loading fundamentals..." : "Financial data unavailable"}
-            description={
-              error?.message ??
-              "We could not load company financials right now. Cached data will appear here once available."
-            }
+            icon={<Loader2 className="size-6 animate-spin text-primary" />}
+            title="Loading fundamentals..."
+            description="Company fundamentals are preparing and will appear here shortly."
             className="border-solid"
           />
         ) : (
           <Tabs defaultValue="overview" className="gap-5">
-            <div className="overflow-x-auto pb-1">
-              <TabsList className="inline-flex h-auto min-w-max rounded-lg bg-muted p-1">
+            <div className="-mx-4 overflow-x-auto px-4 py-3 sm:-mx-6 sm:px-6">
+              <TabsList className="grid h-auto min-w-[760px] grid-cols-6 gap-2 rounded-none bg-transparent p-0 shadow-none">
                 {TAB_ORDER.map((tab) => (
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}
-                    className="h-9 rounded-md px-4 text-sm font-medium"
+                    className="h-11 rounded-xl border border-transparent bg-transparent px-4 text-sm font-semibold text-muted-foreground shadow-none transition data-active:border-primary data-active:bg-primary data-active:text-primary-foreground data-active:shadow-sm data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
                   >
                     {tab.label}
                   </TabsTrigger>
@@ -240,22 +253,33 @@ function FinancialPeriodFilter({
   const mode = periods.some((period) => /qfy|quarter/i.test(period)) ? "Quarterly" : "Annual";
 
   return (
-    <div className="rounded-xl border bg-background p-3 sm:p-4">
-      <div className="grid gap-3 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+    <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Period
+          <p className="text-sm font-semibold">Period and year filter</p>
+          <p className="text-xs text-muted-foreground">
+            Choose the period range to show in the financial table.
           </p>
-          <div className="inline-flex rounded-lg border bg-background p-1">
+        </div>
+        <Badge variant="outline" className="bg-background">
+          {periods.length} periods
+        </Badge>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-[13rem_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-foreground">
+            Period type
+          </p>
+          <div className="grid h-12 grid-cols-2 rounded-xl border bg-background p-1">
             {["Annual", "Quarterly"].map((option) => (
               <button
                 key={option}
                 type="button"
                 disabled={option !== mode}
                 className={cn(
-                  "rounded-md px-3 py-2 text-sm font-semibold transition",
+                  "h-10 rounded-lg px-3 text-sm font-semibold transition",
                   option === mode
-                    ? "bg-muted text-foreground"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground opacity-50"
                 )}
               >
@@ -278,11 +302,16 @@ function FinancialPeriodFilter({
           onChange={(end) => onDraftRangeChange(normalizeRange(periods, { ...draftRange, end }))}
         />
 
-        <div className="flex gap-2">
-          <Button type="button" className="flex-1 lg:flex-none" onClick={onApply}>
+        <div className="flex gap-2 lg:pb-0">
+          <Button type="button" className="h-12 flex-1 px-5 lg:flex-none" onClick={onApply}>
             Search
           </Button>
-          <Button type="button" variant="outline" className="flex-1 lg:flex-none" onClick={onClear}>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12 flex-1 bg-background px-5 lg:flex-none"
+            onClick={onClear}
+          >
             Clear
           </Button>
         </div>
@@ -304,9 +333,9 @@ function PeriodSelect({
 }) {
   return (
     <label className="space-y-2">
-      <span className="block text-sm font-semibold">{label}</span>
+      <span className="block text-sm font-semibold text-foreground">{label}</span>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-11 w-full bg-background">
+        <SelectTrigger className="!h-12 min-h-12 w-full rounded-xl bg-background">
           <SelectValue placeholder={label} />
         </SelectTrigger>
         <SelectContent>
@@ -362,16 +391,19 @@ function FinancialTableView({
   const showActions = tabId !== "overview";
 
   return (
-    <div className="rounded-xl border bg-background shadow-sm">
-      <div className="flex flex-col gap-1 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <details className="group rounded-xl border bg-background shadow-sm" open>
+      <summary className="flex cursor-pointer list-none flex-col gap-1 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h4 className="font-semibold">{table.title}</h4>
           {table.subtitle ? <p className="text-sm text-muted-foreground">{table.subtitle}</p> : null}
         </div>
-        <Badge variant="outline">{table.rows.filter((row) => !row.isSection).length} rows</Badge>
-      </div>
+        <span className="inline-flex items-center gap-2">
+          <Badge variant="outline">{table.rows.filter((row) => !row.isSection).length} rows</Badge>
+          <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+        </span>
+      </summary>
 
-      <div className="hidden overflow-x-auto md:block">
+      <div className="overflow-x-auto">
         <table className="w-full min-w-[820px] border-collapse text-sm">
           <thead>
             <tr className="border-b bg-muted/40">
@@ -448,85 +480,6 @@ function FinancialTableView({
             )}
           </tbody>
         </table>
-      </div>
-
-      <div className="space-y-2 p-3 md:hidden">
-        {table.rows.map((row, index) =>
-          row.isSection ? (
-            <div
-              key={`${table.title}-mobile-section-${row.label}-${index}`}
-              className="rounded-lg bg-muted/50 px-3 py-2 text-sm font-semibold"
-            >
-              {row.label}
-            </div>
-          ) : (
-            <MobileFinancialRow
-              key={`${table.title}-mobile-${row.section ?? "row"}-${row.label}-${index}`}
-              tabId={tabId}
-              symbol={symbol}
-              company={company}
-              row={row}
-              years={visibleYears}
-              showActions={showActions}
-              tableTitle={table.title}
-            />
-          )
-        )}
-      </div>
-    </div>
-  );
-}
-
-function MobileFinancialRow({
-  tabId,
-  symbol,
-  company,
-  row,
-  years,
-  showActions,
-  tableTitle,
-}: {
-  tabId: StockFinancialTabId;
-  symbol: string;
-  company: StockFinancialsData["company"];
-  row: FinancialTableRow;
-  years: string[];
-  showActions: boolean;
-  tableTitle: string;
-}) {
-  return (
-    <details className="group rounded-lg border bg-card p-3 shadow-sm" open={row.isBold}>
-      <summary className="flex cursor-pointer list-none items-start justify-between gap-3">
-        <div>
-          <p className={cn("font-medium", row.isBold && "font-semibold")}>{row.label}</p>
-          {row.unit ? <p className="text-xs text-muted-foreground">{row.unit}</p> : null}
-        </div>
-      </summary>
-      {showActions ? (
-        <div className="mt-3">
-          <MetricRowActions
-            tabId={tabId}
-            symbol={symbol}
-            company={company}
-            tableTitle={tableTitle}
-            row={row}
-          />
-        </div>
-      ) : null}
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        {years.map((year) => (
-          <div key={year} className="rounded-md bg-muted/45 px-2 py-1.5">
-            <p className="text-[11px] text-muted-foreground">{year}</p>
-            <p
-              className={cn(
-                "text-sm font-medium tabular-nums [overflow-wrap:anywhere]",
-                row.isBold && "font-semibold"
-              )}
-            >
-              {formatFinancialValue(row.values[year])}
-            </p>
-          </div>
-        ))}
       </div>
     </details>
   );
@@ -633,8 +586,10 @@ function PeerComparisonDialog({
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
-    if (!open || data || loading) return;
+    if (!open || data) return;
     const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15_000);
+    let active = true;
     setLoading(true);
     setError(null);
 
@@ -643,7 +598,7 @@ function PeerComparisonDialog({
         tabId
       )}&metric=${encodeURIComponent(row.label)}`,
       { signal: controller.signal }
-    )
+      )
       .then(async (response) => {
         const payload = (await response.json()) as {
           data?: StockFinancialPeerComparison;
@@ -655,15 +610,24 @@ function PeerComparisonDialog({
         setData(payload.data);
       })
       .catch((fetchError: unknown) => {
-        if ((fetchError as Error).name === "AbortError") return;
+        if (!active) return;
+        if ((fetchError as Error).name === "AbortError") {
+          setError("Same-sector comparison is taking longer than expected. Please try again.");
+          return;
+        }
         setError(fetchError instanceof Error ? fetchError.message : "Peer comparison unavailable");
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        window.clearTimeout(timeout);
+        if (active) setLoading(false);
       });
 
-    return () => controller.abort();
-  }, [data, loading, open, row.label, symbol, tabId]);
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [data, open, row.label, symbol, tabId]);
 
   const periods = React.useMemo(() => data?.periods.slice(-5) ?? [], [data]);
 
@@ -722,29 +686,93 @@ function PeerComparisonTable({
   rows: StockFinancialPeerComparison["peers"];
   periods: string[];
 }) {
+  type SortKey = "companyName" | "symbol" | "sector" | "trend" | `period:${string}`;
+  const [sort, setSort] = React.useState<{ key: SortKey; direction: "asc" | "desc" }>(() => ({
+    key: periods.at(-1) ? `period:${periods.at(-1)}` : "companyName",
+    direction: "desc",
+  }));
+
+  function toggleSort(key: SortKey) {
+    setSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: key.startsWith("period:") || key === "trend" ? "desc" : "asc" }
+    );
+  }
+
+  const sortedRows = React.useMemo(() => {
+    const direction = sort.direction === "asc" ? 1 : -1;
+    return rows.slice().sort((a, b) => {
+      let result = 0;
+      if (sort.key === "companyName") {
+        result = a.companyName.localeCompare(b.companyName);
+      } else if (sort.key === "symbol") {
+        result = a.symbol.localeCompare(b.symbol);
+      } else if (sort.key === "sector") {
+        result = a.sector.localeCompare(b.sector);
+      } else if (sort.key === "trend") {
+        result = getSparklineChange(a.sparkline) - getSparklineChange(b.sparkline);
+      } else {
+        const period = sort.key.replace("period:", "");
+        result = compareNullableNumbers(toNumber(a.values[period]), toNumber(b.values[period]));
+      }
+      return result * direction;
+    });
+  }, [rows, sort.direction, sort.key]);
+
   return (
     <div className="space-y-3">
-      <div className="hidden overflow-x-auto md:block">
+      <div className="overflow-x-auto">
         <table className="w-full min-w-[900px] border-collapse text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="px-3 py-2 text-left font-semibold">Company</th>
-              <th className="px-3 py-2 text-left font-semibold">Symbol</th>
-              <th className="px-3 py-2 text-left font-semibold">Sector</th>
-              <th className="px-3 py-2 text-left font-semibold">Trend</th>
+              <SortableHeader
+                label="Company"
+                active={sort.key === "companyName"}
+                direction={sort.direction}
+                onClick={() => toggleSort("companyName")}
+              />
+              <SortableHeader
+                label="Symbol"
+                active={sort.key === "symbol"}
+                direction={sort.direction}
+                onClick={() => toggleSort("symbol")}
+              />
+              <SortableHeader
+                label="Sector"
+                active={sort.key === "sector"}
+                direction={sort.direction}
+                onClick={() => toggleSort("sector")}
+              />
+              <SortableHeader
+                label="Trend"
+                active={sort.key === "trend"}
+                direction={sort.direction}
+                onClick={() => toggleSort("trend")}
+              />
               {periods.map((period) => (
-                <th key={period} className="px-3 py-2 text-right font-semibold">
-                  {period}
-                </th>
+                <SortableHeader
+                  key={period}
+                  label={period}
+                  align="right"
+                  active={sort.key === `period:${period}`}
+                  direction={sort.direction}
+                  onClick={() => toggleSort(`period:${period}`)}
+                />
               ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map((peer) => (
+            {sortedRows.map((peer) => (
               <tr key={peer.symbol} className="border-b last:border-0 hover:bg-muted/30">
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-3">
-                    <CompanyLogo peer={peer} />
+                    <StockLogo
+                      symbol={peer.symbol}
+                      name={peer.companyName}
+                      image={peer.image}
+                      size="sm"
+                    />
                     <span className="font-medium">{peer.companyName}</span>
                   </div>
                 </td>
@@ -767,55 +795,44 @@ function PeerComparisonTable({
           </tbody>
         </table>
       </div>
-
-      <div className="space-y-2 md:hidden">
-        {rows.map((peer) => (
-          <div key={peer.symbol} className="rounded-xl border bg-card p-3 shadow-sm">
-            <div className="flex items-center gap-3">
-              <CompanyLogo peer={peer} />
-              <div>
-                <p className="font-semibold">{peer.symbol}</p>
-                <p className="text-xs text-muted-foreground">{peer.companyName}</p>
-              </div>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {periods.map((period) => (
-                <div key={period} className="rounded-md bg-muted/45 px-2 py-1.5">
-                  <p className="text-[11px] text-muted-foreground">{period}</p>
-                  <p className="text-sm font-medium tabular-nums [overflow-wrap:anywhere]">
-                    {formatFinancialValue(peer.values[period])}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
 
-function CompanyLogo({ peer }: { peer: StockFinancialPeerComparison["peers"][number] }) {
-  const [failed, setFailed] = React.useState(false);
-
-  if (peer.image && !failed) {
-    return (
-      <Image
-        src={peer.image}
-        alt=""
-        width={36}
-        height={36}
-        unoptimized
-        className="size-9 rounded-lg border bg-background object-contain p-1"
-        onError={() => setFailed(true)}
-      />
-    );
-  }
-
+function SortableHeader({
+  label,
+  active,
+  direction,
+  align = "left",
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  direction: "asc" | "desc";
+  align?: "left" | "right";
+  onClick: () => void;
+}) {
   return (
-    <span className="flex size-9 items-center justify-center rounded-lg border bg-primary/10 text-xs font-bold text-primary">
-      {peer.symbol.slice(0, 2)}
-    </span>
+    <th className={cn("px-3 py-2 font-semibold", align === "right" ? "text-right" : "text-left")}>
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          "inline-flex items-center gap-1 rounded-md text-sm font-semibold transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          align === "right" && "justify-end",
+          active ? "text-primary" : "text-foreground"
+        )}
+      >
+        <span>{label}</span>
+        <ChevronsUpDown
+          className={cn(
+            "size-3.5 text-muted-foreground",
+            active && direction === "asc" && "rotate-180 text-primary",
+            active && direction === "desc" && "text-primary"
+          )}
+        />
+      </button>
+    </th>
   );
 }
 
@@ -1018,7 +1035,7 @@ function StatusPill({
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground shadow-sm">
       <Database className="size-3" />
-      {isRefreshing ? "Refreshing fundamentals..." : cachedAt ? "Fundamentals cached" : "Cache ready"}
+      {isRefreshing ? "Refreshing fundamentals..." : cachedAt ? "Fundamentals cached" : "Loading cache..."}
       {isFromDeviceCache ? <span className="text-primary">device</span> : null}
     </span>
   );
@@ -1085,6 +1102,21 @@ function formatFinancialValue(value: string | number | null | undefined) {
     minimumFractionDigits: abs !== 0 && abs < 10 ? 1 : 0,
   }).format(abs);
   return numeric < 0 ? `(${formatted})` : formatted;
+}
+
+function compareNullableNumbers(a: number, b: number) {
+  const aValid = Number.isFinite(a);
+  const bValid = Number.isFinite(b);
+  if (!aValid && !bValid) return 0;
+  if (!aValid) return -1;
+  if (!bValid) return 1;
+  return a - b;
+}
+
+function getSparklineChange(values: number[]) {
+  const clean = values.filter((value) => Number.isFinite(value));
+  if (clean.length < 2) return Number.NaN;
+  return clean[clean.length - 1] - clean[0];
 }
 
 function toNumber(value: string | number | null | undefined): number {

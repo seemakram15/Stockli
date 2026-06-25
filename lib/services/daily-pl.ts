@@ -1,6 +1,7 @@
 import "server-only";
 import { isDemoMode } from "@/lib/config";
 import { PSX_TIMEZONE } from "@/lib/constants";
+import { hasPsxTradingStartedToday } from "@/lib/psx/market-hours";
 import { getEodCandlesCached } from "@/lib/services/history";
 import { createClient } from "@/lib/supabase/server";
 import type { DailyPL, Holding, Transaction } from "@/lib/types";
@@ -67,6 +68,8 @@ export async function getStockCalendar(
   const persistedFirstDate = persisted[0]?.date ?? null;
 
   const candles = await getEodCandlesCached(symbol);
+  const today = todayInPkt();
+  const includeToday = hasPsxTradingStartedToday();
   if (candles.length === 0) {
     return {
       days: persisted,
@@ -76,16 +79,18 @@ export async function getStockCalendar(
   }
 
   if (!hasPosition) {
-    const days: CalendarDay[] = candles.map((c, i) => {
-      const prev = i > 0 ? candles[i - 1].close : c.open;
-      return {
-        date: isoDay(c.time),
-        close: c.close,
-        changePct: prev ? ((c.close - prev) / prev) * 100 : 0,
-        dayPL: 0,
-        dayPLPct: 0,
-      };
-    });
+    const days: CalendarDay[] = candles
+      .map((c, i) => {
+        const prev = i > 0 ? candles[i - 1].close : c.open;
+        return {
+          date: isoDay(c.time),
+          close: c.close,
+          changePct: prev ? ((c.close - prev) / prev) * 100 : 0,
+          dayPL: 0,
+          dayPLPct: 0,
+        };
+      })
+      .filter((day) => day.date < today || (day.date === today && includeToday));
     return {
       days: mergeCalendarDays(days, persisted),
       hasPosition: persisted.length > 0,
@@ -111,6 +116,7 @@ export async function getStockCalendar(
   for (let i = startIdx; i < candles.length; i++) {
     const c = candles[i];
     const date = isoDay(c.time);
+    if (date > today || (date === today && !includeToday)) continue;
 
     // Apply all trades dated on/before this trading day.
     let cashIn = 0;

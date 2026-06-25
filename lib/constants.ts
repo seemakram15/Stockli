@@ -29,10 +29,10 @@ export const KSE100_SYMBOL = "KSE100";
 export const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
   { href: "/portfolios", label: "Portfolios", icon: "Wallet" },
-  { href: "/watchlist", label: "Watchlist", icon: "Star" },
   { href: "/market", label: "Market", icon: "TrendingUp" },
-  { href: "/analysis/fundamentals", label: "Analysis", icon: "FileText" },
-  { href: "/youtubers", label: "Youtubers", icon: "PlaySquare" },
+  { href: "/analysis/fundamentals", label: "Tools", icon: "FileText" },
+  { href: "/youtubers", label: "Explore", icon: "PlaySquare" },
+  { href: "/watchlist", label: "Watchlist", icon: "Star" },
   { href: "/alerts", label: "Alerts", icon: "Bell" },
 ] as const;
 
@@ -42,8 +42,8 @@ export const MARKET_NAV_ITEMS = [
     icon: "Landmark",
     children: [
       { href: "/market", label: "Stock Market", icon: "TrendingUp" },
-      { href: "/market/strategy", label: "Market Strategy", icon: "Target" },
       { href: "/market/mutual-funds", label: "Mutual Funds", icon: "BadgePercent" },
+      { href: "/market/strategy", label: "Funds Daily Returns Report", icon: "Target" },
       { href: "/market/etfs", label: "Exchange Traded Funds", icon: "Layers3" },
     ],
   },
