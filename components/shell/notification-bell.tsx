@@ -3,7 +3,7 @@
 import * as React from "react";
 import useSWR from "swr";
 import Link from "next/link";
-import { Bell, BellRing, Activity, Info, CircleAlert } from "lucide-react";
+import { Bell, BellRing, Activity, Info, CircleAlert, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ const ICONS: Record<NotificationType, typeof Bell> = {
   ALERT: CircleAlert,
   MARKET: Activity,
   SYSTEM: Info,
+  PORTFOLIO: WalletCards,
 };
 
 export function NotificationBell() {
@@ -100,8 +101,8 @@ export function NotificationBell() {
                 );
                 return (
                   <li key={n.id} className="transition-colors hover:bg-accent/40">
-                    {n.symbol ? (
-                      <Link href={`/stock/${n.symbol}`} onClick={() => setOpen(false)}>
+                    {n.href || n.symbol ? (
+                      <Link href={n.href ?? `/stock/${n.symbol}`} onClick={() => setOpen(false)}>
                         {body}
                       </Link>
                     ) : (

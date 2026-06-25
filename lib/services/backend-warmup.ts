@@ -9,6 +9,7 @@ import { getMarketStrategyData } from "@/lib/services/market-strategy";
 import { getMarketRows, refreshMarketWatch } from "@/lib/services/prices";
 import { getMufapFunds } from "@/lib/services/mufap";
 import { getPublicMarketPageData } from "@/lib/services/public-market-page";
+import { createNotification, runSystemNotificationJobs } from "@/lib/services/system-notifications";
 import { getYoutubeVideos } from "@/lib/services/youtube";
 import type { Quote } from "@/lib/types";
 
@@ -47,9 +48,15 @@ export async function runBackendWarmup({
     };
   }
 
-  const quotes = psxRefreshAllowed
-    ? await refreshMarketWatch()
-    : new Map<string, Quote>();
+  let psxRefreshError: string | null = null;
+  let quotes = new Map<string, Quote>();
+  if (psxRefreshAllowed) {
+    try {
+      quotes = await refreshMarketWatch();
+    } catch (err) {
+      psxRefreshError = err instanceof Error ? err.message : String(err);
+    }
+  }
   const result: Record<string, unknown> = {
     ok: true,
     trigger,
@@ -61,6 +68,9 @@ export async function runBackendWarmup({
     persisted: isSupabaseAdminConfigured,
     startedAt: startedAt.toISOString(),
   };
+  if (psxRefreshError) {
+    result.psxRefreshError = psxRefreshError;
+  }
 
   if (!psxRefreshAllowed) {
     result.psxRefreshSkipped = `PSX ${status.label.toLowerCase()}; serving cached data until the next refresh window.`;
@@ -147,12 +157,20 @@ export async function runBackendWarmup({
           .from("alerts")
           .update({ last_triggered_at: new Date().toISOString(), is_active: false })
           .eq("id", alert.id);
-        await admin.from("notifications").insert({
-          user_id: alert.user_id,
+        await createNotification(admin, {
+          userId: alert.user_id,
           type: "ALERT",
           title: `${alert.symbol} ${alert.condition === "ABOVE" ? "rose above" : "fell below"} Rs ${money(alert.target_price)}`,
           body: `Your price alert triggered — now Rs ${money(quote.price)}.`,
           symbol: alert.symbol,
+          href: `/stock/${alert.symbol}`,
+          eventKey: `price-alert:${alert.id}:${Math.round(Number(quote.price) * 100)}`,
+          eventPayload: {
+            alertId: alert.id,
+            symbol: alert.symbol,
+            price: quote.price,
+            targetPrice: alert.target_price,
+          },
         });
         triggered.push(alert.symbol as string);
       }
@@ -163,27 +181,15 @@ export async function runBackendWarmup({
   }
 
   try {
-    const redis = getRedis();
-    const prev = redis ? await redis.get<string>("psx:marketstatus") : null;
-    if (prev && prev !== status.status) {
-      const titles: Record<string, string> = {
-        open: "Market opened",
-        "pre-open": "Pre-open session started",
-        closed: "Market closed",
-        weekend: "Market closed for the weekend",
-        holiday: "Market closed for a holiday",
-      };
-      await admin.from("notifications").insert({
-        user_id: null,
-        type: "MARKET",
-        title: titles[status.status] ?? "Market status changed",
-        body: status.label,
-      });
-      result.marketEvent = `${prev} -> ${status.status}`;
-    }
-    if (redis) await redis.set("psx:marketstatus", status.status);
+    result.notifications = await runSystemNotificationJobs({
+      admin,
+      now: startedAt,
+      quotes,
+      triggerUserId: userId,
+      psxRefreshError,
+    });
   } catch (err) {
-    result.marketStatusError = String(err);
+    result.notificationError = String(err);
   }
 
   result.publicCaches = await warmPublicCaches({ includePsx: psxRefreshAllowed });

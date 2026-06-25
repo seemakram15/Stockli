@@ -357,7 +357,7 @@ function AllocationControls({
         <SelectTrigger className="w-full sm:w-64">
           <SelectValue placeholder="Select portfolio" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent position="popper" align="start">
           <SelectItem value="all">All portfolios</SelectItem>
           {portfolios.map((p) => (
             <SelectItem key={p.id} value={p.id}>

@@ -36,6 +36,11 @@ export const config = {
       process.env.STOCK_FUNDAMENTALS_API_BASE_URL ??
       defaultStockFundamentalsApiBaseUrl,
   },
+  notifications: {
+    vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
+    vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
+    vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:seemakram15@gmail.com",
+  },
   cronSecret: process.env.CRON_SECRET ?? "",
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   psx: {

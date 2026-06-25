@@ -6,6 +6,8 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   CalendarClock,
+  Maximize2,
+  Minimize2,
   Plus,
   Wallet,
 } from "lucide-react";
@@ -30,6 +32,16 @@ import type { DashboardPageData } from "@/lib/services/dashboard-page";
 import type { HoldingWithMetrics } from "@/lib/types";
 
 const DASHBOARD_URL = "/api/private/dashboard";
+type PerformanceRange = "1D" | "1W" | "1M" | "3M";
+const PERFORMANCE_RANGES: Array<{
+  value: PerformanceRange;
+  label: string;
+}> = [
+  { value: "1D", label: "1D" },
+  { value: "1W", label: "1W" },
+  { value: "1M", label: "1M" },
+  { value: "3M", label: "3M" },
+];
 
 export function CachedDashboardPage({ userId }: { userId: string }) {
   const cacheClosedOnly = React.useCallback(() => !shouldRefreshPsxData(), []);
@@ -202,6 +214,10 @@ function PerformanceCard({
   data: DashboardPageData["performance"];
   holdings: HoldingWithMetrics[];
 }) {
+  const [range, setRange] = React.useState<PerformanceRange>("3M");
+  const [expanded, setExpanded] = React.useState(false);
+  const filteredData = React.useMemo(() => filterPerformanceData(data, range), [data, range]);
+
   if (!data) return <PerformanceSkeleton />;
 
   return (
@@ -213,13 +229,74 @@ function PerformanceCard({
             Compare each day&apos;s KSE-100 return with every Portfolio&apos;s daily return.
           </p>
         </div>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+          <div className="grid grid-cols-4 rounded-xl bg-muted p-1">
+            {PERFORMANCE_RANGES.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setRange(option.value)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  range === option.value
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label={expanded ? "Shrink returns chart" : "Stretch returns chart"}
+            onClick={() => setExpanded((value) => !value)}
+          >
+            {expanded ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <PerformanceChart data={data} />
+        <PerformanceChart data={filteredData} height={expanded ? 460 : 330} />
         <TopHoldingsByShares holdings={holdings} />
       </CardContent>
     </Card>
   );
+}
+
+function filterPerformanceData(
+  data: DashboardPageData["performance"],
+  range: PerformanceRange
+): DashboardPageData["performance"] {
+  if (!data || data.points.length <= 1) return data;
+  if (range === "1D") {
+    return { ...data, points: data.points.slice(-1) };
+  }
+
+  const latest = parseChartDate(data.points[data.points.length - 1]?.date);
+  if (!latest) {
+    const fallback = range === "1W" ? 7 : range === "1M" ? 30 : 90;
+    return { ...data, points: data.points.slice(-fallback) };
+  }
+
+  const cutoff = new Date(latest);
+  if (range === "1W") cutoff.setDate(cutoff.getDate() - 7);
+  if (range === "1M") cutoff.setMonth(cutoff.getMonth() - 1);
+  if (range === "3M") cutoff.setMonth(cutoff.getMonth() - 3);
+
+  const points = data.points.filter((point) => {
+    const date = parseChartDate(point.date);
+    return date ? date >= cutoff : false;
+  });
+
+  return { ...data, points: points.length ? points : data.points.slice(-1) };
+}
+
+function parseChartDate(value: unknown) {
+  if (typeof value !== "string") return null;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function PerformanceSkeleton() {

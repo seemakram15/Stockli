@@ -95,7 +95,7 @@ export function PerformanceChart({
               stroke={item.color}
               strokeWidth={item.kind === "benchmark" ? 1.8 : 2.4}
               strokeDasharray={item.kind === "benchmark" ? "5 4" : undefined}
-              dot={false}
+              dot={points.length <= 7 ? { r: 3, strokeWidth: 1.5 } : false}
               activeDot={{ r: 4 }}
               connectNulls
             />
