@@ -24,7 +24,7 @@ persistence are stubbed until you add real keys.
 ```bash
 nvm use 22         # Node 18.18+ required (this repo was built on v22)
 npm install
-npm run dev        # http://localhost:3000
+npm run dev        # http://localhost:3001
 ```
 
 Everything is navigable immediately. A dismissible banner marks demo mode.
@@ -81,7 +81,7 @@ Vercel, do **not** upload `.env.local`; add the same keys in
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | [Upstash console](https://console.upstash.com) → your Redis DB → REST |
 | `UPSTASH_REDIS_FALLBACK_REST_URL`, `UPSTASH_REDIS_FALLBACK_REST_TOKEN` | optional second Upstash DB for larger public caches |
 | `CRON_SECRET` | long random string, e.g. `openssl rand -base64 32` |
-| `NEXT_PUBLIC_SITE_URL` | your deployed URL (e.g. `https://stockli.vercel.app`) |
+| `NEXT_PUBLIC_SITE_URL` | your deployed URL (e.g. `https://mystockli.vercel.app`) |
 | `PSX_DPS_BASE_URL` | default: `https://dps.psx.com.pk` |
 | `STOCK_FUNDAMENTALS_API_BASE_URL` | optional stock fundamentals API override |
 

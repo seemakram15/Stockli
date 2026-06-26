@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import Script from "next/script";
+import type { Metadata } from "next";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -26,8 +28,28 @@ import { InstallAppButton } from "@/components/pwa/install-app-button";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { DataDelayBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
-import { isDemoMode } from "@/lib/config";
+import { config, isDemoMode } from "@/lib/config";
 import { APP_NAME } from "@/lib/constants";
+
+export const metadata: Metadata = {
+  title: `${APP_NAME} — All-market portfolio workspace`,
+  description:
+    "Track PSX, US, India, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: `${APP_NAME} — All-market portfolio workspace`,
+    description:
+      "Track PSX, US, India, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
+    url: "/",
+  },
+  twitter: {
+    title: `${APP_NAME} — All-market portfolio workspace`,
+    description:
+      "Track PSX, US, India, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
+  },
+};
 
 const HERO_STATS = [
   { label: "Coverage", value: "All markets", note: "PSX, US, India, funds, crypto" },
@@ -82,9 +104,40 @@ const WORKFLOW = [
 
 export default function Home() {
   const primaryLabel = isDemoMode ? "Open demo" : "Start tracking free";
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        name: APP_NAME,
+        url: config.siteUrl,
+        description:
+          "Track PSX, US, India, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
+      },
+      {
+        "@type": "SoftwareApplication",
+        name: APP_NAME,
+        applicationCategory: "FinanceApplication",
+        operatingSystem: "Web, iOS, Android, Desktop",
+        url: config.siteUrl,
+        description:
+          "Installable multi-market portfolio and analysis workspace for PSX, US, India, funds, commodities, oil and crypto.",
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "USD",
+        },
+      },
+    ],
+  };
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
+      <Script
+        id="stockli-structured-data"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <Suspense fallback={null}>
         <UrlAuthDialog demo={isDemoMode} />
       </Suspense>

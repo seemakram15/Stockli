@@ -8,6 +8,7 @@ import {
   allocationByHolding,
   computeHoldingMetrics,
   computeRealizedPL,
+  computeRealizedPositions,
   computeSummary,
   deriveHoldingCostStates,
   holdingCostKey,
@@ -249,10 +250,12 @@ export async function getPortfolioView(id: string): Promise<PortfolioWithMetrics
   ]);
   const enriched = await enrichHoldings(holdings, transactions);
   const realized = computeRealizedPL(transactions);
+  const realizedPositions = computeRealizedPositions(transactions);
   return {
     ...portfolio,
     holdings: enriched,
     transactions,
+    realizedPositions,
     summary: computeSummary(enriched, realized),
   };
 }

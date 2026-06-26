@@ -139,8 +139,8 @@ const fetcher = async <T,>(url: string): Promise<T> => {
   return json.data;
 };
 
-export function MarketHubDashboard() {
-  const portfolio = useHubSWR<DashboardData>("/api/private/dashboard");
+export function MarketHubDashboard({ userId }: { userId: string }) {
+  const portfolio = useHubSWR<DashboardData>("/api/private/dashboard", userId);
   const psx = useHubSWR<PublicMarketData>("/api/public/market");
   const us = useHubSWR<GlobalMarketData>("/api/public/global-market/us");
   const india = useHubSWR<GlobalMarketData>("/api/public/global-market/india");
@@ -270,8 +270,12 @@ export function MarketHubDashboard() {
   );
 }
 
-function useHubSWR<T>(url: string) {
-  return useSWR<T>(url, fetcher<T>, {
+function useHubSWR<T>(url: string, userId?: string) {
+  const key = userId ? ([url, userId] as const) : url;
+  return useSWR<T>(key, (value: string | readonly [string, string]) => {
+    if (typeof value === "string") return fetcher<T>(value);
+    return fetcher<T>(value[0]);
+  }, {
     refreshInterval: REFRESH_MS,
     revalidateOnFocus: true,
     keepPreviousData: true,

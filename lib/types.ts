@@ -218,9 +218,22 @@ export interface PortfolioSummary {
   realizedPL: number;
 }
 
+export interface RealizedPositionPL {
+  symbol: string;
+  quantitySold: number;
+  proceeds: number;
+  costBasis: number;
+  fees: number;
+  realizedPL: number;
+  realizedPLPct: number;
+  tradesCount: number;
+  lastSoldAt: string | null;
+}
+
 export interface PortfolioWithMetrics extends Portfolio {
   holdings: HoldingWithMetrics[];
   transactions: Transaction[];
+  realizedPositions: RealizedPositionPL[];
   summary: PortfolioSummary;
 }
 

@@ -25,8 +25,8 @@ const ICONS: Record<NotificationType, typeof Bell> = {
   PORTFOLIO: WalletCards,
 };
 
-export function NotificationBell() {
-  const { data, mutate } = useSWR<Feed>("/api/notifications", fetcher, {
+export function NotificationBell({ userId }: { userId: string }) {
+  const { data, mutate } = useSWR<Feed>(["/api/notifications", userId], ([url]) => fetcher(url), {
     refreshInterval: 60_000,
     revalidateOnFocus: true,
     keepPreviousData: true,

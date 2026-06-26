@@ -121,7 +121,11 @@ export function CachedPortfolioCommandPage({
         actions={
           <>
             <MarketStatusBadge status={market.status} label={market.label} />
-            <ManualDataRefreshButton onDashboardRefresh={refreshNow} cachedAt={lastCachedAt} />
+            <ManualDataRefreshButton
+              userId={userId}
+              onDashboardRefresh={refreshNow}
+              cachedAt={lastCachedAt}
+            />
             {showManageAction ? (
               <Button asChild size="sm">
                 <Link href="/portfolios">

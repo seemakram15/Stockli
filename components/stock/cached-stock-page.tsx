@@ -24,15 +24,19 @@ import { cn } from "@/lib/utils";
 import type { StockPageData, StockPositionSummary } from "@/lib/services/stock-page";
 import type { HoldingWithMetrics } from "@/lib/types";
 
-export function CachedStockPage({ symbol }: { symbol: string }) {
+export function CachedStockPage({ symbol, userId }: { symbol: string; userId: string }) {
+  const normalizedSymbol = symbol.toUpperCase();
+  const cacheKey = `private:stock:${userId}:${normalizedSymbol}`;
+  const legacyCacheKeys = React.useMemo(() => [`private:stock:${normalizedSymbol}`], [normalizedSymbol]);
   const cacheClosedOnly = React.useCallback(() => !shouldRefreshPsxData(), []);
   const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt } =
     usePersistentResource<StockPageData>({
-      cacheKey: `private:stock:${symbol.toUpperCase()}`,
+      cacheKey,
       url: `/api/private/stocks/${encodeURIComponent(symbol)}`,
       refreshInterval: 60_000,
       pauseWhen: cacheClosedOnly,
       acceptCacheWhen: cacheClosedOnly,
+      legacyCacheKeys,
     });
 
   if (!data) {

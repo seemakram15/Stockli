@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { writePersistentResourceCache } from "@/lib/hooks/use-persistent-resource";
-import type { DashboardPageData } from "@/lib/services/dashboard-page";
+import type { PortfolioCommandPageData } from "@/lib/services/portfolio-command-page";
 import type { PortfoliosPageData } from "@/lib/services/portfolios-page";
 
 type StepState = "pending" | "active" | "done" | "error";
@@ -59,10 +59,12 @@ const OTHER_CACHE_JOBS = [
 ];
 
 export function ManualDataRefreshButton({
+  userId,
   onDashboardRefresh,
   cachedAt,
 }: {
-  onDashboardRefresh: () => Promise<DashboardPageData>;
+  userId: string;
+  onDashboardRefresh: () => Promise<PortfolioCommandPageData>;
   cachedAt: string | null;
 }) {
   const [open, setOpen] = React.useState(false);
@@ -103,7 +105,7 @@ export function ManualDataRefreshButton({
 
       await runStep("dashboard", "Refreshing dashboard, portfolios and stock pages", async () => {
         const dashboardData = await onDashboardRefresh();
-        await writePersistentResourceCache("private:portfolios", {
+        await writePersistentResourceCache(`private:portfolios:${userId}`, {
           portfolios: dashboardData.dashboard.portfolios,
           holdings: dashboardData.dashboard.holdings,
           market: dashboardData.market,
@@ -111,13 +113,13 @@ export function ManualDataRefreshButton({
         } satisfies PortfoliosPageData);
 
         const portfolioJobs = dashboardData.dashboard.portfolios.map((portfolio) => ({
-          key: `private:portfolio:${portfolio.id}`,
+          key: `private:portfolio:${userId}:${portfolio.id}`,
           url: `/api/private/portfolios/${encodeURIComponent(portfolio.id)}`,
         }));
         const stockJobs = Array.from(
           new Set(dashboardData.dashboard.holdings.map((holding) => holding.symbol.toUpperCase()))
         ).map((symbol) => ({
-          key: `private:stock:${symbol}`,
+          key: `private:stock:${userId}:${symbol}`,
           url: `/api/private/stocks/${encodeURIComponent(symbol)}`,
         }));
         failures.push(...(await refreshCacheJobs([...portfolioJobs, ...stockJobs])));

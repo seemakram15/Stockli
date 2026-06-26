@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
+import { config } from "@/lib/config";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,6 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(config.siteUrl),
   applicationName: APP_NAME,
   manifest: "/manifest.webmanifest",
   title: {
@@ -24,6 +26,44 @@ export const metadata: Metadata = {
   },
   description:
     "An installable all-market portfolio command center. Track live P/L, daily gain/loss calendars, watchlists, alerts, sectors, funds, crypto and global market performance.",
+  keywords: [
+    "Stockli",
+    "PSX portfolio tracker",
+    "Pakistan stock exchange",
+    "market dashboard",
+    "portfolio tracking",
+    "mutual funds Pakistan",
+    "crypto tracker",
+    "commodities tracker",
+    "stock fundamentals",
+  ],
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: APP_NAME,
+    title: `${APP_NAME} — ${APP_TAGLINE}`,
+    description:
+      "Track live P/L, calendars, PSX, US, India, funds, crypto and global market performance in one installable market workspace.",
+    images: [
+      {
+        url: "/landing/market-command-center.webp",
+        width: 1600,
+        height: 900,
+        alt: `${APP_NAME} market workspace`,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${APP_NAME} — ${APP_TAGLINE}`,
+    description:
+      "Track live P/L, calendars, PSX, US, India, funds, crypto and global market performance in one installable market workspace.",
+    images: ["/landing/market-command-center.webp"],
+  },
   formatDetection: {
     telephone: false,
   },

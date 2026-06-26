@@ -20,16 +20,29 @@ export async function getNotifications(): Promise<NotificationFeed> {
   } = await supabase.auth.getUser();
   if (!user) return { items: [], unread: 0 };
 
-  const [{ data: items }, { data: profile }] = await Promise.all([
+  const [{ data: ownItems }, { data: globalItems }, { data: profile }] = await Promise.all([
     supabase
       .from("notifications")
       .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(30),
+    supabase
+      .from("notifications")
+      .select("*")
+      .is("user_id", null)
+      .gte("created_at", user.created_at)
       .order("created_at", { ascending: false })
       .limit(30),
     supabase.from("profiles").select("notifications_seen_at").eq("id", user.id).maybeSingle(),
   ]);
 
-  const list = (items as AppNotification[] | null) ?? [];
+  const list = [
+    ...((ownItems as AppNotification[] | null) ?? []),
+    ...((globalItems as AppNotification[] | null) ?? []),
+  ]
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .slice(0, 30);
   const seenAt = (profile?.notifications_seen_at as string) ?? "1970-01-01T00:00:00Z";
   const unread = list.filter((n) => n.created_at > seenAt).length;
   return { items: list, unread };

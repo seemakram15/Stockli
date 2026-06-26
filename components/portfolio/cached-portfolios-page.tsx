@@ -20,7 +20,9 @@ import {
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { PortfoliosPageData } from "@/lib/services/portfolios-page";
 
-export function CachedPortfoliosPage() {
+export function CachedPortfoliosPage({ userId }: { userId: string }) {
+  const cacheKey = `private:portfolios:${userId}`;
+  const legacyCacheKeys = React.useMemo(() => ["private:portfolios"], []);
   const cacheClosedOnly = React.useCallback(() => !shouldRefreshPsxData(), []);
   const acceptPortfolioCache = React.useCallback(
     (record: CachedRecord<PortfoliosPageData>) =>
@@ -29,11 +31,12 @@ export function CachedPortfoliosPage() {
   );
   const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<PortfoliosPageData>({
-      cacheKey: "private:portfolios",
+      cacheKey,
       url: "/api/private/portfolios",
       refreshInterval: 60_000,
       pauseWhen: cacheClosedOnly,
       acceptCacheWhen: acceptPortfolioCache,
+      legacyCacheKeys,
     });
 
   React.useEffect(() => {

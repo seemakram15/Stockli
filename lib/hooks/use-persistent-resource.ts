@@ -33,6 +33,7 @@ export function usePersistentResource<T>({
   pauseWhen,
   acceptCacheWhen,
   keepPreviousData = true,
+  legacyCacheKeys = [],
 }: {
   cacheKey: string;
   url: string;
@@ -40,6 +41,7 @@ export function usePersistentResource<T>({
   pauseWhen?: (data: T | null) => boolean;
   acceptCacheWhen?: (record: CachedRecord<T>) => boolean;
   keepPreviousData?: boolean;
+  legacyCacheKeys?: string[];
 }) {
   const [cached, setCached] = React.useState<CachedRecord<T> | null>(null);
   const [cacheReady, setCacheReady] = React.useState(false);
@@ -50,6 +52,11 @@ export function usePersistentResource<T>({
     let cancelled = false;
     setCached(null);
     setCacheReady(false);
+    legacyCacheKeys.forEach((key) => {
+      if (key && key !== cacheKey) {
+        deleteCached(key).catch(() => undefined);
+      }
+    });
     readCached<T>(cacheKey)
       .then((record) => {
         if (!cancelled) setCached(record);
@@ -60,7 +67,7 @@ export function usePersistentResource<T>({
     return () => {
       cancelled = true;
     };
-  }, [cacheKey]);
+  }, [cacheKey, legacyCacheKeys]);
 
   React.useEffect(() => {
     if (!hasPauseRule) return undefined;
@@ -132,6 +139,10 @@ export async function writePersistentResourceCache<T>(
   return record;
 }
 
+export async function deletePersistentResourceCache(cacheKey: string): Promise<void> {
+  await deleteCached(cacheKey);
+}
+
 function makeCachedRecord<T>(key: string, value: T): CachedRecord<T> {
   return {
     key,
@@ -176,6 +187,21 @@ async function writeCached<T>(record: CachedRecord<T>): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, "readwrite");
       tx.objectStore(STORE_NAME).put(record);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function deleteCached(key: string): Promise<void> {
+  if (typeof indexedDB === "undefined") return;
+  const db = await openCacheDb();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).delete(key);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });

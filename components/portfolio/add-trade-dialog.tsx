@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { useActionState } from "react";
 import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
@@ -89,6 +90,7 @@ function TradeForm({
   defaultSymbol?: string;
   onDone: () => void;
 }) {
+  const router = useRouter();
   const today = React.useMemo(() => todayInPkt(), []);
   const [state, action, pending] = useActionState<ActionState, FormData>(
     kind === "buy" ? addHolding : sellHolding,
@@ -102,11 +104,12 @@ function TradeForm({
     if (state.ok) {
       toast.success(state.message ?? "Saved");
       markPortfolioMutated({ portfolioId });
+      router.refresh();
       onDone();
     } else if (state.error) {
       toast.error(state.error);
     }
-  }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state, portfolioId, router, onDone]);
 
   // Auto-fill the latest price when a symbol is chosen (still editable).
   const onSymbol = React.useCallback((sym: string) => {

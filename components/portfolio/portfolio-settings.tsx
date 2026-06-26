@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { useActionState } from "react";
 import { toast } from "sonner";
 import { Settings, Loader2, Trash2 } from "lucide-react";
@@ -27,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updatePortfolio, deletePortfolio, type ActionState } from "@/lib/actions/portfolio";
+import { markPortfolioMutated } from "@/lib/cache/portfolio-mutations";
 
 export function PortfolioSettings({
   id,
@@ -39,6 +41,7 @@ export function PortfolioSettings({
   description: string | null;
   demo?: boolean;
 }) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [state, action, pending] = useActionState<ActionState, FormData>(
     updatePortfolio,
@@ -48,11 +51,13 @@ export function PortfolioSettings({
   React.useEffect(() => {
     if (state.ok) {
       toast.success(state.message ?? "Saved");
+      markPortfolioMutated({ portfolioId: id });
+      router.refresh();
       setOpen(false);
     } else if (state.error) {
       toast.error(state.error);
     }
-  }, [state]);
+  }, [state, id, router]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -78,7 +83,7 @@ export function PortfolioSettings({
             </div>
           </div>
           <DialogFooter className="justify-between sm:justify-between">
-            <DeleteButton id={id} name={name} demo={demo} />
+            <DeleteButton id={id} name={name} demo={demo} onDeleted={() => setOpen(false)} />
             <Button type="submit" disabled={pending}>
               {pending && <Loader2 className="size-4 animate-spin" />}
               Save
@@ -90,7 +95,26 @@ export function PortfolioSettings({
   );
 }
 
-function DeleteButton({ id, name, demo }: { id: string; name: string; demo?: boolean }) {
+function DeleteButton({
+  id,
+  name,
+  demo,
+  onDeleted,
+}: {
+  id: string;
+  name: string;
+  demo?: boolean;
+  onDeleted: () => void;
+}) {
+  const router = useRouter();
+
+  function afterDelete() {
+    markPortfolioMutated({ portfolioId: id });
+    onDeleted();
+    router.push("/portfolios");
+    router.refresh();
+  }
+
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
@@ -115,7 +139,12 @@ function DeleteButton({ id, name, demo }: { id: string; name: string; demo?: boo
               Delete
             </AlertDialogAction>
           ) : (
-            <form action={deletePortfolio}>
+            <form
+              action={async (formData) => {
+                await deletePortfolio(formData);
+                afterDelete();
+              }}
+            >
               <input type="hidden" name="id" value={id} />
               <AlertDialogAction type="submit">Delete</AlertDialogAction>
             </form>

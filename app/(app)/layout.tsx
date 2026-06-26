@@ -13,6 +13,14 @@ import { DemoBanner } from "@/components/shell/demo-banner";
 import { DataDelayBadge } from "@/components/status-badges";
 import { BackgroundCacheWarmup } from "@/components/background-cache-warmup";
 import { ConsentManager } from "@/components/notifications/consent-manager";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default async function AppLayout({
   children,
@@ -43,7 +51,7 @@ export default async function AppLayout({
           </div>
           <DataDelayBadge className="hidden xl:inline-flex" />
           <GlobalSearch mode="desktop" />
-          <NotificationBell />
+          <NotificationBell userId={user.id} />
           <ThemeToggle />
           <UserMenu
             displayName={user.displayName}

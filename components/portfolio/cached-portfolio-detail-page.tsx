@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CalendarClock, Wallet } from "lucide-react";
+import { CalendarClock, TrendingUp, Wallet } from "lucide-react";
 import { AllocationExplorer } from "@/components/portfolio/allocation-explorer";
 import { EmptyState } from "@/components/empty-state";
 import { HoldingsTable } from "@/components/holdings-table";
@@ -17,6 +17,8 @@ import { MarketStatusBadge } from "@/components/status-badges";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PLCalendar } from "@/components/charts/pl-calendar";
+import { formatDate, formatNumber, formatPKR, formatPercent, plColorClass } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import {
   usePersistentResource,
   type CachedRecord,
@@ -27,14 +29,19 @@ import {
 } from "@/lib/cache/portfolio-mutations";
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { PortfolioPageData } from "@/lib/services/portfolio-page";
+import type { RealizedPositionPL } from "@/lib/types";
 
 export function CachedPortfolioDetailPage({
   id,
+  userId,
   demo,
 }: {
   id: string;
+  userId: string;
   demo?: boolean;
 }) {
+  const cacheKey = `private:portfolio:${userId}:${id}`;
+  const legacyCacheKeys = React.useMemo(() => [`private:portfolio:${id}`], [id]);
   const cacheClosedOnly = React.useCallback(() => !shouldRefreshPsxData(), []);
   const acceptPortfolioCache = React.useCallback(
     (record: CachedRecord<PortfolioPageData>) =>
@@ -43,11 +50,12 @@ export function CachedPortfolioDetailPage({
   );
   const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<PortfolioPageData>({
-      cacheKey: `private:portfolio:${id}`,
+      cacheKey,
       url: `/api/private/portfolios/${encodeURIComponent(id)}`,
       refreshInterval: 60_000,
       pauseWhen: cacheClosedOnly,
       acceptCacheWhen: acceptPortfolioCache,
+      legacyCacheKeys,
     });
 
   React.useEffect(() => {
@@ -165,6 +173,8 @@ export function CachedPortfolioDetailPage({
             />
           </div>
 
+          <RealizedHistory positions={pf.realizedPositions ?? []} />
+
           <Card>
             <CardHeader className="flex-col items-start gap-2 sm:flex-row">
               <CalendarClock className="mt-0.5 size-5 text-primary" />
@@ -189,6 +199,108 @@ export function CachedPortfolioDetailPage({
           </Card>
         </>
       )}
+    </div>
+  );
+}
+
+function RealizedHistory({ positions }: { positions: RealizedPositionPL[] }) {
+  return (
+    <Card>
+      <CardHeader className="flex-col items-start gap-2 sm:flex-row">
+        <TrendingUp className="mt-0.5 size-5 text-primary" />
+        <div>
+          <CardTitle>Realized gain / loss history</CardTitle>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Profit or loss locked in when shares are sold, calculated from the moving-average buy cost.
+          </p>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {positions.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+            No realized gains or losses yet. Sold positions will appear here.
+          </p>
+        ) : (
+          <>
+            <div className="space-y-3 sm:hidden">
+              {positions.map((row) => (
+                <article key={row.symbol} className="rounded-xl border border-border bg-card p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold">{row.symbol}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {row.tradesCount} sale{row.tradesCount === 1 ? "" : "s"} ·{" "}
+                        {row.lastSoldAt ? formatDate(row.lastSoldAt) : "—"}
+                      </p>
+                    </div>
+                    <div className={cn("text-right font-medium tabular-nums", plColorClass(row.realizedPL))}>
+                      <p>{formatPKR(row.realizedPL, { sign: true })}</p>
+                      <p className="text-xs">{formatPercent(row.realizedPLPct)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                    <RealizedMetric label="Sold qty" value={formatNumber(row.quantitySold, 0)} />
+                    <RealizedMetric label="Proceeds" value={formatPKR(row.proceeds)} align="right" />
+                    <RealizedMetric label="Cost basis" value={formatPKR(row.costBasis)} />
+                    <RealizedMetric label="Fees" value={formatPKR(row.fees)} align="right" />
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto scrollbar-thin sm:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-muted-foreground">
+                    <th className="py-2 text-left font-medium">Symbol</th>
+                    <th className="py-2 text-right font-medium">Sold qty</th>
+                    <th className="py-2 text-right font-medium">Cost basis</th>
+                    <th className="py-2 text-right font-medium">Proceeds</th>
+                    <th className="py-2 text-right font-medium">Realized P/L</th>
+                    <th className="py-2 text-right font-medium">Last sale</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {positions.map((row) => (
+                    <tr key={row.symbol} className="border-b last:border-0">
+                      <td className="py-3 font-medium">{row.symbol}</td>
+                      <td className="py-3 text-right tabular-nums">
+                        {formatNumber(row.quantitySold, 0)}
+                      </td>
+                      <td className="py-3 text-right tabular-nums">{formatPKR(row.costBasis)}</td>
+                      <td className="py-3 text-right tabular-nums">{formatPKR(row.proceeds)}</td>
+                      <td className={cn("py-3 text-right tabular-nums", plColorClass(row.realizedPL))}>
+                        <p className="font-medium">{formatPKR(row.realizedPL, { sign: true })}</p>
+                        <p className="text-xs">{formatPercent(row.realizedPLPct)}</p>
+                      </td>
+                      <td className="py-3 text-right text-muted-foreground">
+                        {row.lastSoldAt ? formatDate(row.lastSoldAt) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RealizedMetric({
+  label,
+  value,
+  align = "left",
+}: {
+  label: string;
+  value: React.ReactNode;
+  align?: "left" | "right";
+}) {
+  return (
+    <div className={align === "right" ? "text-right" : ""}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="font-medium tabular-nums">{value}</p>
     </div>
   );
 }

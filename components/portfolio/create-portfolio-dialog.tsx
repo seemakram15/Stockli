@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { useActionState } from "react";
 import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
@@ -20,6 +21,7 @@ import { markPortfolioMutated } from "@/lib/cache/portfolio-mutations";
 import { createPortfolio, type ActionState } from "@/lib/actions/portfolio";
 
 export function CreatePortfolioDialog({ trigger }: { trigger?: React.ReactNode }) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [state, action, pending] = useActionState<ActionState, FormData>(
     createPortfolio,
@@ -30,11 +32,12 @@ export function CreatePortfolioDialog({ trigger }: { trigger?: React.ReactNode }
     if (state.ok) {
       toast.success(state.message ?? "Created");
       markPortfolioMutated();
+      router.refresh();
       setOpen(false);
     } else if (state.error) {
       toast.error(state.error);
     }
-  }, [state]);
+  }, [state, router]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

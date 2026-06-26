@@ -43,7 +43,7 @@ export function UrlAuthDialog({ demo }: { demo?: boolean }) {
 
   return (
     <Dialog open={open && Boolean(urlMode)} onOpenChange={handleOpenChange}>
-      <DialogContent className="top-[calc(env(safe-area-inset-top)+5.5rem)] sm:top-[calc(env(safe-area-inset-top)+6.75rem)] sm:max-w-md lg:top-[7.25rem]">
+      <DialogContent className="sm:max-w-md">
         <AuthDialogPanel
           mode={mode}
           redirectTo={redirectTo}

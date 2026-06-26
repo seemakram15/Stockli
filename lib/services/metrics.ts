@@ -4,6 +4,7 @@ import type {
   HoldingWithMetrics,
   PortfolioSummary,
   Quote,
+  RealizedPositionPL,
   Ticker,
   Transaction,
 } from "@/lib/types";
@@ -109,10 +110,50 @@ export function computeRealizedPL(transactions: Transaction[]): number {
   );
 }
 
+/** Per-stock realized P/L from SELL transactions using moving-average cost basis. */
+export function computeRealizedPositions(transactions: Transaction[]): RealizedPositionPL[] {
+  return Array.from(deriveHoldingCostStates(transactions).entries())
+    .map(([key, state]) => {
+      const [, symbol = key] = key.split(":");
+      const realizedPLPct =
+        state.realizedCostBasis !== 0
+          ? (state.realizedPL / state.realizedCostBasis) * 100
+          : 0;
+      return {
+        symbol,
+        quantitySold: state.soldQuantity,
+        proceeds: state.realizedProceeds,
+        costBasis: state.realizedCostBasis,
+        fees: state.realizedFees,
+        realizedPL: state.realizedPL,
+        realizedPLPct,
+        tradesCount: state.sellTrades,
+        lastSoldAt: state.lastSoldAt,
+      };
+    })
+    .filter(
+      (row) =>
+        row.quantitySold > 0 ||
+        Math.abs(row.realizedPL) >= 0.005 ||
+        row.tradesCount > 0
+    )
+    .sort((a, b) => {
+      const byDate = (b.lastSoldAt ?? "").localeCompare(a.lastSoldAt ?? "");
+      if (byDate !== 0) return byDate;
+      return Math.abs(b.realizedPL) - Math.abs(a.realizedPL);
+    });
+}
+
 export interface HoldingCostState {
   quantity: number;
   avgBuyPrice: number;
   realizedPL: number;
+  soldQuantity: number;
+  realizedCostBasis: number;
+  realizedProceeds: number;
+  realizedFees: number;
+  sellTrades: number;
+  lastSoldAt: string | null;
 }
 
 export function holdingCostKey(portfolioId: string, symbol: string) {
@@ -131,6 +172,12 @@ export function deriveHoldingCostStates(transactions: Transaction[]) {
         quantity: 0,
         avgBuyPrice: 0,
         realizedPL: 0,
+        soldQuantity: 0,
+        realizedCostBasis: 0,
+        realizedProceeds: 0,
+        realizedFees: 0,
+        sellTrades: 0,
+        lastSoldAt: null,
       } satisfies HoldingCostState);
 
     applyCostTransaction(state, transaction);
@@ -162,12 +209,23 @@ function applyCostTransaction(state: HoldingCostState, transaction: Transaction)
   if (transaction.type === "SELL") {
     const sellQty = Math.min(quantity, Math.max(0, state.quantity));
     if (sellQty > 0) {
-      state.realizedPL += sellQty * (price - state.avgBuyPrice) - fees;
+      const costBasis = sellQty * state.avgBuyPrice;
+      const proceeds = sellQty * price;
+      state.realizedCostBasis += costBasis;
+      state.realizedProceeds += proceeds;
+      state.realizedFees += fees;
+      state.realizedPL += proceeds - costBasis - fees;
+      state.soldQuantity += sellQty;
+      state.sellTrades += 1;
+      state.lastSoldAt = transaction.transacted_at;
       state.quantity = Math.max(0, state.quantity - sellQty);
       if (state.quantity === 0) state.avgBuyPrice = 0;
       return;
     }
+    state.realizedFees += fees;
     state.realizedPL -= fees;
+    state.sellTrades += 1;
+    state.lastSoldAt = transaction.transacted_at;
     return;
   }
 

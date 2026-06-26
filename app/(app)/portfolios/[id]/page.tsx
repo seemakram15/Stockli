@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getPortfolio } from "@/lib/services/portfolio";
+import { getPortfolio, getSessionUser } from "@/lib/services/portfolio";
 import { isDemoMode } from "@/lib/config";
 import { CachedPortfolioDetailPage } from "@/components/portfolio/cached-portfolio-detail-page";
 
@@ -21,5 +21,6 @@ export default async function PortfolioDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <CachedPortfolioDetailPage id={id} demo={isDemoMode} />;
+  const user = await getSessionUser();
+  return <CachedPortfolioDetailPage id={id} userId={user?.id ?? "anonymous"} demo={isDemoMode} />;
 }
