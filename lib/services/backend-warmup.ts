@@ -6,6 +6,13 @@ import { getRedis } from "@/lib/cache/redis";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getGlobalMarketData, type MarketUniverse } from "@/lib/services/global-markets";
 import { getMarketStrategyData } from "@/lib/services/market-strategy";
+import {
+  getBoardMeetingsData,
+  getBookClosuresData,
+  getDividendHistoryData,
+  getPivotPointsData,
+  getUsefulLinksData,
+} from "@/lib/services/market-resources";
 import { getMarketRows, refreshMarketWatch } from "@/lib/services/prices";
 import { getMufapFunds } from "@/lib/services/mufap";
 import { getPublicMarketPageData } from "@/lib/services/public-market-page";
@@ -203,9 +210,14 @@ async function warmPublicCaches({ includePsx }: { includePsx: boolean }) {
     ["mufap-mutual", () => getMufapFunds()],
     ["mufap-etfs", () => getMufapFunds({ includeEtfs: true })],
     ["market-strategy", () => getMarketStrategyData()],
+    ["board-meetings", () => getBoardMeetingsData()],
+    ["book-closures", () => getBookClosuresData()],
+    ["dividend-history", () => getDividendHistoryData()],
+    ["pivot-points", () => getPivotPointsData()],
   ] as const;
   const jobs = [
     ...(includePsx ? psxJobs : []),
+    ["useful-links", () => getUsefulLinksData()],
     ["youtubers", () => getYoutubeVideos()],
     ...globalMarkets.map(
       (market) => [`global-${market}`, () => getGlobalMarketData(market)] as const

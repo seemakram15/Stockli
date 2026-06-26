@@ -7,6 +7,7 @@ import {
   BadgePercent,
   Bitcoin,
   Boxes,
+  CalendarDays,
   CandlestickChart,
   ChevronDown,
   LayoutDashboard,
@@ -19,39 +20,28 @@ import {
   TrendingUp,
   Globe2,
   Droplets,
+  Gift,
   Bell,
   FileText,
+  History,
   ShieldCheck,
   Loader2,
+  Link2,
   PlaySquare,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MARKET_NAV_ITEMS, NAV_ITEMS } from "@/lib/constants";
-
-const TOOL_NAV_ITEMS = [
-  {
-    href: "/analysis/fundamentals",
-    label: "Fundamentals & Comparison",
-    icon: "FileText",
-  },
-] as const;
-
-const EXPLORE_NAV_ITEMS = [
-  {
-    href: "/youtubers",
-    label: "Youtuber Videos",
-    icon: "PlaySquare",
-  },
-] as const;
+import { EXPLORE_NAV_ITEMS, MARKET_NAV_ITEMS, NAV_ITEMS, TOOL_NAV_ITEMS } from "@/lib/constants";
 
 const ICONS: Record<string, LucideIcon> = {
   BadgePercent,
   Bitcoin,
   Boxes,
+  CalendarDays,
   CandlestickChart,
   Globe2,
   Droplets,
+  Gift,
   LayoutDashboard,
   Landmark,
   Layers3,
@@ -62,7 +52,9 @@ const ICONS: Record<string, LucideIcon> = {
   TrendingUp,
   Bell,
   FileText,
+  History,
   ShieldCheck,
+  Link2,
   PlaySquare,
 };
 
@@ -96,7 +88,10 @@ export function NavLinks({
   }, [marketActive]);
 
   const toolsActive = pathname === "/analysis/fundamentals" || pathname.startsWith("/analysis/");
-  const exploreActive = pathname.startsWith("/youtubers") || pathname.startsWith("/admin");
+  const exploreActive =
+    pathname.startsWith("/explore") ||
+    pathname.startsWith("/youtubers") ||
+    pathname.startsWith("/admin");
   const exploreItems = showAdmin
     ? [...EXPLORE_NAV_ITEMS, { href: "/admin", label: "Admin", icon: "ShieldCheck" } as const]
     : EXPLORE_NAV_ITEMS;
@@ -146,7 +141,7 @@ export function NavLinks({
           );
         }
 
-        if (item.href === "/analysis/fundamentals") {
+        if (item.label === "Tools") {
           return (
             <MobileNavGroup
               key={item.href}
@@ -160,7 +155,7 @@ export function NavLinks({
           );
         }
 
-        if (item.href === "/youtubers") {
+        if (item.label === "Explore") {
           return (
             <MobileNavGroup
               key={item.href}

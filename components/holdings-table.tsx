@@ -13,7 +13,7 @@ import {
 import { ChangeBadge } from "@/components/change-badge";
 import { HoldingRowActions } from "@/components/portfolio/holding-row-actions";
 import { useLiveHoldings } from "@/lib/hooks/use-live-holdings";
-import { formatPKR, formatNumber, plColorClass } from "@/lib/format";
+import { formatPKR, formatNumber, formatPercent, plColorClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { HoldingWithMetrics } from "@/lib/types";
 
@@ -39,25 +39,11 @@ export function HoldingsTable({
       <>
         <div className="space-y-3 p-3 sm:hidden">
           {rows.map((h) => (
-            <div key={h.id} className="rounded-xl border border-border bg-card p-3">
-              <div className="flex items-start justify-between gap-3">
-                <Link href={`/stock/${h.symbol}`} className="min-w-0">
-                  <span className="font-semibold">{h.symbol}</span>
-                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                    {h.ticker?.company_name ?? h.ticker?.sector ?? ""}
-                  </span>
-                  {showPortfolio && (
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      {portfolioNames?.[h.portfolio_id] ?? "Portfolio"}
-                    </span>
-                  )}
-                </Link>
-                <div className="shrink-0 text-right">
-                  <p className="font-medium tabular-nums">{formatPKR(h.livePrice)}</p>
-                  <DailyPLValue value={h.dayChange} pct={h.dayChangePct} />
-                </div>
-              </div>
-            </div>
+            <MobileHoldingCard
+              key={h.id}
+              holding={h}
+              portfolioName={showPortfolio ? portfolioNames?.[h.portfolio_id] : undefined}
+            />
           ))}
         </div>
 
@@ -106,47 +92,21 @@ export function HoldingsTable({
     <>
       <div className="space-y-3 p-3 sm:hidden">
         {rows.map((h) => (
-          <div key={h.id} className="rounded-xl border border-border bg-card p-3">
-            <div className="flex items-start justify-between gap-3">
-              <Link href={`/stock/${h.symbol}`} className="min-w-0">
-                <span className="font-semibold">{h.symbol}</span>
-                <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                  {h.ticker?.company_name ?? h.ticker?.sector ?? ""}
-                </span>
-                {showPortfolio && (
-                  <span className="mt-1 block text-xs text-muted-foreground">
-                    {portfolioNames?.[h.portfolio_id] ?? "Portfolio"}
-                  </span>
-                )}
-              </Link>
-              {rowActions && (
+          <MobileHoldingCard
+            key={h.id}
+            holding={h}
+            portfolioName={showPortfolio ? portfolioNames?.[h.portfolio_id] : undefined}
+            actions={
+              rowActions ? (
                 <HoldingRowActions
                   portfolioId={h.portfolio_id}
                   holdingId={h.id}
                   symbol={h.symbol}
                   demo={rowActions.demo}
                 />
-              )}
-            </div>
-
-            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-              <MobileMetric label="Qty" value={formatNumber(h.quantity, 0)} />
-              <MobileMetric label="Current" value={formatPKR(h.livePrice)} align="right" />
-              <MobileMetric label="Market value" value={formatPKR(h.marketValue)} />
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Unreal. P/L</p>
-                <p className={cn("font-semibold tabular-nums", plColorClass(h.unrealizedPL))}>
-                  {formatPKR(h.unrealizedPL, { sign: true })}
-                </p>
-                <ChangeBadge pct={h.unrealizedPLPct} className="justify-end text-xs" />
-              </div>
-              <MobileMetric label="Avg cost" value={formatPKR(h.avg_buy_price)} />
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Day P/L</p>
-                <DailyPLValue value={h.dayChange} pct={h.dayChangePct} />
-              </div>
-            </div>
-          </div>
+              ) : null
+            }
+          />
         ))}
       </div>
 
@@ -232,19 +192,109 @@ function DailyPLValue({ value, pct }: { value: number; pct: number }) {
   );
 }
 
-function MobileMetric({
+function MobileHoldingCard({
+  holding,
+  portfolioName,
+  actions,
+}: {
+  holding: HoldingWithMetrics;
+  portfolioName?: string;
+  actions?: React.ReactNode;
+}) {
+  const dayClass = plColorClass(holding.dayChange);
+  const totalClass = plColorClass(holding.unrealizedPL);
+
+  return (
+    <article className="overflow-hidden rounded-xl border border-border bg-card p-3 shadow-sm">
+      <div className="grid min-h-28 grid-cols-[4.6rem_minmax(0,1fr)_minmax(0,1.08fr)_minmax(0,1fr)] gap-2.5">
+        <Link href={`/stock/${holding.symbol}`} className="min-w-0">
+          <p className="truncate text-2xl font-bold tracking-tight text-primary">
+            {holding.symbol}
+          </p>
+          <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Current
+          </p>
+          <p className="text-xl font-medium leading-tight tabular-nums text-foreground">
+            {formatNumber(holding.livePrice, 2)}
+          </p>
+          {portfolioName ? (
+            <p className="mt-2 truncate text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
+              {portfolioName}
+            </p>
+          ) : null}
+        </Link>
+
+        <div className="min-w-0 space-y-2">
+          <MobilePositionMetric label="Total cost" value={formatPKR(holding.costBasis)} />
+          <MobilePositionMetric label="Avg buy" value={formatNumber(holding.avg_buy_price, 2)} />
+          <MobilePositionMetric label="Shares" value={formatNumber(holding.quantity, 0)} />
+        </div>
+
+        <div className="min-w-0 space-y-2">
+          <MobilePositionMetric
+            label="Market value"
+            value={formatPKR(holding.marketValue)}
+          />
+          <MobilePositionMetric
+            label="Day's P/L"
+            value={
+              <span>
+                <span className="block">{formatPKR(holding.dayChange, { sign: true })}</span>
+                <span className="block">
+                  {formatPercent(holding.dayChangePct)}
+                </span>
+              </span>
+            }
+            valueClassName={dayClass}
+          />
+        </div>
+
+        <div className="flex min-w-0 flex-col items-end gap-2">
+          {actions ? (
+            <div className="rounded-full bg-muted/80 [&_button]:size-8">
+              {actions}
+            </div>
+          ) : (
+            <div className="h-8" aria-hidden />
+          )}
+          <MobilePositionMetric
+            label="Total P/L"
+            value={
+              <span>
+                <span className="block">{formatPKR(holding.unrealizedPL, { sign: true })}</span>
+                <span className="block">
+                  {formatPercent(holding.unrealizedPLPct)}
+                </span>
+              </span>
+            }
+            valueClassName={totalClass}
+            align="right"
+          />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function MobilePositionMetric({
   label,
   value,
   align = "left",
+  valueClassName,
 }: {
   label: string;
   value: React.ReactNode;
   align?: "left" | "right";
+  valueClassName?: string;
 }) {
   return (
     <div className={align === "right" ? "text-right" : ""}>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="font-medium tabular-nums">{value}</p>
+      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <p className={cn("break-words text-[clamp(0.78rem,3vw,0.95rem)] font-medium leading-tight tabular-nums text-foreground", valueClassName)}>
+        {value}
+      </p>
     </div>
   );
 }
