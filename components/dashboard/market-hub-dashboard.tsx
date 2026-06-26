@@ -216,7 +216,7 @@ export function MarketHubDashboard() {
         onRefresh={refreshAll}
       />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <DashboardMarketCard
           href="/market"
           icon={<Landmark className="size-5" />}
@@ -320,19 +320,19 @@ function PortfolioOverviewBand({
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Portfolio overview</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Portfolio overview</p>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight sm:text-3xl">
             Your portfolio command center
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {summary?.holdingsCount ?? 0} positions across your workspaces, with live P/L and market movement.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" className="h-9 px-3 text-sm">
             <Link href="/portfolios">Open portfolios</Link>
           </Button>
-          <Button type="button" onClick={onRefresh} variant="outline">
+          <Button type="button" onClick={onRefresh} variant="outline" className="h-9 px-3 text-sm">
             <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
             Refresh
           </Button>
@@ -340,12 +340,12 @@ function PortfolioOverviewBand({
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map((stat) => (
-          <div key={stat.label} className="flex min-h-28 flex-col justify-between rounded-xl border border-border bg-background p-4">
-            <div className="flex items-center justify-between gap-2 text-muted-foreground">
-              <span className="text-sm font-medium">{stat.label}</span>
-              {stat.icon}
+          <div key={stat.label} className="flex min-h-24 min-w-0 flex-col justify-between rounded-xl border border-border bg-background p-3 sm:min-h-28 sm:p-4">
+            <div className="flex min-w-0 items-center justify-between gap-1.5 text-muted-foreground">
+              <span className="min-w-0 text-sm font-normal">{stat.label}</span>
+              <span className="shrink-0">{stat.icon}</span>
             </div>
-            <p className={cn("mt-4 truncate text-xl font-bold tabular-nums sm:text-2xl", plColorClass(stat.tone))}>
+            <p className={cn("mt-3 break-words text-base font-medium leading-tight tabular-nums sm:text-xl", plColorClass(stat.tone))}>
               {stat.value}
             </p>
           </div>
@@ -375,47 +375,47 @@ function DashboardMarketCard({
   const loopRows = hasMotion ? [...visibleRows, ...visibleRows] : visibleRows;
 
   return (
-    <Card className="h-full min-h-[34rem] overflow-hidden">
-      <CardHeader className="pb-3">
+    <Card className="h-full min-h-[28rem] overflow-hidden sm:min-h-[34rem]">
+      <CardHeader className="pb-2 sm:pb-3">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <div className="flex min-w-0 items-start gap-2 sm:gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-11 sm:rounded-2xl">
               {icon}
             </div>
             <div className="min-w-0">
-              <CardTitle className="truncate text-xl">{title}</CardTitle>
-              <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <CardTitle className="text-sm font-medium leading-tight sm:text-xl">{title}</CardTitle>
+              <p className="mt-1 text-[9px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs sm:font-semibold">
                 {eyebrow}
               </p>
             </div>
           </div>
-          <Button asChild variant="ghost" size="icon" className="shrink-0">
+          <Button asChild variant="ghost" size="icon" className="size-8 shrink-0 sm:size-10">
             <Link href={href} aria-label={`Open ${title}`}>
-              <ArrowRight className="size-5" />
+              <ArrowRight className="size-4 sm:size-5" />
             </Link>
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex min-h-20 items-end justify-between gap-3">
+        <div className="flex min-h-24 flex-col items-start justify-end gap-2 sm:min-h-20 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
           {featured ? (
             <div className="min-w-0">
-              <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs sm:font-semibold">
                 {featured.label}
               </p>
-              <p className={cn("mt-1 truncate text-2xl font-semibold tabular-nums sm:text-[1.7rem]", plColorClass(featured.changePct))}>
+              <p className={cn("mt-1 break-words text-base font-normal leading-tight tabular-nums sm:text-xl sm:font-medium", plColorClass(featured.changePct))}>
                 {featured.value}
               </p>
-              <p className={cn("mt-0.5 truncate text-sm font-medium tabular-nums", plColorClass(featured.changePct))}>
-                {featured.change} · {formatPercent(featured.changePct)}
+              <p className={cn("mt-0.5 break-words text-[10px] font-normal leading-tight tabular-nums sm:text-xs sm:font-medium", plColorClass(featured.changePct))}>
+                {featured.change}
               </p>
             </div>
           ) : (
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs sm:font-semibold">
                 Updating
               </p>
-              <p className="mt-1 truncate text-3xl font-bold tabular-nums text-muted-foreground">
+              <p className="mt-1 text-base font-normal tabular-nums text-muted-foreground sm:text-2xl sm:font-medium">
                 Loading
               </p>
             </div>
@@ -423,7 +423,7 @@ function DashboardMarketCard({
           <ChangePill value={featured?.changePct ?? null} />
         </div>
 
-        <div className="mt-5 h-[23.25rem] overflow-hidden">
+        <div className="mt-4 h-[18.5rem] overflow-hidden sm:mt-5 sm:h-[23.25rem]">
           {loopRows.length ? (
             <div
               className={cn(
@@ -461,17 +461,21 @@ function DashboardRowItem({ row, ariaHidden }: { row: DashboardRow; ariaHidden?:
   const content = (
     <div
       aria-hidden={ariaHidden}
-      className="flex min-h-[4.15rem] items-center justify-between gap-3 rounded-xl border border-border bg-muted/35 px-3 py-2"
+      className="flex min-h-[3.75rem] items-center justify-between gap-2 rounded-xl border border-border bg-muted/35 px-2 py-2 sm:min-h-[4.15rem] sm:gap-3 sm:px-3"
     >
-      <div className="min-w-0">
-        <p className="truncate text-base font-semibold">{row.symbol}</p>
-        <p className="truncate text-sm text-muted-foreground">{row.name}</p>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-normal leading-tight sm:text-base sm:font-medium">
+          {row.symbol}
+        </p>
+        <p className="mt-0.5 truncate text-[10px] leading-tight text-muted-foreground sm:text-sm">
+          {row.name}
+        </p>
       </div>
-      <div className="shrink-0 text-right">
-        <p className={cn("text-sm font-semibold tabular-nums", plColorClass(row.changePct))}>
+      <div className="min-w-[4.8rem] shrink-0 text-right sm:min-w-[6.25rem]">
+        <p className={cn("truncate text-[10px] font-normal leading-tight tabular-nums sm:text-sm sm:font-medium", plColorClass(row.changePct))}>
           {row.value}
         </p>
-        <p className={cn("text-xs font-semibold tabular-nums", plColorClass(row.changePct))}>
+        <p className={cn("truncate text-[9px] font-normal leading-tight tabular-nums sm:text-xs sm:font-medium", plColorClass(row.changePct))}>
           {row.change} · {formatPercent(row.changePct)}
         </p>
       </div>
@@ -490,7 +494,7 @@ function DashboardRowItem({ row, ariaHidden }: { row: DashboardRow; ariaHidden?:
 function ChangePill({ value }: { value: number | null }) {
   if (value == null || Number.isNaN(value)) {
     return (
-      <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+      <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground sm:px-2.5 sm:py-1 sm:text-xs sm:font-medium">
         Updating
       </span>
     );
@@ -499,7 +503,7 @@ function ChangePill({ value }: { value: number | null }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums",
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-normal tabular-nums sm:px-2.5 sm:py-1 sm:text-xs sm:font-medium",
         value < 0 ? "bg-loss/10 text-loss" : value > 0 ? "bg-gain/10 text-gain" : "bg-muted text-muted-foreground"
       )}
     >
