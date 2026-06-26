@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SymbolField } from "./symbol-field";
+import { markPortfolioMutated } from "@/lib/cache/portfolio-mutations";
 import { addHolding, sellHolding, type ActionState } from "@/lib/actions/portfolio";
 import { PSX_TIMEZONE } from "@/lib/constants";
 import type { Quote } from "@/lib/types";
@@ -100,6 +101,7 @@ function TradeForm({
   React.useEffect(() => {
     if (state.ok) {
       toast.success(state.message ?? "Saved");
+      markPortfolioMutated({ portfolioId });
       onDone();
     } else if (state.error) {
       toast.error(state.error);

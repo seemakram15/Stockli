@@ -73,7 +73,7 @@ export function usePersistentResource<T>({
     activeCached && (!acceptCacheWhen || acceptCacheWhen(activeCached)) ? activeCached : null;
   const cachedValue = usableCached?.value ?? null;
   const rawCachedValue = activeCached?.value ?? null;
-  const isPaused = Boolean(cacheReady && rawCachedValue && pauseWhen?.(rawCachedValue));
+  const isPaused = Boolean(cacheReady && cachedValue && pauseWhen?.(cachedValue));
   const swrKey = cacheReady && !isPaused ? url : null;
 
   const swr = useSWR<T>(swrKey, fetchResource, {

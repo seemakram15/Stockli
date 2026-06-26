@@ -9,20 +9,40 @@ import { PageHeader } from "@/components/page-header";
 import { CreatePortfolioDialog } from "@/components/portfolio/create-portfolio-dialog";
 import { LivePortfolioGrid } from "@/components/portfolio/live-portfolio-grid";
 import { MarketStatusBadge } from "@/components/status-badges";
-import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import {
+  usePersistentResource,
+  type CachedRecord,
+} from "@/lib/hooks/use-persistent-resource";
+import {
+  isPortfolioCacheFresh,
+  PORTFOLIO_MUTATION_EVENT,
+} from "@/lib/cache/portfolio-mutations";
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { PortfoliosPageData } from "@/lib/services/portfolios-page";
 
 export function CachedPortfoliosPage() {
   const cacheClosedOnly = React.useCallback(() => !shouldRefreshPsxData(), []);
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt } =
+  const acceptPortfolioCache = React.useCallback(
+    (record: CachedRecord<PortfoliosPageData>) =>
+      cacheClosedOnly() && isPortfolioCacheFresh(record),
+    [cacheClosedOnly]
+  );
+  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<PortfoliosPageData>({
       cacheKey: "private:portfolios",
       url: "/api/private/portfolios",
       refreshInterval: 60_000,
       pauseWhen: cacheClosedOnly,
-      acceptCacheWhen: cacheClosedOnly,
+      acceptCacheWhen: acceptPortfolioCache,
     });
+
+  React.useEffect(() => {
+    const onMutation = () => {
+      void refreshNow();
+    };
+    window.addEventListener(PORTFOLIO_MUTATION_EVENT, onMutation);
+    return () => window.removeEventListener(PORTFOLIO_MUTATION_EVENT, onMutation);
+  }, [refreshNow]);
 
   if (!data) {
     return (

@@ -54,6 +54,7 @@ export async function createPortfolio(
     });
     if (error) return { error: error.message };
     revalidatePath("/portfolios");
+    revalidatePath("/dashboard");
     return { ok: true, message: "Portfolio created." };
   } catch (e) {
     return { error: String(e) };
@@ -82,6 +83,7 @@ export async function updatePortfolio(
     if (error) return { error: error.message };
     revalidatePath("/portfolios");
     revalidatePath(`/portfolios/${id}`);
+    revalidatePath("/dashboard");
     return { ok: true, message: "Saved." };
   } catch (e) {
     return { error: String(e) };
@@ -95,6 +97,7 @@ export async function deletePortfolio(formData: FormData): Promise<void> {
   const { supabase } = await requireUser();
   await supabase.from("portfolios").delete().eq("id", id);
   revalidatePath("/portfolios");
+  revalidatePath("/dashboard");
 }
 
 // ── Holdings + transactions ───────────────────────────────────
@@ -167,6 +170,7 @@ export async function addHolding(
     });
 
     revalidatePath(`/portfolios/${portfolioId}`);
+    revalidatePath("/portfolios");
     revalidatePath("/dashboard");
     return { ok: true, message: `Added ${quantity} ${sym}.` };
   } catch (e) {
@@ -216,6 +220,7 @@ export async function sellHolding(
     });
 
     revalidatePath(`/portfolios/${portfolioId}`);
+    revalidatePath("/portfolios");
     revalidatePath("/dashboard");
     return { ok: true, message: `Sold ${quantity} ${sym}.` };
   } catch (e) {
@@ -241,5 +246,6 @@ export async function removeHolding(formData: FormData): Promise<void> {
     });
   }
   revalidatePath(`/portfolios/${portfolioId}`);
+  revalidatePath("/portfolios");
   revalidatePath("/dashboard");
 }
