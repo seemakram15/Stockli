@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { markPortfolioMutated } from "@/lib/cache/portfolio-mutations";
 import { createPortfolio, type ActionState } from "@/lib/actions/portfolio";
 
 export function CreatePortfolioDialog({ trigger }: { trigger?: React.ReactNode }) {
@@ -28,6 +29,7 @@ export function CreatePortfolioDialog({ trigger }: { trigger?: React.ReactNode }
   React.useEffect(() => {
     if (state.ok) {
       toast.success(state.message ?? "Created");
+      markPortfolioMutated();
       setOpen(false);
     } else if (state.error) {
       toast.error(state.error);

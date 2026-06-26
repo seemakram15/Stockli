@@ -11,7 +11,7 @@ import {
   Plus,
   Wallet,
 } from "lucide-react";
-import { AllocationExplorer, AllocationExpandDialog } from "@/components/dashboard/allocation-explorer";
+import { AllocationExplorer, AllocationExpandDialog } from "@/components/portfolio/allocation-explorer";
 import { IndexTickerStrip } from "@/components/dashboard/index-ticker-strip";
 import { ManualDataRefreshButton } from "@/components/dashboard/manual-data-refresh-button";
 import { TopHoldingsByShares } from "@/components/dashboard/top-holdings-by-shares";
@@ -26,13 +26,20 @@ import { MarketStatusBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import {
+  usePersistentResource,
+  type CachedRecord,
+} from "@/lib/hooks/use-persistent-resource";
+import {
+  isPortfolioCacheFresh,
+  PORTFOLIO_MUTATION_EVENT,
+} from "@/lib/cache/portfolio-mutations";
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import { formatPKR, formatPercent, plColorClass } from "@/lib/format";
-import type { DashboardPageData } from "@/lib/services/dashboard-page";
+import type { PortfolioCommandPageData } from "@/lib/services/portfolio-command-page";
 import type { HoldingWithMetrics } from "@/lib/types";
 
-const DASHBOARD_URL = "/api/private/dashboard";
+const PORTFOLIO_COMMAND_URL = "/api/private/portfolio-command";
 type PerformanceRange = "1D" | "1W" | "1M" | "3M";
 const PERFORMANCE_RANGES: Array<{
   value: PerformanceRange;
@@ -44,7 +51,7 @@ const PERFORMANCE_RANGES: Array<{
   { value: "3M", label: "3M" },
 ];
 
-export function CachedDashboardPage({
+export function CachedPortfolioCommandPage({
   userId,
   title = "Portfolio",
   description = "Your positions across all portfolios, at a glance.",
@@ -57,6 +64,11 @@ export function CachedDashboardPage({
 }) {
   const pageLabel = title || "Portfolio";
   const cacheClosedOnly = React.useCallback(() => !shouldRefreshPsxData(), []);
+  const acceptPortfolioCache = React.useCallback(
+    (record: CachedRecord<PortfolioCommandPageData>) =>
+      cacheClosedOnly() && isPortfolioCacheFresh(record),
+    [cacheClosedOnly]
+  );
   const {
     data,
     error,
@@ -65,13 +77,21 @@ export function CachedDashboardPage({
     isFromDeviceCache,
     lastCachedAt,
     refreshNow,
-  } = usePersistentResource<DashboardPageData>({
-    cacheKey: `private:dashboard:${userId}`,
-    url: DASHBOARD_URL,
+  } = usePersistentResource<PortfolioCommandPageData>({
+    cacheKey: `private:portfolio-command:${userId}`,
+    url: PORTFOLIO_COMMAND_URL,
     refreshInterval: 60_000,
     pauseWhen: cacheClosedOnly,
-    acceptCacheWhen: cacheClosedOnly,
+    acceptCacheWhen: acceptPortfolioCache,
   });
+
+  React.useEffect(() => {
+    const onMutation = () => {
+      void refreshNow();
+    };
+    window.addEventListener(PORTFOLIO_MUTATION_EVENT, onMutation);
+    return () => window.removeEventListener(PORTFOLIO_MUTATION_EVENT, onMutation);
+  }, [refreshNow]);
 
   if (!data) {
     return (
@@ -121,7 +141,7 @@ export function CachedDashboardPage({
         }
       />
 
-      <DashboardCacheBadge
+      <PortfolioCacheBadge
         label={pageLabel}
         cachedAt={lastCachedAt}
         isFromDeviceCache={isFromDeviceCache}
@@ -220,7 +240,7 @@ function PortfolioJumpCards({
   portfolios,
   holdings,
 }: {
-  portfolios: DashboardPageData["dashboard"]["portfolios"];
+  portfolios: PortfolioCommandPageData["dashboard"]["portfolios"];
   holdings: HoldingWithMetrics[];
 }) {
   if (portfolios.length === 0) return null;
@@ -292,7 +312,7 @@ function PortfolioJumpCards({
   );
 }
 
-function DashboardCacheBadge({
+function PortfolioCacheBadge({
   label,
   cachedAt,
   isFromDeviceCache,
@@ -334,7 +354,7 @@ function PerformanceCard({
   data,
   holdings,
 }: {
-  data: DashboardPageData["performance"];
+  data: PortfolioCommandPageData["performance"];
   holdings: HoldingWithMetrics[];
 }) {
   const [range, setRange] = React.useState<PerformanceRange>("3M");
@@ -389,9 +409,9 @@ function PerformanceCard({
 }
 
 function filterPerformanceData(
-  data: DashboardPageData["performance"],
+  data: PortfolioCommandPageData["performance"],
   range: PerformanceRange
-): DashboardPageData["performance"] {
+): PortfolioCommandPageData["performance"] {
   if (!data || data.points.length <= 1) return data;
   if (range === "1D") {
     return { ...data, points: data.points.slice(-1) };

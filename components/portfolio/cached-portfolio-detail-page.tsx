@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CalendarClock, Wallet } from "lucide-react";
-import { AllocationExplorer } from "@/components/dashboard/allocation-explorer";
+import { AllocationExplorer } from "@/components/portfolio/allocation-explorer";
 import { EmptyState } from "@/components/empty-state";
 import { HoldingsTable } from "@/components/holdings-table";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
@@ -17,7 +17,14 @@ import { MarketStatusBadge } from "@/components/status-badges";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PLCalendar } from "@/components/charts/pl-calendar";
-import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import {
+  usePersistentResource,
+  type CachedRecord,
+} from "@/lib/hooks/use-persistent-resource";
+import {
+  isPortfolioCacheFresh,
+  PORTFOLIO_MUTATION_EVENT,
+} from "@/lib/cache/portfolio-mutations";
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { PortfolioPageData } from "@/lib/services/portfolio-page";
 
@@ -29,14 +36,30 @@ export function CachedPortfolioDetailPage({
   demo?: boolean;
 }) {
   const cacheClosedOnly = React.useCallback(() => !shouldRefreshPsxData(), []);
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt } =
+  const acceptPortfolioCache = React.useCallback(
+    (record: CachedRecord<PortfolioPageData>) =>
+      cacheClosedOnly() && isPortfolioCacheFresh(record),
+    [cacheClosedOnly]
+  );
+  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<PortfolioPageData>({
       cacheKey: `private:portfolio:${id}`,
       url: `/api/private/portfolios/${encodeURIComponent(id)}`,
       refreshInterval: 60_000,
       pauseWhen: cacheClosedOnly,
-      acceptCacheWhen: cacheClosedOnly,
+      acceptCacheWhen: acceptPortfolioCache,
     });
+
+  React.useEffect(() => {
+    const onMutation = (event: Event) => {
+      const detail = (event as CustomEvent<{ portfolioId?: string }>).detail;
+      if (!detail?.portfolioId || detail.portfolioId === id) {
+        void refreshNow();
+      }
+    };
+    window.addEventListener(PORTFOLIO_MUTATION_EVENT, onMutation);
+    return () => window.removeEventListener(PORTFOLIO_MUTATION_EVENT, onMutation);
+  }, [id, refreshNow]);
 
   if (!data) {
     return (
