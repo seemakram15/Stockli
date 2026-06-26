@@ -8,15 +8,19 @@ import {
   Bell,
   Bitcoin,
   Boxes,
+  CalendarDays,
   CandlestickChart,
   ChevronDown,
   FileText,
   Droplets,
+  Gift,
   Globe2,
+  History,
   Landmark,
   Layers3,
   LayoutDashboard,
   LineChart,
+  Link2,
   Loader2,
   PlaySquare,
   ShieldCheck,
@@ -26,7 +30,7 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-import { MARKET_NAV_ITEMS, NAV_ITEMS } from "@/lib/constants";
+import { EXPLORE_NAV_ITEMS, MARKET_NAV_ITEMS, NAV_ITEMS, TOOL_NAV_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -34,14 +38,18 @@ const ICONS: Record<string, LucideIcon> = {
   Bell,
   Bitcoin,
   Boxes,
+  CalendarDays,
   CandlestickChart,
   Droplets,
   FileText,
+  Gift,
   Globe2,
+  History,
   Landmark,
   Layers3,
   LayoutDashboard,
   LineChart,
+  Link2,
   PlaySquare,
   ShieldCheck,
   Star,
@@ -54,24 +62,18 @@ export function DesktopNav({ showAdmin = false }: { showAdmin?: boolean }) {
   const pathname = usePathname() ?? "/";
   const marketActive = pathname === "/market" || pathname.startsWith("/market/");
   const toolsActive = pathname.startsWith("/analysis");
-  const exploreActive = pathname.startsWith("/youtubers") || pathname.startsWith("/admin");
+  const exploreActive =
+    pathname.startsWith("/explore") ||
+    pathname.startsWith("/youtubers") ||
+    pathname.startsWith("/admin");
   const dashboardItem = NAV_ITEMS.find((item) => item.href === "/dashboard")!;
   const portfoliosItem = NAV_ITEMS.find((item) => item.href === "/portfolios")!;
   const watchlistItem = NAV_ITEMS.find((item) => item.href === "/watchlist")!;
   const alertsItem = NAV_ITEMS.find((item) => item.href === "/alerts")!;
-  const toolsLinks = React.useMemo<DropdownLink[]>(
-    () => [
-      {
-        href: "/analysis/fundamentals",
-        label: "Fundamentals & comparison",
-        icon: "FileText",
-      },
-    ],
-    []
-  );
+  const toolsLinks = React.useMemo<DropdownLink[]>(() => [...TOOL_NAV_ITEMS], []);
   const exploreLinks = React.useMemo<DropdownLink[]>(
     () => [
-      { href: "/youtubers", label: "Youtuber videos", icon: "PlaySquare" },
+      ...EXPLORE_NAV_ITEMS,
       ...(showAdmin ? [{ href: "/admin", label: "Admin", icon: "ShieldCheck" }] : []),
     ],
     [showAdmin]

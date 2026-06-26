@@ -76,6 +76,7 @@ const UNIVERSES: Record<Exclude<MarketUniverse, "crypto">, { title: string; desc
       ["AMZN", "Amazon", "Stock"],
       ["META", "Meta Platforms", "Stock"],
       ["GOOGL", "Alphabet", "Stock"],
+      ["TSLA", "Tesla", "Stock"],
       ["BRK-B", "Berkshire Hathaway", "Stock"],
       ["JPM", "JPMorgan Chase", "Stock"],
     ].map(([symbol, name, type]) => ({ symbol, name, type, country: "United States", region: "North America", currency: "USD" })),

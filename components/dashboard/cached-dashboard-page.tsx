@@ -6,6 +6,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   CalendarClock,
+  Briefcase,
   Maximize2,
   Minimize2,
   Plus,
@@ -43,7 +44,18 @@ const PERFORMANCE_RANGES: Array<{
   { value: "3M", label: "3M" },
 ];
 
-export function CachedDashboardPage({ userId }: { userId: string }) {
+export function CachedDashboardPage({
+  userId,
+  title = "Portfolio",
+  description = "Your positions across all portfolios, at a glance.",
+  showManageAction = true,
+}: {
+  userId: string;
+  title?: string;
+  description?: string;
+  showManageAction?: boolean;
+}) {
+  const pageLabel = title || "Portfolio";
   const cacheClosedOnly = React.useCallback(() => !shouldRefreshPsxData(), []);
   const {
     data,
@@ -65,7 +77,7 @@ export function CachedDashboardPage({ userId }: { userId: string }) {
     return (
       <div className="mx-auto max-w-7xl">
         <PageLoadingState
-          message={isLoading ? "Loading dashboard..." : "Preparing dashboard..."}
+          message={isLoading ? `Loading ${pageLabel.toLowerCase()}...` : `Preparing ${pageLabel.toLowerCase()}...`}
         />
       </div>
     );
@@ -82,22 +94,25 @@ export function CachedDashboardPage({ userId }: { userId: string }) {
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <PageHeader
-        title="Dashboard"
-        description="Your positions across all portfolios, at a glance."
+        title={title}
+        description={description}
         actions={
           <>
             <MarketStatusBadge status={market.status} label={market.label} />
             <ManualDataRefreshButton onDashboardRefresh={refreshNow} cachedAt={lastCachedAt} />
-            <Button asChild size="sm">
-              <Link href="/portfolios">
-                <Plus className="size-4" /> Manage
-              </Link>
-            </Button>
+            {showManageAction ? (
+              <Button asChild size="sm">
+                <Link href="/portfolios">
+                  <Plus className="size-4" /> Manage
+                </Link>
+              </Button>
+            ) : null}
           </>
         }
       />
 
       <DashboardCacheBadge
+        label={pageLabel}
         cachedAt={lastCachedAt}
         isFromDeviceCache={isFromDeviceCache}
         isRefreshing={isRefreshing}
@@ -126,6 +141,8 @@ export function CachedDashboardPage({ userId }: { userId: string }) {
       ) : (
         <>
           <LiveSummaryCards holdings={holdings} realizedPL={summary.realizedPL} />
+
+          <PortfolioJumpCards portfolios={portfolios} holdings={holdings} />
 
           <div className="grid gap-4 lg:grid-cols-3">
             <PerformanceCard data={performance} holdings={holdings} />
@@ -171,11 +188,81 @@ export function CachedDashboardPage({ userId }: { userId: string }) {
   );
 }
 
+function PortfolioJumpCards({
+  portfolios,
+  holdings,
+}: {
+  portfolios: DashboardPageData["dashboard"]["portfolios"];
+  holdings: HoldingWithMetrics[];
+}) {
+  if (portfolios.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-start justify-between gap-3">
+        <div>
+          <CardTitle>Your portfolio workspaces</CardTitle>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Open any portfolio for trades, holdings, allocation and daily P/L history.
+          </p>
+        </div>
+        <Briefcase className="size-5 shrink-0 text-primary" />
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
+          {portfolios.map((portfolio) => {
+            const portfolioHoldings = holdings.filter(
+              (holding) => holding.portfolio_id === portfolio.id
+            );
+            const value = portfolioHoldings.reduce(
+              (sum, holding) => sum + holding.livePrice * holding.quantity,
+              0
+            );
+            const dayPL = portfolioHoldings.reduce((sum, holding) => sum + holding.dayChange, 0);
+
+            return (
+              <Link
+                key={portfolio.id}
+                href={`/portfolios/${portfolio.id}`}
+                className="group rounded-xl border border-border bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-semibold">{portfolio.name}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {portfolioHoldings.length} positions
+                    </p>
+                  </div>
+                  <ArrowUpRight className="size-4 text-muted-foreground transition group-hover:text-primary" />
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Value</p>
+                    <p className="mt-1 font-semibold tabular-nums">{formatPKR(value)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Day P/L</p>
+                    <p className={`mt-1 font-semibold tabular-nums ${plColorClass(dayPL)}`}>
+                      {formatPKR(dayPL, { sign: true })}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function DashboardCacheBadge({
+  label,
   cachedAt,
   isFromDeviceCache,
   isRefreshing,
 }: {
+  label: string;
   cachedAt: string | null;
   isFromDeviceCache: boolean;
   isRefreshing: boolean;
@@ -187,7 +274,7 @@ function DashboardCacheBadge({
       className="fixed bottom-[calc(env(safe-area-inset-bottom)+5rem)] left-0 z-30 hidden rotate-180 rounded-l-xl border border-r-0 border-border bg-background/90 px-2.5 py-3 text-[11px] text-muted-foreground shadow-lg backdrop-blur [text-orientation:mixed] [writing-mode:vertical-rl] sm:block"
       role="status"
       title={[
-        isRefreshing ? "Refreshing dashboard" : "Dashboard cache",
+        isRefreshing ? `Refreshing ${label.toLowerCase()}` : `${label} cache`,
         cachedAt ? `Last cached ${formatCacheTime(cachedAt)}` : null,
         isFromDeviceCache ? "Showing saved data" : null,
       ]
@@ -195,7 +282,7 @@ function DashboardCacheBadge({
         .join(" · ")}
     >
       <span className="font-semibold text-foreground">
-        {isRefreshing ? "Refreshing dashboard..." : "Dashboard cache"}
+        {isRefreshing ? `Refreshing ${label.toLowerCase()}...` : `${label} cache`}
       </span>
       {cachedAt ? (
         <span className="mt-2">

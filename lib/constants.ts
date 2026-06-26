@@ -28,12 +28,53 @@ export const KSE100_SYMBOL = "KSE100";
 /** Primary navigation. */
 export const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-  { href: "/portfolios", label: "Portfolios", icon: "Wallet" },
+  { href: "/portfolios", label: "Portfolio", icon: "Wallet" },
   { href: "/market", label: "Market", icon: "TrendingUp" },
   { href: "/analysis/fundamentals", label: "Tools", icon: "FileText" },
-  { href: "/youtubers", label: "Explore", icon: "PlaySquare" },
+  { href: "/explore/useful-links", label: "Explore", icon: "PlaySquare" },
   { href: "/watchlist", label: "Watchlist", icon: "Star" },
   { href: "/alerts", label: "Alerts", icon: "Bell" },
+] as const;
+
+export const TOOL_NAV_ITEMS = [
+  {
+    href: "/analysis/fundamentals",
+    label: "Fundamentals & Comparison",
+    icon: "FileText",
+  },
+  {
+    href: "/analysis/pivot-points",
+    label: "Stock Pivot Points",
+    icon: "Target",
+  },
+] as const;
+
+export const EXPLORE_NAV_ITEMS = [
+  {
+    href: "/explore/useful-links",
+    label: "Useful Links",
+    icon: "Link2",
+  },
+  {
+    href: "/explore/board-meetings",
+    label: "Board Meetings",
+    icon: "CalendarDays",
+  },
+  {
+    href: "/explore/book-closures",
+    label: "Book Closures",
+    icon: "Gift",
+  },
+  {
+    href: "/explore/dividend-history",
+    label: "Dividend History",
+    icon: "History",
+  },
+  {
+    href: "/youtubers",
+    label: "Youtuber Videos",
+    icon: "PlaySquare",
+  },
 ] as const;
 
 export const MARKET_NAV_ITEMS = [
