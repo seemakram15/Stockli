@@ -60,7 +60,7 @@ export function NotificationBell() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(92vw,22rem)] p-0">
+      <PopoverContent align="end" sideOffset={10} className="z-[220] w-[min(92vw,22rem)] overflow-hidden p-0">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <p className="text-sm font-semibold">Notifications</p>
           {items.length > 0 && (

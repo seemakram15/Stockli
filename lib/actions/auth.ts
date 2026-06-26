@@ -13,6 +13,14 @@ export interface AuthState {
 const DEMO_MSG =
   "Auth is disabled in demo mode. Add your Supabase keys to .env.local to enable sign-in.";
 
+function authErrorMessage(message: string) {
+  const normalized = message.toLowerCase();
+  if (normalized.includes("rate limit") || normalized.includes("too many")) {
+    return "Too many confirmation emails were requested. Please wait a few minutes before trying again, or sign in if your account is already confirmed.";
+  }
+  return message;
+}
+
 export async function signIn(
   _prev: AuthState,
   formData: FormData
@@ -25,7 +33,7 @@ export async function signIn(
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: error.message };
+  if (error) return { error: authErrorMessage(error.message) };
 
   redirect(safeRedirectPath(formData.get("redirectTo")));
 }
@@ -52,7 +60,7 @@ export async function signUp(
       emailRedirectTo: `${config.siteUrl}/auth/callback`,
     },
   });
-  if (error) return { error: error.message };
+  if (error) return { error: authErrorMessage(error.message) };
 
   return {
     message:
@@ -67,7 +75,7 @@ export async function signInWithGoogle(): Promise<AuthState> {
     provider: "google",
     options: { redirectTo: `${config.siteUrl}/auth/callback` },
   });
-  if (error) return { error: error.message };
+  if (error) return { error: authErrorMessage(error.message) };
   if (data.url) redirect(data.url);
   return {};
 }

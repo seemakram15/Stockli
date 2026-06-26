@@ -16,6 +16,14 @@ function looksReal(value: string | undefined): boolean {
 }
 
 const defaultStockFundamentalsApiBaseUrl = `https://api.${"ask" + "analyst"}.com.pk/api`;
+const defaultSiteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  process.env.SITE_URL ??
+  (process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : process.env.NODE_ENV === "production"
+      ? "https://mystockli.vercel.app"
+      : "http://localhost:3001");
 
 export const config = {
   supabase: {
@@ -42,7 +50,7 @@ export const config = {
     vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:seemakram15@gmail.com",
   },
   cronSecret: process.env.CRON_SECRET ?? "",
-  siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  siteUrl: defaultSiteUrl.replace(/\/$/, ""),
   psx: {
     baseUrl: process.env.PSX_DPS_BASE_URL ?? "https://dps.psx.com.pk",
   },

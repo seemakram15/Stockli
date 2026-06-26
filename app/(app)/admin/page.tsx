@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { AdminUsersTable } from "@/components/admin/admin-users-table";
+import { BroadcastNotificationForm } from "@/components/admin/broadcast-notification-form";
 import { formatPKR, formatNumber } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Admin" };
@@ -41,6 +42,18 @@ export default async function AdminDashboardPage() {
           sub={<span className="text-muted-foreground">{stats.superadminCount} superadmin(s)</span>}
         />
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Broadcast notification</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Send a system, market, portfolio, or alert notice to every user. Push delivery follows each user&apos;s device consent.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <BroadcastNotificationForm demo={isDemoMode} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

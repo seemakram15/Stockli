@@ -6,7 +6,6 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   CalendarClock,
-  Briefcase,
   Maximize2,
   Minimize2,
   Plus,
@@ -22,9 +21,10 @@ import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { LiveSummaryCards } from "@/components/live-summary-cards";
 import { PageHeader } from "@/components/page-header";
+import { CreatePortfolioDialog } from "@/components/portfolio/create-portfolio-dialog";
 import { MarketStatusBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
@@ -85,6 +85,8 @@ export function CachedDashboardPage({
 
   const { dashboard, headlineTicker, tickerItems, calendar, performance, market } = data;
   const { summary, holdings, portfolios } = dashboard;
+  const hasHoldings = holdings.length > 0;
+  const hasPortfolios = portfolios.length > 0;
   const liveCalendarPositions = holdings.map((holding) => ({
     symbol: holding.symbol,
     quantity: holding.quantity,
@@ -106,7 +108,15 @@ export function CachedDashboardPage({
                   <Plus className="size-4" /> Manage
                 </Link>
               </Button>
-            ) : null}
+            ) : (
+              <CreatePortfolioDialog
+                trigger={
+                  <Button size="sm">
+                    <Plus className="size-4" /> Add portfolio
+                  </Button>
+                }
+              />
+            )}
           </>
         }
       />
@@ -125,19 +135,37 @@ export function CachedDashboardPage({
 
       <IndexTickerStrip headline={headlineTicker} items={tickerItems} />
 
-      {holdings.length === 0 ? (
-        <EmptyState
-          icon={<Wallet className="size-6" />}
-          title="No holdings yet"
-          description="Create a portfolio and add your first PSX position to see live P/L, charts and your daily gain/loss calendar."
-          action={
-            <Button asChild>
-              <Link href="/portfolios">
-                <Plus className="size-4" /> Create a portfolio
-              </Link>
-            </Button>
-          }
-        />
+      {!hasHoldings ? (
+        <>
+          {hasPortfolios ? <PortfolioJumpCards portfolios={portfolios} holdings={holdings} /> : null}
+          <EmptyState
+            icon={<Wallet className="size-6" />}
+            title={hasPortfolios ? "No holdings yet" : "No portfolios yet"}
+            description={
+              hasPortfolios
+                ? "Open a portfolio and add your first trade to see live P/L, charts and your daily gain/loss calendar."
+                : "Create your first portfolio, then add your PSX positions to see live P/L, charts and your daily gain/loss calendar."
+            }
+            action={
+              hasPortfolios ? (
+                <Button asChild>
+                  <Link href={`/portfolios/${portfolios[0].id}`}>
+                    Open portfolio
+                    <ArrowUpRight className="size-4" />
+                  </Link>
+                </Button>
+              ) : (
+                <CreatePortfolioDialog
+                  trigger={
+                    <Button>
+                      <Plus className="size-4" /> Create a portfolio
+                    </Button>
+                  }
+                />
+              )
+            }
+          />
+        </>
       ) : (
         <>
           <LiveSummaryCards holdings={holdings} realizedPL={summary.realizedPL} />
@@ -199,14 +227,22 @@ function PortfolioJumpCards({
 
   return (
     <Card>
-      <CardHeader className="flex-row items-start justify-between gap-3">
+      <CardHeader>
         <div>
           <CardTitle>Your portfolio workspaces</CardTitle>
           <p className="mt-1 text-sm text-muted-foreground">
             Open any portfolio for trades, holdings, allocation and daily P/L history.
           </p>
         </div>
-        <Briefcase className="size-5 shrink-0 text-primary" />
+        <CardAction>
+          <CreatePortfolioDialog
+            trigger={
+              <Button size="sm" variant="outline" className="h-9">
+                <Plus className="size-4" /> Add portfolio
+              </Button>
+            }
+          />
+        </CardAction>
       </CardHeader>
       <CardContent>
         <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
