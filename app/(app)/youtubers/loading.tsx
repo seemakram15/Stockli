@@ -1,5 +1,5 @@
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 
 export default function YoutubersLoading() {
-  return <PageLoadingState message="Loading Youtubers..." />;
+  return <PageLoadingState message="Loading videos..." variant="list" />;
 }

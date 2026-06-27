@@ -51,7 +51,7 @@ export function CachedPortfoliosPage({ userId }: { userId: string }) {
     return (
       <div className="mx-auto max-w-6xl">
         {isLoading ? (
-          <PageLoadingState message="Loading portfolios..." />
+          <PageLoadingState message="Loading Portfolios..." variant="portfolio" />
         ) : (
           <EmptyState
             icon={<Briefcase className="size-6" />}

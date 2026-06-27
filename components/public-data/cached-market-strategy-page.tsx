@@ -95,7 +95,7 @@ export function CachedMarketStrategyPage() {
           <MarketStrategyBoard data={data} />
         </>
       ) : isLoading ? (
-        <PageLoadingState message="Loading funds daily returns report..." />
+        <PageLoadingState message="Loading funds daily returns report..." variant="strategy" />
       ) : (
         <EmptyState
           icon={<Target className="size-6" />}

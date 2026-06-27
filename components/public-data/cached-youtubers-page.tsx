@@ -44,7 +44,7 @@ export function CachedYoutubersPage() {
       {data?.videos.length ? (
         <YoutubeVideosBoard data={data} />
       ) : isLoading ? (
-        <PageLoadingState message="Loading Youtubers..." />
+        <PageLoadingState message="Loading Youtubers..." variant="list" />
       ) : (
         <EmptyState
           icon={<PlaySquare className="size-6" />}

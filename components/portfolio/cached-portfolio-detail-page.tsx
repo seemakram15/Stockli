@@ -73,7 +73,7 @@ export function CachedPortfolioDetailPage({
     return (
       <div className="mx-auto max-w-7xl">
         {isLoading ? (
-          <PageLoadingState message="Loading portfolio..." />
+          <PageLoadingState message="Loading Portfolio..." variant="portfolio-detail" />
         ) : (
           <EmptyState
             icon={<Wallet className="size-6" />}

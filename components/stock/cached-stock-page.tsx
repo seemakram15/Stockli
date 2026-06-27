@@ -43,7 +43,7 @@ export function CachedStockPage({ symbol, userId }: { symbol: string; userId: st
     return (
       <div className="mx-auto max-w-7xl">
         {isLoading ? (
-          <PageLoadingState message="Loading stock..." />
+          <PageLoadingState message="Loading Stock..." variant="stock" />
         ) : (
           <EmptyState
             icon={<TrendingUp className="size-6" />}

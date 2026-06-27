@@ -55,7 +55,7 @@ export function CachedMufapPage({ kind }: { kind: "mutual" | "etfs" }) {
       {data ? (
         <MufapFundsBoard data={data} title={boardTitle} etfMode={etfMode} />
       ) : isLoading ? (
-        <PageLoadingState message={`Loading ${title.toLowerCase()}...`} />
+        <PageLoadingState message={`Loading ${title.toLowerCase()}...`} variant="list" />
       ) : (
         <EmptyState
           icon={<Icon className="size-6" />}
