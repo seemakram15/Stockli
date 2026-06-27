@@ -28,11 +28,13 @@ export function AddTradeDialog({
   defaultSymbol,
   defaultTab = "buy",
   trigger,
+  userId,
 }: {
   portfolioId: string;
   defaultSymbol?: string;
   defaultTab?: "buy" | "sell";
   trigger?: React.ReactNode;
+  userId?: string | null;
 }) {
   const [open, setOpen] = React.useState(false);
 
@@ -62,6 +64,7 @@ export function AddTradeDialog({
               kind="buy"
               portfolioId={portfolioId}
               defaultSymbol={defaultSymbol}
+              userId={userId}
               onDone={() => setOpen(false)}
             />
           </TabsContent>
@@ -70,6 +73,7 @@ export function AddTradeDialog({
               kind="sell"
               portfolioId={portfolioId}
               defaultSymbol={defaultSymbol}
+              userId={userId}
               onDone={() => setOpen(false)}
             />
           </TabsContent>
@@ -83,11 +87,13 @@ function TradeForm({
   kind,
   portfolioId,
   defaultSymbol,
+  userId,
   onDone,
 }: {
   kind: "buy" | "sell";
   portfolioId: string;
   defaultSymbol?: string;
+  userId?: string | null;
   onDone: () => void;
 }) {
   const router = useRouter();
@@ -103,13 +109,13 @@ function TradeForm({
   React.useEffect(() => {
     if (state.ok) {
       toast.success(state.message ?? "Saved");
-      markPortfolioMutated({ portfolioId });
+      markPortfolioMutated({ portfolioId, userId });
       router.refresh();
       onDone();
     } else if (state.error) {
       toast.error(state.error);
     }
-  }, [state, portfolioId, router, onDone]);
+  }, [state, portfolioId, router, onDone, userId]);
 
   // Auto-fill the latest price when a symbol is chosen (still editable).
   const onSymbol = React.useCallback((sym: string) => {

@@ -27,7 +27,6 @@ import type { HoldingWithMetrics } from "@/lib/types";
 export function CachedStockPage({ symbol, userId }: { symbol: string; userId: string }) {
   const normalizedSymbol = symbol.toUpperCase();
   const cacheKey = `private:stock:${userId}:${normalizedSymbol}`;
-  const legacyCacheKeys = React.useMemo(() => [`private:stock:${normalizedSymbol}`], [normalizedSymbol]);
   const cacheClosedOnly = React.useCallback(() => !shouldRefreshPsxData(), []);
   const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt } =
     usePersistentResource<StockPageData>({
@@ -36,7 +35,6 @@ export function CachedStockPage({ symbol, userId }: { symbol: string; userId: st
       refreshInterval: 60_000,
       pauseWhen: cacheClosedOnly,
       acceptCacheWhen: cacheClosedOnly,
-      legacyCacheKeys,
     });
 
   if (!data) {
@@ -58,7 +56,16 @@ export function CachedStockPage({ symbol, userId }: { symbol: string; userId: st
     );
   }
 
-  return <StockPageView data={data} error={error} isRefreshing={isRefreshing} isFromDeviceCache={isFromDeviceCache} cachedAt={cachedAt} />;
+  return (
+    <StockPageView
+      data={data}
+      error={error}
+      isRefreshing={isRefreshing}
+      isFromDeviceCache={isFromDeviceCache}
+      cachedAt={cachedAt}
+      userId={userId}
+    />
+  );
 }
 
 function StockPageView({
@@ -67,12 +74,14 @@ function StockPageView({
   isRefreshing,
   isFromDeviceCache,
   cachedAt,
+  userId,
 }: {
   data: StockPageData;
   error?: Error;
   isRefreshing: boolean;
   isFromDeviceCache: boolean;
   cachedAt: string | null;
+  userId: string;
 }) {
   const { detail, portfolios, watchedSymbols, symbol } = data;
   const { ticker, quote, candles, intraday } = detail;
@@ -122,7 +131,7 @@ function StockPageView({
             <WatchButton symbol={symbol} initialWatching={watchedSymbols.includes(symbol)} />
             <CreateAlertDialog defaultSymbol={symbol} />
             {portfolios.length > 0 && (
-              <AddTradeDialog portfolioId={portfolios[0].id} defaultSymbol={symbol} />
+              <AddTradeDialog portfolioId={portfolios[0].id} defaultSymbol={symbol} userId={userId} />
             )}
           </div>
         </div>

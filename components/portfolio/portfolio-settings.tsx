@@ -35,11 +35,13 @@ export function PortfolioSettings({
   name,
   description,
   demo,
+  userId,
 }: {
   id: string;
   name: string;
   description: string | null;
   demo?: boolean;
+  userId?: string | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -51,13 +53,13 @@ export function PortfolioSettings({
   React.useEffect(() => {
     if (state.ok) {
       toast.success(state.message ?? "Saved");
-      markPortfolioMutated({ portfolioId: id });
+      markPortfolioMutated({ portfolioId: id, userId });
       router.refresh();
       setOpen(false);
     } else if (state.error) {
       toast.error(state.error);
     }
-  }, [state, id, router]);
+  }, [state, id, router, userId]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -83,7 +85,13 @@ export function PortfolioSettings({
             </div>
           </div>
           <DialogFooter className="justify-between sm:justify-between">
-            <DeleteButton id={id} name={name} demo={demo} onDeleted={() => setOpen(false)} />
+            <DeleteButton
+              id={id}
+              name={name}
+              demo={demo}
+              userId={userId}
+              onDeleted={() => setOpen(false)}
+            />
             <Button type="submit" disabled={pending}>
               {pending && <Loader2 className="size-4 animate-spin" />}
               Save
@@ -99,17 +107,19 @@ function DeleteButton({
   id,
   name,
   demo,
+  userId,
   onDeleted,
 }: {
   id: string;
   name: string;
   demo?: boolean;
+  userId?: string | null;
   onDeleted: () => void;
 }) {
   const router = useRouter();
 
   function afterDelete() {
-    markPortfolioMutated({ portfolioId: id });
+    markPortfolioMutated({ portfolioId: id, userId });
     onDeleted();
     router.push("/portfolios");
     router.refresh();

@@ -20,7 +20,13 @@ import { Label } from "@/components/ui/label";
 import { markPortfolioMutated } from "@/lib/cache/portfolio-mutations";
 import { createPortfolio, type ActionState } from "@/lib/actions/portfolio";
 
-export function CreatePortfolioDialog({ trigger }: { trigger?: React.ReactNode }) {
+export function CreatePortfolioDialog({
+  trigger,
+  userId,
+}: {
+  trigger?: React.ReactNode;
+  userId?: string | null;
+}) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [state, action, pending] = useActionState<ActionState, FormData>(
@@ -31,13 +37,13 @@ export function CreatePortfolioDialog({ trigger }: { trigger?: React.ReactNode }
   React.useEffect(() => {
     if (state.ok) {
       toast.success(state.message ?? "Created");
-      markPortfolioMutated();
+      markPortfolioMutated({ userId });
       router.refresh();
       setOpen(false);
     } else if (state.error) {
       toast.error(state.error);
     }
-  }, [state, router]);
+  }, [state, router, userId]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

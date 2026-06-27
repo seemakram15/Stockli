@@ -24,24 +24,26 @@ import {
 import { Button } from "@/components/ui/button";
 import { AddTradeDialog } from "./add-trade-dialog";
 import { removeHolding } from "@/lib/actions/portfolio";
-import * as React from "react";
 
 export function HoldingRowActions({
   portfolioId,
   holdingId,
   symbol,
   demo,
+  userId,
 }: {
   portfolioId: string;
   holdingId: string;
   symbol: string;
   demo?: boolean;
+  userId?: string | null;
 }) {
   return (
     <div className="flex items-center justify-end gap-1">
       <AddTradeDialog
         portfolioId={portfolioId}
         defaultSymbol={symbol}
+        userId={userId}
         trigger={
           <Button variant="ghost" size="icon" className="size-8" aria-label="Trade">
             <ArrowLeftRight className="size-4" />

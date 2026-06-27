@@ -13,6 +13,7 @@ import {
   TableProperties,
   UsersRound,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,13 +62,55 @@ export function StockFinancialsPanel({
   companyName?: string | null;
 }) {
   const normalizedSymbol = symbol.toUpperCase();
-  const { data, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
+  const { data, isRefreshing, isFromDeviceCache, cachedAt, refreshNow, mutate } =
     usePersistentResource<StockFinancialsData>({
       cacheKey: `public:stock-financials:v4:${normalizedSymbol}`,
       url: `/api/public/stock-financials/${encodeURIComponent(normalizedSymbol)}`,
       refreshInterval: 60 * 60 * 1000,
       keepPreviousData: false,
     });
+  const [isFetchingFresh, setIsFetchingFresh] = React.useState(false);
+  const isBusy = isRefreshing || isFetchingFresh;
+
+  const fetchFreshData = React.useCallback(async () => {
+    setIsFetchingFresh(true);
+    try {
+      const response = await fetch(
+        `/api/public/stock-financials/${encodeURIComponent(normalizedSymbol)}/refresh`,
+        {
+          method: "POST",
+          headers: { accept: "application/json" },
+        }
+      );
+      const payload = (await response.json()) as {
+        data?: StockFinancialsData;
+        error?: string;
+        warning?: string | null;
+        refresh?: {
+          usedFallback: boolean;
+          hadMeaningfulFreshData: boolean;
+        };
+      };
+      if (!response.ok || !payload.data) {
+        throw new Error(payload.error ?? "Fresh fundamentals could not be fetched.");
+      }
+      await mutate(payload.data, { revalidate: false });
+      const needsWarning =
+        Boolean(payload.refresh?.usedFallback) || payload.refresh?.hadMeaningfulFreshData === false;
+      if (needsWarning) {
+        toast.warning(
+          payload.warning ??
+            `Updated ${normalizedSymbol} using cached fundamentals because AskAnalyst did not return fresh statement rows.`
+        );
+      } else {
+        toast.success(`Fetched latest fundamentals for ${normalizedSymbol}.`);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Fresh fundamentals could not be fetched.");
+    } finally {
+      setIsFetchingFresh(false);
+    }
+  }, [mutate, normalizedSymbol]);
 
   return (
     <Card className="overflow-hidden border-primary/20 bg-background shadow-sm">
@@ -98,15 +141,29 @@ export function StockFinancialsPanel({
           <div className="flex flex-wrap items-center gap-2">
             <StatusPill
               cachedAt={cachedAt ?? data?.updatedAt ?? null}
-              isRefreshing={isRefreshing}
+              isRefreshing={isBusy}
               isFromDeviceCache={isFromDeviceCache}
             />
             <Button
               type="button"
               variant="outline"
               size="sm"
+              onClick={() => void fetchFreshData()}
+              disabled={isBusy}
+            >
+              {isFetchingFresh ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
+              Fetch Data
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => refreshNow().catch(() => undefined)}
-              disabled={isRefreshing}
+              disabled={isBusy}
             >
               <RefreshCw className={cn("size-4", isRefreshing && "animate-spin")} />
               Refresh
@@ -407,7 +464,7 @@ function FinancialTableView({
         <table className="w-full min-w-[820px] border-collapse text-sm">
           <thead>
             <tr className="border-b bg-muted/40">
-              <th className="sticky left-0 z-10 bg-muted px-3 py-2 text-left font-semibold">
+              <th className="px-3 py-2 text-left font-semibold sm:sticky sm:left-0 sm:z-10 sm:bg-muted">
                 Metric
               </th>
               {showActions ? (
@@ -444,7 +501,7 @@ function FinancialTableView({
                 >
                   <td
                     className={cn(
-                      "sticky left-0 z-10 max-w-[280px] bg-background px-3 py-2",
+                      "max-w-[280px] px-3 py-2 sm:sticky sm:left-0 sm:z-10 sm:bg-background",
                       row.isBold && "font-semibold"
                     )}
                   >

@@ -100,8 +100,8 @@ export function CachedPortfolioCommandPage({
   const cacheClosedOnly = React.useCallback(() => !shouldRefreshPsxData(), []);
   const acceptPortfolioCache = React.useCallback(
     (record: CachedRecord<PortfolioCommandPageData>) =>
-      cacheClosedOnly() && isPortfolioCacheFresh(record),
-    [cacheClosedOnly]
+      cacheClosedOnly() && isPortfolioCacheFresh(record, userId),
+    [cacheClosedOnly, userId]
   );
   const {
     data,
@@ -169,6 +169,7 @@ export function CachedPortfolioCommandPage({
               </Button>
             ) : (
               <CreatePortfolioDialog
+                userId={userId}
                 trigger={
                   <Button size="sm">
                     <Plus className="size-4" /> Add portfolio
@@ -196,7 +197,9 @@ export function CachedPortfolioCommandPage({
 
       {!hasHoldings ? (
         <>
-          {hasPortfolios ? <PortfolioJumpCards portfolios={portfolios} holdings={holdings} /> : null}
+          {hasPortfolios ? (
+            <PortfolioJumpCards portfolios={portfolios} holdings={holdings} userId={userId} />
+          ) : null}
           <EmptyState
             icon={<Wallet className="size-6" />}
             title={hasPortfolios ? "No holdings yet" : "No portfolios yet"}
@@ -215,6 +218,7 @@ export function CachedPortfolioCommandPage({
                 </Button>
               ) : (
                 <CreatePortfolioDialog
+                  userId={userId}
                   trigger={
                     <Button>
                       <Plus className="size-4" /> Create a portfolio
@@ -229,7 +233,7 @@ export function CachedPortfolioCommandPage({
         <>
           <LiveSummaryCards holdings={holdings} realizedPL={summary.realizedPL} />
 
-          <PortfolioJumpCards portfolios={portfolios} holdings={holdings} />
+          <PortfolioJumpCards portfolios={portfolios} holdings={holdings} userId={userId} />
 
           <div className="grid gap-4 lg:grid-cols-3">
             <PerformanceCard data={performance} holdings={holdings} />
@@ -278,9 +282,11 @@ export function CachedPortfolioCommandPage({
 function PortfolioJumpCards({
   portfolios,
   holdings,
+  userId,
 }: {
   portfolios: PortfolioCommandPageData["dashboard"]["portfolios"];
   holdings: HoldingWithMetrics[];
+  userId: string;
 }) {
   if (portfolios.length === 0) return null;
 
@@ -295,6 +301,7 @@ function PortfolioJumpCards({
         </div>
         <CardAction>
           <CreatePortfolioDialog
+            userId={userId}
             trigger={
               <Button size="sm" variant="outline" className="h-9">
                 <Plus className="size-4" /> Add portfolio

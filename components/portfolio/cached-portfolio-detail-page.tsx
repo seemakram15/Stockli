@@ -39,14 +39,13 @@ export function CachedPortfolioDetailPage({
   id: string;
   userId: string;
   demo?: boolean;
-}) {
+  }) {
   const cacheKey = `private:portfolio:${userId}:${id}`;
-  const legacyCacheKeys = React.useMemo(() => [`private:portfolio:${id}`], [id]);
   const cacheClosedOnly = React.useCallback(() => !shouldRefreshPsxData(), []);
   const acceptPortfolioCache = React.useCallback(
     (record: CachedRecord<PortfolioPageData>) =>
-      cacheClosedOnly() && isPortfolioCacheFresh(record),
-    [cacheClosedOnly]
+      cacheClosedOnly() && isPortfolioCacheFresh(record, userId),
+    [cacheClosedOnly, userId]
   );
   const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<PortfolioPageData>({
@@ -55,7 +54,6 @@ export function CachedPortfolioDetailPage({
       refreshInterval: 60_000,
       pauseWhen: cacheClosedOnly,
       acceptCacheWhen: acceptPortfolioCache,
-      legacyCacheKeys,
     });
 
   React.useEffect(() => {
@@ -116,8 +114,9 @@ export function CachedPortfolioDetailPage({
                 name={pf.name}
                 description={pf.description}
                 demo={demo}
+                userId={userId}
               />
-              <AddTradeDialog portfolioId={pf.id} />
+              <AddTradeDialog portfolioId={pf.id} userId={userId} />
             </>
           }
         />
@@ -136,7 +135,7 @@ export function CachedPortfolioDetailPage({
           icon={<Wallet className="size-6" />}
           title="No holdings in this portfolio"
           description="Record your first buy to start tracking P/L."
-          action={<AddTradeDialog portfolioId={pf.id} />}
+          action={<AddTradeDialog portfolioId={pf.id} userId={userId} />}
         />
       ) : (
         <>
@@ -153,7 +152,7 @@ export function CachedPortfolioDetailPage({
                     </TabsList>
                   </div>
                   <TabsContent value="holdings" className="mt-2">
-                    <HoldingsTable holdings={holdings} rowActions={{ demo }} />
+                    <HoldingsTable holdings={holdings} rowActions={{ demo }} userId={userId} />
                   </TabsContent>
                   <TabsContent value="transactions" className="mt-2">
                     <TransactionsPanel transactions={transactions} />
