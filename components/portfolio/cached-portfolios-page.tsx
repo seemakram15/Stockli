@@ -22,12 +22,11 @@ import type { PortfoliosPageData } from "@/lib/services/portfolios-page";
 
 export function CachedPortfoliosPage({ userId }: { userId: string }) {
   const cacheKey = `private:portfolios:${userId}`;
-  const legacyCacheKeys = React.useMemo(() => ["private:portfolios"], []);
   const cacheClosedOnly = React.useCallback(() => !shouldRefreshPsxData(), []);
   const acceptPortfolioCache = React.useCallback(
     (record: CachedRecord<PortfoliosPageData>) =>
-      cacheClosedOnly() && isPortfolioCacheFresh(record),
-    [cacheClosedOnly]
+      cacheClosedOnly() && isPortfolioCacheFresh(record, userId),
+    [cacheClosedOnly, userId]
   );
   const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<PortfoliosPageData>({
@@ -36,7 +35,6 @@ export function CachedPortfoliosPage({ userId }: { userId: string }) {
       refreshInterval: 60_000,
       pauseWhen: cacheClosedOnly,
       acceptCacheWhen: acceptPortfolioCache,
-      legacyCacheKeys,
     });
 
   React.useEffect(() => {
@@ -60,7 +58,7 @@ export function CachedPortfoliosPage({ userId }: { userId: string }) {
               error?.message ??
               "The saved cache is empty and fresh portfolio data could not be loaded."
             }
-            action={<CreatePortfolioDialog />}
+            action={<CreatePortfolioDialog userId={userId} />}
           />
         )}
       </div>
@@ -81,7 +79,7 @@ export function CachedPortfoliosPage({ userId }: { userId: string }) {
               isFromDeviceCache={isFromDeviceCache}
               isRefreshing={isRefreshing}
             />
-            <CreatePortfolioDialog />
+            <CreatePortfolioDialog userId={userId} />
           </>
         }
       />
@@ -97,7 +95,7 @@ export function CachedPortfoliosPage({ userId }: { userId: string }) {
           icon={<Briefcase className="size-6" />}
           title="No portfolios yet"
           description="Create your first portfolio to start adding holdings."
-          action={<CreatePortfolioDialog />}
+          action={<CreatePortfolioDialog userId={userId} />}
         />
       ) : (
         <LivePortfolioGrid portfolios={data.portfolios} holdings={data.holdings} />

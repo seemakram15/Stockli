@@ -278,7 +278,7 @@ function useHubSWR<T>(url: string, userId?: string) {
   }, {
     refreshInterval: REFRESH_MS,
     revalidateOnFocus: true,
-    keepPreviousData: true,
+    keepPreviousData: false,
     shouldRetryOnError: false,
   });
 }

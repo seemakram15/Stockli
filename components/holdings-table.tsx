@@ -23,6 +23,7 @@ export function HoldingsTable({
   portfolioNames,
   rowActions,
   compact = false,
+  userId,
 }: {
   holdings: HoldingWithMetrics[];
   showPortfolio?: boolean;
@@ -31,6 +32,7 @@ export function HoldingsTable({
   rowActions?: { demo?: boolean };
   /** Compact view for dashboard summaries. Portfolio pages keep the full detail table. */
   compact?: boolean;
+  userId?: string | null;
 }) {
   const { liveHoldings: rows } = useLiveHoldings(holdings);
 
@@ -103,6 +105,7 @@ export function HoldingsTable({
                   holdingId={h.id}
                   symbol={h.symbol}
                   demo={rowActions.demo}
+                  userId={userId}
                 />
               ) : null
             }
@@ -169,6 +172,7 @@ export function HoldingsTable({
                     holdingId={h.id}
                     symbol={h.symbol}
                     demo={rowActions.demo}
+                    userId={userId}
                   />
                 </TableCell>
               )}

@@ -29,7 +29,7 @@ export function NotificationBell({ userId }: { userId: string }) {
   const { data, mutate } = useSWR<Feed>(["/api/notifications", userId], ([url]) => fetcher(url), {
     refreshInterval: 60_000,
     revalidateOnFocus: true,
-    keepPreviousData: true,
+    keepPreviousData: false,
   });
   const [open, setOpen] = React.useState(false);
   const items = data?.items ?? [];

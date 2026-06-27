@@ -1,6 +1,6 @@
 import "server-only";
+import { getMemoryCache, setMemoryCache } from "@/lib/cache/memory";
 import { getRedisClients } from "@/lib/cache/redis";
-import { setMemoryCache } from "@/lib/cache/memory";
 import { getStaleCached } from "@/lib/cache/stale";
 import { config } from "@/lib/config";
 import { normalizeSymbol } from "@/lib/security/validation";
@@ -31,6 +31,13 @@ type FundamentalsCacheEnvelope = {
   storedAt: string;
   freshUntil: number;
   staleUntil: number;
+};
+
+export type StockFinancialsRefreshResult = {
+  value: StockFinancialsData;
+  storedAt: string;
+  usedFallback: boolean;
+  hadMeaningfulFreshData: boolean;
 };
 
 interface RawDataPoint {
@@ -88,9 +95,48 @@ export async function getStockFinancials(symbolRaw: string) {
     key: `stock-fundamentals:v4:${symbol}`,
     ttlSeconds: FINANCIALS_CACHE_TTL_SECONDS,
     staleSeconds: FINANCIALS_CACHE_STALE_SECONDS,
-    load: () => fetchStockFinancials(symbol),
+    load: async () => {
+      const previous = await readStockFinancialsSnapshot(symbol);
+      const value = await fetchStockFinancials(symbol);
+
+      if (previous?.value && !hasMeaningfulFinancialData(value)) {
+        return previous.value;
+      }
+
+      return previous?.value ? mergeStockFinancialSnapshots(previous.value, value) : value;
+    },
     isUsable: (value) => Boolean(value),
   });
+}
+
+export async function refreshStockFinancials(
+  symbolRaw: string
+): Promise<StockFinancialsRefreshResult | null> {
+  const symbol = normalizeSymbol(symbolRaw);
+  if (!symbol) return null;
+
+  const previous = await readStockFinancialsSnapshot(symbol);
+  const value = await fetchStockFinancials(symbol);
+  const hasMeaningfulFreshData = hasMeaningfulFinancialData(value);
+
+  if (previous?.value && !hasMeaningfulFreshData) {
+    const envelope = await storeStockFinancialsSnapshot(symbol, previous.value);
+    return {
+      value: previous.value,
+      storedAt: envelope.storedAt,
+      usedFallback: true,
+      hadMeaningfulFreshData: false,
+    };
+  }
+
+  const nextValue = previous?.value ? mergeStockFinancialSnapshots(previous.value, value) : value;
+  const envelope = await storeStockFinancialsSnapshot(symbol, nextValue);
+  return {
+    value: nextValue,
+    storedAt: envelope.storedAt,
+    usedFallback: false,
+    hadMeaningfulFreshData: hasMeaningfulFreshData,
+  };
 }
 
 export async function getStockFinancialPeerComparison({
@@ -172,9 +218,18 @@ export async function archiveStockFundamentals({
     }
 
     try {
+      const previous = await readStockFinancialsSnapshot(symbol);
       const data = await fetchStockFinancials(symbol);
-      await storeStockFinancialsSnapshot(symbol, data);
-      return { symbol, ok: true };
+      const hasMeaningfulFreshData = hasMeaningfulFinancialData(data);
+
+      if (previous?.value && !hasMeaningfulFreshData) {
+        await storeStockFinancialsSnapshot(symbol, previous.value);
+        return { symbol, ok: true, preserved: true };
+      }
+
+      const nextValue = previous?.value ? mergeStockFinancialSnapshots(previous.value, data) : data;
+      await storeStockFinancialsSnapshot(symbol, nextValue);
+      return { symbol, ok: true, preserved: false };
     } catch (error) {
       return {
         symbol,
@@ -342,7 +397,10 @@ async function getFundamentalsCompanies(): Promise<FundamentalsCompany[]> {
   return cached.value;
 }
 
-async function storeStockFinancialsSnapshot(symbol: string, value: StockFinancialsData) {
+async function storeStockFinancialsSnapshot(
+  symbol: string,
+  value: StockFinancialsData
+): Promise<FundamentalsCacheEnvelope> {
   const now = Date.now();
   const key = `stock-fundamentals:v4:${symbol}`;
   const envelope: FundamentalsCacheEnvelope = {
@@ -356,6 +414,53 @@ async function storeStockFinancialsSnapshot(symbol: string, value: StockFinancia
   await Promise.allSettled(
     getRedisClients().map((redis) => redis.set(key, envelope, { ex: FINANCIALS_CACHE_STALE_SECONDS }))
   );
+  return envelope;
+}
+
+async function readStockFinancialsSnapshot(symbol: string) {
+  const key = `stock-fundamentals:v4:${symbol}`;
+  const memory = getMemoryCache<FundamentalsCacheEnvelope>(key);
+  if (memory) return memory;
+
+  for (const redis of getRedisClients()) {
+    try {
+      const cached = await redis.get<FundamentalsCacheEnvelope>(key);
+      if (cached) return cached;
+    } catch (error) {
+      console.warn(`[fundamentals] cache read failed for ${key}:`, error);
+    }
+  }
+
+  return null;
+}
+
+function hasMeaningfulFinancialData(value: StockFinancialsData) {
+  return (Object.entries(value.tabs) as Array<[StockFinancialTabId, FinancialTabData]>).some(
+    ([tabId, tab]) => tabId !== "overview" && tab.tables.some((table) => table.rows.length > 0)
+  );
+}
+
+function mergeStockFinancialSnapshots(
+  previous: StockFinancialsData,
+  next: StockFinancialsData
+): StockFinancialsData {
+  const tabs = { ...next.tabs };
+  let merged = false;
+
+  (Object.entries(next.tabs) as Array<[StockFinancialTabId, FinancialTabData]>).forEach(
+    ([tabId, tab]) => {
+      if (tabId === "overview") return;
+      const hasFreshRows = tab.tables.some((table) => table.rows.length > 0);
+      const previousTab = previous.tabs[tabId];
+      const hasPreviousRows = previousTab.tables.some((table) => table.rows.length > 0);
+      if (!hasFreshRows && hasPreviousRows) {
+        tabs[tabId] = previousTab;
+        merged = true;
+      }
+    }
+  );
+
+  return merged ? { ...next, tabs } : next;
 }
 
 async function buildOverviewTab(company: FundamentalsCompany): Promise<FinancialTabData> {

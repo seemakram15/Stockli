@@ -17,6 +17,7 @@ const DB_NAME = "stockli-public-cache";
 const STORE_NAME = "resources";
 const DB_VERSION = 1;
 const MEMORY_CACHE = new Map<string, CachedRecord<unknown>>();
+const EMPTY_LEGACY_CACHE_KEYS: string[] = [];
 
 async function fetchResource<T>(url: string): Promise<T> {
   const response = await fetch(url, {
@@ -34,7 +35,7 @@ export function usePersistentResource<T>({
   pauseWhen,
   acceptCacheWhen,
   keepPreviousData = true,
-  legacyCacheKeys = [],
+  legacyCacheKeys = EMPTY_LEGACY_CACHE_KEYS,
 }: {
   cacheKey: string;
   url: string;
@@ -52,6 +53,8 @@ export function usePersistentResource<T>({
   );
   const [, setClockTick] = React.useState(0);
   const hasPauseRule = Boolean(pauseWhen);
+  const isPrivateResource = cacheKey.startsWith("private:");
+  const keepPrevious = isPrivateResource ? false : keepPreviousData;
 
   React.useEffect(() => {
     let cancelled = false;
@@ -89,11 +92,14 @@ export function usePersistentResource<T>({
   const cachedValue = usableCached?.value ?? null;
   const rawCachedValue = activeCached?.value ?? null;
   const isPaused = Boolean(cacheReady && cachedValue && pauseWhen?.(cachedValue));
-  const swrKey = cacheReady && !isPaused ? url : null;
+  const swrKey = cacheReady && !isPaused ? ([cacheKey, url] as const) : null;
 
-  const swr = useSWR<T>(swrKey, fetchResource, {
+  const swr = useSWR<T>(
+    swrKey,
+    ([, requestUrl]: readonly [string, string]) => fetchResource<T>(requestUrl),
+    {
     dedupingInterval: 15_000,
-    keepPreviousData,
+    keepPreviousData: keepPrevious,
     revalidateOnFocus: !isPaused,
     revalidateOnReconnect: !isPaused,
     refreshInterval: (latest) => {
@@ -103,7 +109,8 @@ export function usePersistentResource<T>({
         ? refreshInterval(value ?? null)
         : refreshInterval;
     },
-  });
+    }
+  );
 
   React.useEffect(() => {
     if (!swr.data) return;
