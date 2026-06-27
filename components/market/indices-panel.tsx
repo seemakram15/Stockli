@@ -28,14 +28,20 @@ const RETURN_LABELS: { key: keyof IndexReturns; label: string }[] = [
 export function IndicesPanel({
   cards,
   initialDetail,
+  onDetailChange,
 }: {
   cards: IndexCard[];
   initialDetail: IndexDetail;
+  onDetailChange?: (detail: IndexDetail) => void;
 }) {
   const [selected, setSelected] = React.useState(initialDetail.symbol);
   const [detail, setDetail] = React.useState<IndexDetail>(initialDetail);
   const [loading, setLoading] = React.useState(false);
   const cache = React.useRef<Record<string, IndexDetail>>({ [initialDetail.symbol]: initialDetail });
+
+  React.useEffect(() => {
+    onDetailChange?.(detail);
+  }, [detail, onDetailChange]);
 
   async function select(symbol: string) {
     if (symbol === selected) return;
@@ -61,7 +67,7 @@ export function IndicesPanel({
   return (
     <div className="space-y-4">
       {/* Index cards */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
         {cards.map((idx) => {
           const isActive = idx.symbol === selected;
           return (
@@ -78,7 +84,7 @@ export function IndicesPanel({
                 <p className="tabular-nums text-lg font-semibold">{formatNumber(idx.current, 0)}</p>
                 <ChangeBadge pct={idx.changePct} className="text-xs" />
               </div>
-              <Sparkline data={idx.spark} className="shrink-0" />
+              <Sparkline data={idx.spark} className="hidden shrink-0 sm:block" />
             </button>
           );
         })}

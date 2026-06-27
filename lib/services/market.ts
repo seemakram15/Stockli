@@ -6,6 +6,9 @@ import {
   getIndexConstituentsCached,
 } from "@/lib/services/history";
 import { getMarketRows } from "@/lib/services/prices";
+import {
+  normalizeMarketSectorIndex,
+} from "@/lib/psx/market-indexes";
 import { PSX_INDICES } from "@/lib/psx/symbols";
 import type { Candle, IndexConstituent, MarketWatchRow, SeriesPoint } from "@/lib/types";
 
@@ -170,9 +173,12 @@ export async function getMarketPerformers(limit = 10): Promise<MarketPerformers>
   return buildMarketPerformers(rows, limit);
 }
 
-export async function getSectorPerformance(): Promise<SectorPerformance[]> {
+export async function getSectorPerformance(
+  indexSymbol?: string | null
+): Promise<SectorPerformance[]> {
   const rows = await getMarketRows();
-  return buildSectorPerformance(rows);
+  const filtered = await filterRowsForIndex(rows, indexSymbol);
+  return buildSectorPerformance(filtered);
 }
 
 /** Market performer + sector analytics from a single market-watch read. */
@@ -209,6 +215,17 @@ function buildMarketPerformers(rows: MarketWatchRow[], limit: number): MarketPer
       .slice(0, limit)
       .map(toPerformer),
   };
+}
+
+async function filterRowsForIndex(rows: MarketWatchRow[], indexSymbol?: string | null) {
+  const symbol = normalizeMarketSectorIndex(indexSymbol);
+  if (!symbol) return rows;
+
+  const constituents = await getIndexConstituentsCached(symbol);
+  const allowed = new Set(constituents.map((constituent) => constituent.symbol.toUpperCase()));
+  if (allowed.size === 0) return [];
+
+  return rows.filter((row) => allowed.has(row.symbol.toUpperCase()));
 }
 
 function buildSectorPerformance(rows: MarketWatchRow[]): SectorPerformance[] {

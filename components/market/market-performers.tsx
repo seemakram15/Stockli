@@ -29,7 +29,7 @@ export function MarketPerformers({
         </CardHeader>
       )}
       <CardContent>
-        <div className="grid gap-5 lg:grid-cols-3">
+        <div className="flex snap-x gap-5 overflow-x-auto pb-2 scrollbar-thin lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0">
           <PerformerTable
             title="Top Active Stocks"
             icon={<Activity className="size-4 text-primary" />}
@@ -61,7 +61,7 @@ function PerformerTable({
   rows: MarketPerformer[];
 }) {
   return (
-    <div className="min-w-0 rounded-xl border border-border">
+    <div className="min-w-[calc(100vw-5rem)] snap-start rounded-xl border border-border lg:min-w-0">
       <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-2">
         {icon}
         <h3 className="text-sm font-semibold uppercase tracking-wide">{title}</h3>

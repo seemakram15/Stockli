@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { TrendingUp } from "lucide-react";
 import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { EmptyState } from "@/components/empty-state";
@@ -8,7 +9,6 @@ import { ConstituentsTable } from "@/components/market/constituents-table";
 import { IndicesPanel } from "@/components/market/indices-panel";
 import { MarketAccordion } from "@/components/market/market-accordion";
 import { MarketPerformers } from "@/components/market/market-performers";
-import { SectorPerformancePanel } from "@/components/market/sector-performance";
 import { PageHeader } from "@/components/page-header";
 import { MarketStatusBadge } from "@/components/status-badges";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,12 +25,20 @@ export function CachedPsxMarketPage() {
       pauseWhen: () => !shouldRefreshPsxData(),
       acceptCacheWhen: () => !shouldRefreshPsxData(),
     });
+  const [currentDetail, setCurrentDetail] = React.useState(data?.detail ?? null);
+
+  React.useEffect(() => {
+    if (!currentDetail && data?.detail) {
+      setCurrentDetail(data.detail);
+    }
+  }, [currentDetail, data?.detail]);
+  const activeDetail = currentDetail ?? data?.detail ?? null;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <PageHeader
         title="Pakistan Stock Exchange"
-        description="Live PSX indices, constituents, market performers and sector performance."
+        description="Live PSX indices, constituents and market performers."
         actions={
           <>
             {data?.market ? (
@@ -51,7 +59,11 @@ export function CachedPsxMarketPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold tracking-tight">Market Overview</h2>
             {data.detail ? (
-              <IndicesPanel cards={data.cards} initialDetail={data.detail} />
+              <IndicesPanel
+                cards={data.cards}
+                initialDetail={data.detail}
+                onDetailChange={setCurrentDetail}
+              />
             ) : (
               <EmptyState
                 icon={<TrendingUp className="size-6" />}
@@ -65,22 +77,18 @@ export function CachedPsxMarketPage() {
             <MarketPerformers data={data.analytics.performers} showHeader={false} />
           </MarketAccordion>
 
-          {data.detail && (
+          {activeDetail && (
             <MarketAccordion
-              title={`${data.detail.symbol} constituents (${data.detail.constituents.length})`}
+              title={`${activeDetail.symbol} constituents (${activeDetail.constituents.length})`}
               meta="Sorted by index weight"
             >
               <Card>
                 <CardContent>
-                  <ConstituentsTable constituents={data.detail.constituents} />
+                  <ConstituentsTable constituents={activeDetail.constituents} />
                 </CardContent>
               </Card>
             </MarketAccordion>
           )}
-
-          <MarketAccordion title="Sector Performance">
-            <SectorPerformancePanel data={data.analytics.sectors} showHeader={false} />
-          </MarketAccordion>
         </>
       ) : isLoading ? (
         <PageLoadingState message="Loading market data..." />

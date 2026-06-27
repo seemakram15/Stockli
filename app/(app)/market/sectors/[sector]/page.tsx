@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import type * as React from "react";
 import { notFound } from "next/navigation";
 import { Activity, BarChart3, TrendingDown, TrendingUp } from "lucide-react";
+import {
+  getMarketSectorIndexLabel,
+  normalizeMarketSectorIndex,
+} from "@/lib/psx/market-indexes";
 import { getSectorPerformance } from "@/lib/services/market";
 import { PageHeader } from "@/components/page-header";
 import { SmartBackLink } from "@/components/smart-back-link";
@@ -15,35 +19,48 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ sector: string }>;
+  searchParams: Promise<{ index?: string }>;
 }): Promise<Metadata> {
   const { sector } = await params;
-  return { title: `${decodeParam(sector)} sector` };
+  const { index } = await searchParams;
+  const selectedIndex = normalizeMarketSectorIndex(index);
+  const label = selectedIndex ? ` · ${getMarketSectorIndexLabel(selectedIndex)}` : "";
+  return { title: `${decodeParam(sector)} sector${label}` };
 }
 
 export default async function MarketSectorPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ sector: string }>;
+  searchParams: Promise<{ index?: string }>;
 }) {
   const { sector: rawSector } = await params;
+  const { index } = await searchParams;
   const sectorName = decodeParam(rawSector);
-  const sectors = await getSectorPerformance();
+  const selectedIndex = normalizeMarketSectorIndex(index);
+  const sectors = await getSectorPerformance(selectedIndex);
   const sector = sectors.find((item) => normalize(item.sector) === normalize(sectorName));
 
   if (!sector) notFound();
 
   const flat = sector.count - sector.advancers - sector.decliners;
   const mostActive = [...sector.stocks].sort((a, b) => b.volume - a.volume).slice(0, 5);
+  const backHref = selectedIndex ? `/market/sectors?index=${selectedIndex}` : "/market/sectors";
+  const description = selectedIndex
+    ? `Sector-level performance for ${getMarketSectorIndexLabel(selectedIndex)} and every stock currently grouped under this sector.`
+    : "Sector-level performance and every stock currently grouped under this sector.";
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <SmartBackLink fallbackHref="/market" label="Back to market" />
+      <SmartBackLink fallbackHref={backHref} label="Back to sectors" />
 
       <PageHeader
         title={sector.sector}
-        description="Sector-level performance and every stock currently grouped under this sector."
+        description={description}
         actions={<DataDelayBadge />}
       />
 
