@@ -46,7 +46,7 @@ export function CachedGlobalMarketPage({
       {data ? (
         <GlobalMarketBoard data={data} showMap={market === "world"} />
       ) : isLoading ? (
-        <PageLoadingState message={`Loading ${title}...`} />
+        <PageLoadingState message={`Loading ${title}...`} variant="global-market" />
       ) : (
         <EmptyState
           title={`${title} unavailable`}

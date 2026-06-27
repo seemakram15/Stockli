@@ -132,6 +132,7 @@ export function CachedPortfolioCommandPage({
       <div className="mx-auto max-w-7xl">
         <PageLoadingState
           message={isLoading ? `Loading ${pageLabel.toLowerCase()}...` : `Preparing ${pageLabel.toLowerCase()}...`}
+          variant="portfolio"
         />
       </div>
     );

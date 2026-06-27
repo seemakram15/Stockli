@@ -201,7 +201,7 @@ export function CachedBoardMeetingsPage() {
           )}
         />
       ) : resource.isLoading ? (
-        <PageLoadingState message="Loading board meetings..." />
+        <PageLoadingState message="Loading board meetings..." variant="list" />
       ) : (
         <EmptyState
           icon={<CalendarDays className="size-6" />}
@@ -255,7 +255,7 @@ export function CachedBookClosuresPage() {
           renderMobile={(row) => <CompactBookClosureCard row={row} />}
         />
       ) : resource.isLoading ? (
-        <PageLoadingState message="Loading book closures..." />
+        <PageLoadingState message="Loading book closures..." variant="list" />
       ) : (
         <EmptyState
           icon={<Gift className="size-6" />}
@@ -303,7 +303,7 @@ export function CachedDividendHistoryPage() {
           renderMobile={(row) => <CompactDividendCard row={row} />}
         />
       ) : resource.isLoading ? (
-        <PageLoadingState message="Loading dividend history..." />
+        <PageLoadingState message="Loading dividend history..." variant="list" />
       ) : (
         <EmptyState
           icon={<History className="size-6" />}
@@ -423,7 +423,7 @@ export function CachedPivotPointsPage() {
           </CardContent>
         </Card>
       ) : resource.isLoading ? (
-        <PageLoadingState message="Loading pivot points..." />
+        <PageLoadingState message="Loading pivot points..." variant="list" />
       ) : (
         <EmptyState
           icon={<Target className="size-6" />}

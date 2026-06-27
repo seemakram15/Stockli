@@ -91,7 +91,7 @@ export function CachedPsxMarketPage() {
           )}
         </>
       ) : isLoading ? (
-        <PageLoadingState message="Loading market data..." />
+        <PageLoadingState message="Loading market data..." variant="market" />
       ) : (
         <EmptyState
           icon={<TrendingUp className="size-6" />}
