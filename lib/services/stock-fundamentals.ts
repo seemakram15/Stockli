@@ -20,8 +20,6 @@ const FUNDAMENTALS_BASE = config.fundamentals.baseUrl.replace(/\/+$/, "");
 const REQUEST_TIMEOUT_MS = 25_000;
 const FINANCIALS_CACHE_TTL_SECONDS = 6 * 60 * 60;
 const FINANCIALS_CACHE_STALE_SECONDS = 5 * 365 * 24 * 60 * 60;
-const PEER_CACHE_TTL_SECONDS = 6 * 60 * 60;
-const PEER_CACHE_STALE_SECONDS = 5 * 365 * 24 * 60 * 60;
 const COMPANY_LIST_TTL_SECONDS = 7 * 24 * 60 * 60;
 const COMPANY_LIST_STALE_SECONDS = 365 * 24 * 60 * 60;
 const ARCHIVE_BATCH_SIZE = 3;
@@ -31,6 +29,14 @@ type FundamentalsCacheEnvelope = {
   storedAt: string;
   freshUntil: number;
   staleUntil: number;
+};
+
+type CacheStatus = "fresh" | "stale" | "miss";
+
+export type StockFinancialsCacheResult = {
+  value: StockFinancialsData;
+  status: CacheStatus;
+  storedAt: string;
 };
 
 export type StockFinancialsRefreshResult = {
@@ -91,22 +97,20 @@ export async function getStockFinancials(symbolRaw: string) {
   const symbol = normalizeSymbol(symbolRaw);
   if (!symbol) return null;
 
-  return getStaleCached({
-    key: `stock-fundamentals:v4:${symbol}`,
-    ttlSeconds: FINANCIALS_CACHE_TTL_SECONDS,
-    staleSeconds: FINANCIALS_CACHE_STALE_SECONDS,
-    load: async () => {
-      const previous = await readStockFinancialsSnapshot(symbol);
-      const value = await fetchStockFinancials(symbol);
+  const cached = await readStockFinancialsSnapshot(symbol);
+  if (cached?.value) {
+    return {
+      value: cached.value,
+      status: Date.now() < cached.freshUntil ? "fresh" : "stale",
+      storedAt: cached.storedAt,
+    } satisfies StockFinancialsCacheResult;
+  }
 
-      if (previous?.value && !hasMeaningfulFinancialData(value)) {
-        return previous.value;
-      }
-
-      return previous?.value ? mergeStockFinancialSnapshots(previous.value, value) : value;
-    },
-    isUsable: (value) => Boolean(value),
-  });
+  return {
+    value: buildPreparingFinancials(symbol),
+    status: "miss",
+    storedAt: new Date().toISOString(),
+  } satisfies StockFinancialsCacheResult;
 }
 
 export async function refreshStockFinancials(
@@ -152,13 +156,12 @@ export async function getStockFinancialPeerComparison({
   const metric = metricLabel.trim().slice(0, 120);
   if (!symbol || !metric || tabId === "overview") return null;
 
-  return getStaleCached({
-    key: `stock-fundamentals:peers:v2:${symbol}:${tabId}:${cacheSafeMetric(metric)}`,
-    ttlSeconds: PEER_CACHE_TTL_SECONDS,
-    staleSeconds: PEER_CACHE_STALE_SECONDS,
-    load: () => fetchStockFinancialPeerComparison(symbol, tabId, metric),
-    isUsable: (value) => Boolean(value),
-  });
+  const value = await buildCachedStockFinancialPeerComparison(symbol, tabId, metric);
+  return {
+    value,
+    status: "fresh",
+    storedAt: value.updatedAt,
+  } satisfies { value: StockFinancialPeerComparison; status: CacheStatus; storedAt: string };
 }
 
 export async function getStockFundamentalsCompanies() {
@@ -302,13 +305,14 @@ async function fetchStockFinancials(symbol: string): Promise<StockFinancialsData
   };
 }
 
-async function fetchStockFinancialPeerComparison(
+async function buildCachedStockFinancialPeerComparison(
   symbol: string,
   tabId: Exclude<StockFinancialTabId, "overview">,
   metricLabel: string
 ): Promise<StockFinancialPeerComparison> {
-  const company = await resolveCompany(symbol);
-  if (!company) {
+  const currentSnapshot = await readStockFinancialsSnapshot(symbol);
+  const currentCompany = currentSnapshot?.value.company ?? (await resolveCompany(symbol));
+  if (!currentCompany) {
     return {
       symbol,
       companyName: symbol,
@@ -323,24 +327,28 @@ async function fetchStockFinancialPeerComparison(
 
   const companies = await getFundamentalsCompanies();
   const peers = companies
-    .filter((candidate) => candidate.id !== company.id)
+    .filter((candidate) => candidate.id !== currentCompany.id)
     .filter((candidate) =>
-      company.sector_id
-        ? candidate.sector_id === company.sector_id
-        : candidate.sector?.toUpperCase() === company.sector?.toUpperCase()
+      currentCompany.sector_id
+        ? candidate.sector_id === currentCompany.sector_id
+        : candidate.sector?.toUpperCase() === currentCompany.sector?.toUpperCase()
     )
-    .slice(0, 18);
+    .slice(0, 24);
 
   const peerRows = (
-    await mapLimit(peers, 4, async (peer): Promise<StockFinancialPeerRow | null> => {
-      const tab = await buildPeerFinancialTab(peer, tabId).catch(() => null);
-      const row = findMetricRow(tab ?? undefined, metricLabel);
+    await mapLimit(peers, 8, async (peer): Promise<StockFinancialPeerRow | null> => {
+      const peerSymbol = normalizeSymbol(peer.symbol || peer.label2);
+      if (!peerSymbol) return null;
+      const snapshot = await readStockFinancialsSnapshot(peerSymbol);
+      const tab = snapshot?.value.tabs[tabId];
+      const row = findMetricRow(tab, metricLabel);
       if (!row) return null;
+
       return {
-        symbol: peer.symbol || peer.label2,
-        companyName: peer.name || peer.label,
-        sector: peer.sector || company.sector || "Unknown",
-        image: peer.image ?? null,
+        symbol: peerSymbol,
+        companyName: peer.name || peer.label || peerSymbol,
+        sector: peer.sector || currentCompany.sector || "Unknown",
+        image: peer.image ?? snapshot?.value.company?.image ?? null,
         values: row.values,
         sparkline: row.sparkline,
       };
@@ -349,32 +357,14 @@ async function fetchStockFinancialPeerComparison(
 
   return {
     symbol,
-    companyName: company.name || company.label || symbol,
-    sector: company.sector || "Unknown",
+    companyName: currentCompany.name || currentCompany.label || symbol,
+    sector: currentCompany.sector || "Unknown",
     tabId,
     metricLabel,
     periods: collectPeerPeriods(peerRows),
     peers: peerRows,
     updatedAt: new Date().toISOString(),
   };
-}
-
-async function buildPeerFinancialTab(
-  company: FundamentalsCompany,
-  tabId: Exclude<StockFinancialTabId, "overview">
-) {
-  switch (tabId) {
-    case "latest":
-      return buildLatestTab(company);
-    case "income":
-      return buildStatementTab(company, "income");
-    case "balance":
-      return buildStatementTab(company, "balance");
-    case "cashflow":
-      return buildCashflowTab(company);
-    case "ratios":
-      return buildRatiosTab(company);
-  }
 }
 
 async function resolveCompany(symbol: string): Promise<FundamentalsCompany | null> {
@@ -461,6 +451,25 @@ function mergeStockFinancialSnapshots(
   );
 
   return merged ? { ...next, tabs } : next;
+}
+
+function buildPreparingFinancials(symbol: string): StockFinancialsData {
+  const tabs = { ...EMPTY_TABS };
+  for (const tabId of Object.keys(tabs) as StockFinancialTabId[]) {
+    tabs[tabId] = {
+      ...tabs[tabId],
+      status: "empty",
+      message: "Company fundamentals are preparing and will appear here shortly.",
+    };
+  }
+
+  return {
+    symbol,
+    company: null,
+    source: "fundamentals",
+    updatedAt: new Date().toISOString(),
+    tabs,
+  };
 }
 
 async function buildOverviewTab(company: FundamentalsCompany): Promise<FinancialTabData> {
@@ -745,10 +754,6 @@ function periodSortValue(period: string) {
 
 function normalizeMetricLabel(value: string) {
   return value.toLowerCase().replace(/\s+/g, " ").trim();
-}
-
-function cacheSafeMetric(value: string) {
-  return normalizeMetricLabel(value).replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
 async function mapLimit<T, R>(
