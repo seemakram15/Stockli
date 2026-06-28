@@ -188,6 +188,50 @@ export async function getStockFundamentalsCompanies() {
     .sort((a, b) => a.symbol.localeCompare(b.symbol));
 }
 
+export async function getArchivedStockFinancialsBatch({
+  offset = 0,
+  limit = 25,
+}: {
+  offset?: number;
+  limit?: number;
+} = {}) {
+  const companies = await getStockFundamentalsCompanies();
+  const safeOffset = Math.max(0, offset);
+  const safeLimit = Math.min(Math.max(1, limit), 50);
+  const window = companies.slice(safeOffset, safeOffset + safeLimit);
+  const records = (
+    await Promise.all(
+      window.map(async (company) => {
+        const snapshot = await readStockFinancialsSnapshot(company.symbol);
+        if (!snapshot?.value) return null;
+        return {
+          symbol: company.symbol,
+          storedAt: snapshot.storedAt,
+          data: snapshot.value,
+        };
+      })
+    )
+  ).filter(
+    (
+      record
+    ): record is {
+      symbol: string;
+      storedAt: string;
+      data: StockFinancialsData;
+    } => Boolean(record)
+  );
+
+  const nextOffset = safeOffset + window.length >= companies.length ? null : safeOffset + window.length;
+
+  return {
+    total: companies.length,
+    offset: safeOffset,
+    limit: safeLimit,
+    nextOffset,
+    records,
+  };
+}
+
 export async function archiveStockFundamentals({
   offset = 0,
   limit = 25,
@@ -326,14 +370,16 @@ async function buildCachedStockFinancialPeerComparison(
   }
 
   const companies = await getFundamentalsCompanies();
-  const peers = companies
-    .filter((candidate) => candidate.id !== currentCompany.id)
+  const sectorCompanies = companies
     .filter((candidate) =>
       currentCompany.sector_id
         ? candidate.sector_id === currentCompany.sector_id
         : candidate.sector?.toUpperCase() === currentCompany.sector?.toUpperCase()
-    )
-    .slice(0, 24);
+    );
+  const peers = [
+    currentCompany,
+    ...sectorCompanies.filter((candidate) => candidate.id !== currentCompany.id),
+  ].slice(0, 24);
 
   const peerRows = (
     await mapLimit(peers, 8, async (peer): Promise<StockFinancialPeerRow | null> => {
