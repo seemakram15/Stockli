@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 
+import fs from "node:fs";
+import path from "node:path";
+
+loadEnvFile(".env.local");
+
 const defaultBaseUrl = "http://localhost:3001";
 const baseUrl = (
   process.env.STOCKLI_APP_URL ||
@@ -44,9 +49,27 @@ while (true) {
       payload.nextOffset ?? "done"
     }`
   );
+  for (const failure of (payload.failed ?? []).slice(0, 10)) {
+    console.log(`  ${failure.symbol}: ${failure.error}`);
+  }
 
   if (payload.nextOffset === null || payload.nextOffset === undefined) break;
   offset = payload.nextOffset;
 }
 
 console.log(`Fundamentals archive complete. Stored=${totalStored}, failed=${totalFailed}`);
+
+function loadEnvFile(filename) {
+  const filePath = path.resolve(process.cwd(), filename);
+  if (!fs.existsSync(filePath)) return;
+  const lines = fs.readFileSync(filePath, "utf8").split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const equalsIndex = trimmed.indexOf("=");
+    if (equalsIndex === -1) continue;
+    const key = trimmed.slice(0, equalsIndex).trim();
+    const value = trimmed.slice(equalsIndex + 1).trim().replace(/^["']|["']$/g, "");
+    if (key && process.env[key] === undefined) process.env[key] = value;
+  }
+}

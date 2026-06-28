@@ -89,6 +89,8 @@ export function StockFinancialsPanel({
         refresh?: {
           usedFallback: boolean;
           hadMeaningfulFreshData: boolean;
+          complete?: boolean;
+          missingTabs?: StockFinancialTabId[];
         };
       };
       if (!response.ok || !payload.data) {
@@ -96,7 +98,9 @@ export function StockFinancialsPanel({
       }
       await mutate(payload.data, { revalidate: false });
       const needsWarning =
-        Boolean(payload.refresh?.usedFallback) || payload.refresh?.hadMeaningfulFreshData === false;
+        Boolean(payload.refresh?.usedFallback) ||
+        payload.refresh?.hadMeaningfulFreshData === false ||
+        payload.refresh?.complete === false;
       if (needsWarning) {
         toast.warning(
           payload.warning ??

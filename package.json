@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "audit:fundamentals": "node scripts/audit-fundamentals-cache.mjs",
     "archive:fundamentals": "node scripts/archive-fundamentals.mjs",
     "migrate": "node scripts/apply-migrations.mjs",
     "build": "npm run migrate && next build",

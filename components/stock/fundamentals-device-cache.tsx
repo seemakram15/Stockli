@@ -27,7 +27,7 @@ type FundamentalsSnapshotBatch = {
   }>;
 };
 
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 5;
 const CACHE_VERSION = "v4";
 const COMPLETE_PREFIX = "stockli:fundamentals-device-cache:complete";
 const SNOOZE_PREFIX = "stockli:fundamentals-device-cache:snooze";
@@ -52,10 +52,16 @@ export function FundamentalsDeviceCachePrompt({ userId }: { userId: string }) {
   async function startCache() {
     try {
       const result = await cacheAllFundamentalsToDevice((next) => setState(next));
-      window.localStorage.setItem(completeStorageKey(userId), CACHE_VERSION);
-      window.localStorage.removeItem(snoozeStorageKey(userId));
-      toast.success(`Cached ${result.stored} company fundamentals on this device.`);
-      setOpen(false);
+      if (result.stored < result.total) {
+        toast.warning(
+          `Cached ${result.stored}/${result.total} complete company fundamentals. Some companies will be retried next time.`
+        );
+      } else {
+        window.localStorage.setItem(completeStorageKey(userId), CACHE_VERSION);
+        window.localStorage.removeItem(snoozeStorageKey(userId));
+        toast.success(`Cached ${result.stored} company fundamentals on this device.`);
+        setOpen(false);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not cache fundamentals.");
       setState((current) => ({ ...current, status: "error" }));
@@ -129,7 +135,13 @@ export function FundamentalsDeviceCacheButton({ className }: { className?: strin
   async function startCache() {
     try {
       const result = await cacheAllFundamentalsToDevice((next) => setState(next));
-      toast.success(`Cached ${result.stored} company fundamentals on this device.`);
+      if (result.stored < result.total) {
+        toast.warning(
+          `Cached ${result.stored}/${result.total} complete company fundamentals. Some companies will be retried next time.`
+        );
+      } else {
+        toast.success(`Cached ${result.stored} company fundamentals on this device.`);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not cache fundamentals.");
       setState((current) => ({ ...current, status: "error" }));

@@ -22,7 +22,16 @@ const FINANCIALS_CACHE_TTL_SECONDS = 6 * 60 * 60;
 const FINANCIALS_CACHE_STALE_SECONDS = 5 * 365 * 24 * 60 * 60;
 const COMPANY_LIST_TTL_SECONDS = 7 * 24 * 60 * 60;
 const COMPANY_LIST_STALE_SECONDS = 365 * 24 * 60 * 60;
-const ARCHIVE_BATCH_SIZE = 3;
+const ARCHIVE_BATCH_SIZE = 1;
+const FINANCIAL_FETCH_ATTEMPTS = 3;
+const REQUIRED_FINANCIAL_TABS: StockFinancialTabId[] = [
+  "overview",
+  "latest",
+  "income",
+  "balance",
+  "cashflow",
+  "ratios",
+];
 
 type FundamentalsCacheEnvelope = {
   value: StockFinancialsData;
@@ -44,6 +53,8 @@ export type StockFinancialsRefreshResult = {
   storedAt: string;
   usedFallback: boolean;
   hadMeaningfulFreshData: boolean;
+  complete: boolean;
+  missingTabs: StockFinancialTabId[];
 };
 
 interface RawDataPoint {
@@ -99,6 +110,17 @@ export async function getStockFinancials(symbolRaw: string) {
 
   const cached = await readStockFinancialsSnapshot(symbol);
   if (cached?.value) {
+    if (!hasCompleteFinancialData(cached.value)) {
+      const repaired = await refreshStockFinancials(symbol);
+      if (repaired?.value) {
+        return {
+          value: repaired.value,
+          status: Date.now() < cached.freshUntil ? "fresh" : "stale",
+          storedAt: repaired.storedAt,
+        } satisfies StockFinancialsCacheResult;
+      }
+    }
+
     return {
       value: cached.value,
       status: Date.now() < cached.freshUntil ? "fresh" : "stale",
@@ -120,7 +142,7 @@ export async function refreshStockFinancials(
   if (!symbol) return null;
 
   const previous = await readStockFinancialsSnapshot(symbol);
-  const value = await fetchStockFinancials(symbol);
+  const value = await fetchStockFinancialsWithRetries(symbol, previous?.value);
   const hasMeaningfulFreshData = hasMeaningfulFinancialData(value);
 
   if (previous?.value && !hasMeaningfulFreshData) {
@@ -130,16 +152,44 @@ export async function refreshStockFinancials(
       storedAt: envelope.storedAt,
       usedFallback: true,
       hadMeaningfulFreshData: false,
+      complete: hasCompleteFinancialData(previous.value),
+      missingTabs: getMissingFinancialTabs(previous.value),
     };
   }
 
   const nextValue = previous?.value ? mergeStockFinancialSnapshots(previous.value, value) : value;
+  if (!hasCompleteFinancialData(nextValue)) {
+    if (previous?.value && hasCompleteFinancialData(previous.value)) {
+      const envelope = await storeStockFinancialsSnapshot(symbol, previous.value);
+      return {
+        value: previous.value,
+        storedAt: envelope.storedAt,
+        usedFallback: true,
+        hadMeaningfulFreshData: hasMeaningfulFreshData,
+        complete: true,
+        missingTabs: [],
+      };
+    }
+
+    await deleteStockFinancialsSnapshot(symbol);
+    return {
+      value: buildPreparingFinancials(symbol, nextValue.company),
+      storedAt: new Date().toISOString(),
+      usedFallback: false,
+      hadMeaningfulFreshData: hasMeaningfulFreshData,
+      complete: false,
+      missingTabs: getMissingFinancialTabs(nextValue),
+    };
+  }
+
   const envelope = await storeStockFinancialsSnapshot(symbol, nextValue);
   return {
     value: nextValue,
     storedAt: envelope.storedAt,
     usedFallback: false,
     hadMeaningfulFreshData: hasMeaningfulFreshData,
+    complete: hasCompleteFinancialData(nextValue),
+    missingTabs: getMissingFinancialTabs(nextValue),
   };
 }
 
@@ -202,8 +252,8 @@ export async function getArchivedStockFinancialsBatch({
   const records = (
     await Promise.all(
       window.map(async (company) => {
-        const snapshot = await readStockFinancialsSnapshot(company.symbol);
-        if (!snapshot?.value) return null;
+        const snapshot = await getCompleteArchivedSnapshot(company.symbol);
+        if (!snapshot?.value || !hasCompleteFinancialData(snapshot.value)) return null;
         return {
           symbol: company.symbol,
           storedAt: snapshot.storedAt,
@@ -266,17 +316,49 @@ export async function archiveStockFundamentals({
 
     try {
       const previous = await readStockFinancialsSnapshot(symbol);
-      const data = await fetchStockFinancials(symbol);
+      const data = await fetchStockFinancialsWithRetries(symbol, previous?.value);
       const hasMeaningfulFreshData = hasMeaningfulFinancialData(data);
 
       if (previous?.value && !hasMeaningfulFreshData) {
         await storeStockFinancialsSnapshot(symbol, previous.value);
-        return { symbol, ok: true, preserved: true };
+        return {
+          symbol,
+          ok: true,
+          preserved: true,
+          complete: hasCompleteFinancialData(previous.value),
+          missingTabs: getMissingFinancialTabs(previous.value),
+        };
       }
 
       const nextValue = previous?.value ? mergeStockFinancialSnapshots(previous.value, data) : data;
+      if (!hasCompleteFinancialData(nextValue)) {
+        if (previous?.value && hasCompleteFinancialData(previous.value)) {
+          await storeStockFinancialsSnapshot(symbol, previous.value);
+          return {
+            symbol,
+            ok: true,
+            preserved: true,
+            complete: true,
+            missingTabs: [],
+          };
+        }
+
+        await deleteStockFinancialsSnapshot(symbol);
+        return {
+          symbol,
+          ok: false,
+          error: `Incomplete fundamentals: ${getMissingFinancialTabs(nextValue).join(", ")}`,
+        };
+      }
+
       await storeStockFinancialsSnapshot(symbol, nextValue);
-      return { symbol, ok: true, preserved: false };
+      return {
+        symbol,
+        ok: true,
+        preserved: false,
+        complete: hasCompleteFinancialData(nextValue),
+        missingTabs: getMissingFinancialTabs(nextValue),
+      };
     } catch (error) {
       return {
         symbol,
@@ -324,14 +406,12 @@ async function fetchStockFinancials(symbol: string): Promise<StockFinancialsData
     };
   }
 
-  const [overview, latest, income, balance, cashflow, ratios] = await Promise.all([
-    safeTab(() => buildOverviewTab(company), EMPTY_TABS.overview),
-    safeTab(() => buildLatestTab(company), EMPTY_TABS.latest),
-    safeTab(() => buildStatementTab(company, "income"), EMPTY_TABS.income),
-    safeTab(() => buildStatementTab(company, "balance"), EMPTY_TABS.balance),
-    safeTab(() => buildCashflowTab(company), EMPTY_TABS.cashflow),
-    safeTab(() => buildRatiosTab(company), EMPTY_TABS.ratios),
-  ]);
+  const overview = await safeTab(() => buildOverviewTab(company), EMPTY_TABS.overview);
+  const latest = await safeTab(() => buildLatestTab(company), EMPTY_TABS.latest);
+  const income = await safeTab(() => buildStatementTab(company, "income"), EMPTY_TABS.income);
+  const balance = await safeTab(() => buildStatementTab(company, "balance"), EMPTY_TABS.balance);
+  const cashflow = await safeTab(() => buildCashflowTab(company), EMPTY_TABS.cashflow);
+  const ratios = await safeTab(() => buildRatiosTab(company), EMPTY_TABS.ratios);
 
   return {
     symbol,
@@ -453,6 +533,12 @@ async function storeStockFinancialsSnapshot(
   return envelope;
 }
 
+async function deleteStockFinancialsSnapshot(symbol: string) {
+  const key = `stock-fundamentals:v4:${symbol}`;
+  setMemoryCache(key, null, 1);
+  await Promise.allSettled(getRedisClients().map((redis) => redis.del(key)));
+}
+
 async function readStockFinancialsSnapshot(symbol: string) {
   const key = `stock-fundamentals:v4:${symbol}`;
   const memory = getMemoryCache<FundamentalsCacheEnvelope>(key);
@@ -470,10 +556,71 @@ async function readStockFinancialsSnapshot(symbol: string) {
   return null;
 }
 
+async function getCompleteArchivedSnapshot(symbol: string) {
+  const snapshot = await readStockFinancialsSnapshot(symbol);
+  if (snapshot?.value && hasCompleteFinancialData(snapshot.value)) return snapshot;
+
+  try {
+    const refreshed = await refreshStockFinancials(symbol);
+    if (refreshed?.value && hasCompleteFinancialData(refreshed.value)) {
+      return {
+        value: refreshed.value,
+        storedAt: refreshed.storedAt,
+        freshUntil: Date.now() + FINANCIALS_CACHE_TTL_SECONDS * 1000,
+        staleUntil: Date.now() + FINANCIALS_CACHE_STALE_SECONDS * 1000,
+      } satisfies FundamentalsCacheEnvelope;
+    }
+  } catch (error) {
+    console.warn(`[fundamentals] snapshot repair failed for ${symbol}:`, error);
+  }
+
+  return snapshot;
+}
+
+async function fetchStockFinancialsWithRetries(
+  symbol: string,
+  baseline?: StockFinancialsData
+): Promise<StockFinancialsData> {
+  let best: StockFinancialsData | null = baseline ?? null;
+
+  for (let attempt = 1; attempt <= FINANCIAL_FETCH_ATTEMPTS; attempt += 1) {
+    const next = await fetchStockFinancials(symbol);
+    best = best ? mergeStockFinancialSnapshots(best, next) : next;
+    if (hasCompleteFinancialData(best)) break;
+    if (attempt < FINANCIAL_FETCH_ATTEMPTS) {
+      await delay(650 * attempt);
+    }
+  }
+
+  return best ?? buildPreparingFinancials(symbol);
+}
+
 function hasMeaningfulFinancialData(value: StockFinancialsData) {
   return (Object.entries(value.tabs) as Array<[StockFinancialTabId, FinancialTabData]>).some(
-    ([tabId, tab]) => tabId !== "overview" && tab.tables.some((table) => table.rows.length > 0)
+    ([tabId, tab]) => tabId !== "overview" && tabHasRows(tab)
   );
+}
+
+function hasCompleteFinancialData(value: StockFinancialsData) {
+  return getMissingFinancialTabs(value).length === 0;
+}
+
+function getMissingFinancialTabs(value: StockFinancialsData): StockFinancialTabId[] {
+  if (!value.company) return REQUIRED_FINANCIAL_TABS;
+  return REQUIRED_FINANCIAL_TABS.filter((tabId) => !tabIsCachedSection(value.tabs[tabId]));
+}
+
+function tabIsCachedSection(tab: FinancialTabData | undefined) {
+  return Boolean(tab && tab.status !== "error");
+}
+
+function tabHasUsableContent(tab: FinancialTabData | undefined) {
+  if (!tab || tab.status === "error") return false;
+  return tabHasRows(tab) || Boolean(tab.highlights?.length);
+}
+
+function tabHasRows(tab: FinancialTabData | undefined) {
+  return Boolean(tab?.tables.some((table) => table.rows.length > 0));
 }
 
 function mergeStockFinancialSnapshots(
@@ -485,10 +632,9 @@ function mergeStockFinancialSnapshots(
 
   (Object.entries(next.tabs) as Array<[StockFinancialTabId, FinancialTabData]>).forEach(
     ([tabId, tab]) => {
-      if (tabId === "overview") return;
-      const hasFreshRows = tab.tables.some((table) => table.rows.length > 0);
+      const hasFreshRows = tabHasUsableContent(tab);
       const previousTab = previous.tabs[tabId];
-      const hasPreviousRows = previousTab.tables.some((table) => table.rows.length > 0);
+      const hasPreviousRows = tabHasUsableContent(previousTab);
       if (!hasFreshRows && hasPreviousRows) {
         tabs[tabId] = previousTab;
         merged = true;
@@ -499,7 +645,14 @@ function mergeStockFinancialSnapshots(
   return merged ? { ...next, tabs } : next;
 }
 
-function buildPreparingFinancials(symbol: string): StockFinancialsData {
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function buildPreparingFinancials(
+  symbol: string,
+  company: FundamentalsCompany | null = null
+): StockFinancialsData {
   const tabs = { ...EMPTY_TABS };
   for (const tabId of Object.keys(tabs) as StockFinancialTabId[]) {
     tabs[tabId] = {
@@ -511,7 +664,7 @@ function buildPreparingFinancials(symbol: string): StockFinancialsData {
 
   return {
     symbol,
-    company: null,
+    company,
     source: "fundamentals",
     updatedAt: new Date().toISOString(),
     tabs,
@@ -649,17 +802,24 @@ async function safeTab(
   load: () => Promise<FinancialTabData>,
   fallback: FinancialTabData
 ): Promise<FinancialTabData> {
-  try {
-    return await load();
-  } catch (error) {
-    console.warn("[fundamentals] tab fetch failed:", error);
-    return {
-      ...fallback,
-      status: "error",
-      message:
-        "Fundamental data could not be refreshed right now. Cached data will be used when available.",
-    };
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= FINANCIAL_FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      const tab = await load();
+      if (tabHasUsableContent(tab) || attempt === FINANCIAL_FETCH_ATTEMPTS) return tab;
+    } catch (error) {
+      lastError = error;
+      if (attempt < FINANCIAL_FETCH_ATTEMPTS) await delay(450 * attempt);
+    }
   }
+
+  console.warn("[fundamentals] tab fetch failed:", lastError);
+  return {
+    ...fallback,
+    status: "error",
+    message:
+      "Fundamental data could not be refreshed right now. Cached data will be used when available.",
+  };
 }
 
 function fulfilledOr<T>(result: PromiseSettledResult<T>, fallback: T): T {

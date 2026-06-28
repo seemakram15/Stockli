@@ -47,16 +47,18 @@ export async function POST(
 function buildRefreshPayload(symbol: string, refreshed: StockFinancialsRefreshResult) {
   const cacheStatus = refreshed.usedFallback ? "stale" : "fresh";
   const warning = refreshed.usedFallback
-    ? `AskAnalyst did not return fresh statement rows for ${symbol}. The last cached snapshot was preserved.`
-    : refreshed.hadMeaningfulFreshData
+    ? `Fresh statement rows were not available for ${symbol}. The last cached snapshot was preserved.`
+    : refreshed.complete
       ? null
-      : `AskAnalyst returned only partial fundamentals for ${symbol}. Cached rows were kept where available.`;
+      : `Complete fundamentals are not available for ${symbol} yet. Missing sections: ${refreshed.missingTabs.join(", ")}.`;
 
   return {
     data: refreshed.value,
     refresh: {
       usedFallback: refreshed.usedFallback,
       hadMeaningfulFreshData: refreshed.hadMeaningfulFreshData,
+      complete: refreshed.complete,
+      missingTabs: refreshed.missingTabs,
     },
     cache: {
       status: cacheStatus,
