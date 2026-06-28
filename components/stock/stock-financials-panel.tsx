@@ -721,7 +721,7 @@ function PeerComparisonDialog({
               className="border-solid"
             />
           ) : data?.peers.length ? (
-            <PeerComparisonTable rows={data.peers} periods={periods} />
+            <PeerComparisonTable rows={data.peers} periods={periods} currentSymbol={symbol} />
           ) : (
             <EmptyState
               icon={<UsersRound className="size-6" />}
@@ -739,9 +739,11 @@ function PeerComparisonDialog({
 function PeerComparisonTable({
   rows,
   periods,
+  currentSymbol,
 }: {
   rows: StockFinancialPeerComparison["peers"];
   periods: string[];
+  currentSymbol: string;
 }) {
   type SortKey = "companyName" | "symbol" | "sector" | "trend" | `period:${string}`;
   const [sort, setSort] = React.useState<{ key: SortKey; direction: "asc" | "desc" }>(() => ({
@@ -820,8 +822,16 @@ function PeerComparisonTable({
             </tr>
           </thead>
           <tbody>
-            {sortedRows.map((peer) => (
-              <tr key={peer.symbol} className="border-b last:border-0 hover:bg-muted/30">
+            {sortedRows.map((peer) => {
+              const isSelected = peer.symbol === currentSymbol;
+              return (
+              <tr
+                key={peer.symbol}
+                className={cn(
+                  "border-b last:border-0 hover:bg-muted/30",
+                  isSelected && "bg-primary/5"
+                )}
+              >
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-3">
                     <StockLogo
@@ -831,6 +841,11 @@ function PeerComparisonTable({
                       size="sm"
                     />
                     <span className="font-medium">{peer.companyName}</span>
+                    {isSelected ? (
+                      <Badge variant="secondary" className="rounded-full text-[0.65rem]">
+                        Selected
+                      </Badge>
+                    ) : null}
                   </div>
                 </td>
                 <td className="px-3 py-2 font-semibold">{peer.symbol}</td>
@@ -848,7 +863,8 @@ function PeerComparisonTable({
                   </td>
                 ))}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

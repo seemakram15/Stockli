@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/empty-state";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import { cn } from "@/lib/utils";
 import { StockFinancialsPanel } from "./stock-financials-panel";
+import { FundamentalsDeviceCacheButton } from "./fundamentals-device-cache";
 import { StockLogo } from "./stock-logo";
 
 type FundamentalsCompanyOption = {
@@ -48,11 +49,16 @@ export function StockFundamentalsBrowser() {
   return (
     <div className="space-y-5">
       <div className="rounded-2xl border border-primary/15 bg-gradient-to-r from-primary/10 via-background to-background p-4 shadow-sm sm:p-5">
-        <h1 className="text-3xl font-bold tracking-tight">Fundamentals & Comparison</h1>
-        <p className="mt-1 max-w-5xl text-muted-foreground">
-          Search any company, then review overview, latest results, statements, cash flows,
-          ratios and peer comparisons from our cached records.
-        </p>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Fundamentals & Comparison</h1>
+            <p className="mt-1 max-w-5xl text-muted-foreground">
+              Search any company, then review overview, latest results, statements, cash flows,
+              ratios and peer comparisons from our cached records.
+            </p>
+          </div>
+          <FundamentalsDeviceCacheButton className="w-full sm:w-auto" />
+        </div>
       </div>
 
       <Card className="overflow-hidden border-primary/20 bg-background shadow-sm">

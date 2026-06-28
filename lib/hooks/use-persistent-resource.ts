@@ -152,6 +152,7 @@ export async function writePersistentResourceCache<T>(
   value: T
 ): Promise<CachedRecord<T>> {
   const record = makeCachedRecord(cacheKey, value);
+  writeMemoryCached(record);
   await writeCached(record);
   return record;
 }
