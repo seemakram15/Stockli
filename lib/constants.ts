@@ -38,6 +38,11 @@ export const NAV_ITEMS = [
 
 export const TOOL_NAV_ITEMS = [
   {
+    href: "/analysis/stock-analyzer",
+    label: "Stock Analyzer",
+    icon: "LineChart",
+  },
+  {
     href: "/analysis/fundamentals",
     label: "Fundamentals & Comparison",
     icon: "FileText",
