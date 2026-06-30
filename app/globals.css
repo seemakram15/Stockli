@@ -177,6 +177,71 @@
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Brand gradient text (matches the logo glyph: sky -> emerald -> amber). */
+  .text-gradient-brand {
+    background-image: linear-gradient(
+      100deg,
+      #7dd3fc 0%,
+      #34d399 42%,
+      #fcd34d 100%
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  /* Faint engineering grid for dark hero/CTA surfaces. */
+  .bg-grid-faint {
+    background-image:
+      linear-gradient(to right, rgb(255 255 255 / 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  /* Animated conic sheen used behind glass cards. */
+  @keyframes stockli-aurora {
+    0% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(4%, -3%, 0) scale(1.12);
+    }
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+  .animate-stockli-aurora {
+    animation: stockli-aurora 14s ease-in-out infinite;
+  }
+
+  /* Soft floating loop for decorative tiles. */
+  @keyframes stockli-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  .animate-stockli-float {
+    animation: stockli-float 6s ease-in-out infinite;
+  }
+
+  /* Sweeping highlight for the gradient CTA border. */
+  @keyframes stockli-shimmer {
+    from {
+      background-position: 200% center;
+    }
+    to {
+      background-position: -200% center;
+    }
+  }
+  .animate-stockli-shimmer {
+    background-size: 200% auto;
+    animation: stockli-shimmer 4s linear infinite;
+  }
   /* Thin, theme-aware scrollbars */
   .scrollbar-thin {
     scrollbar-width: thin;
@@ -193,7 +258,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-stockli-marquee {
+  .animate-stockli-marquee,
+  .animate-stockli-aurora,
+  .animate-stockli-float,
+  .animate-stockli-shimmer {
     animation: none;
   }
 }

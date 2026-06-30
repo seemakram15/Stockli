@@ -43,7 +43,7 @@ export function UrlAuthDialog({ demo }: { demo?: boolean }) {
 
   return (
     <Dialog open={open && Boolean(urlMode)} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent showCloseButton={false} className="overflow-hidden sm:max-w-md">
         <AuthDialogPanel
           mode={mode}
           redirectTo={redirectTo}
