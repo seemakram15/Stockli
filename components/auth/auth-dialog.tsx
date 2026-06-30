@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { APP_NAME } from "@/lib/constants";
 
-type AuthMode = "login" | "signup";
+type AuthMode = "login" | "signup" | "forgot-password";
+type AuthStateInput = React.ComponentProps<typeof AuthForm>["initialState"];
 
 const AUTH_COPY: Record<AuthMode, { title: string; description: string }> = {
   login: {
@@ -25,6 +26,10 @@ const AUTH_COPY: Record<AuthMode, { title: string; description: string }> = {
   signup: {
     title: `Create your ${APP_NAME} account`,
     description: "Start tracking portfolios, P/L calendars, alerts and market movement.",
+  },
+  "forgot-password": {
+    title: "Reset your password",
+    description: "We will email a secure password reset link to your inbox.",
   },
 };
 
@@ -39,11 +44,13 @@ export function AuthDialogPanel({
   redirectTo,
   demo,
   onModeChange,
+  initialState,
 }: {
   mode: AuthMode;
   redirectTo?: string;
   demo?: boolean;
   onModeChange: (mode: AuthMode) => void;
+  initialState?: AuthStateInput;
 }) {
   return (
     <div>
@@ -90,6 +97,7 @@ export function AuthDialogPanel({
           redirectTo={redirectTo}
           demo={demo}
           onModeChange={onModeChange}
+          initialState={initialState}
         />
       </div>
     </div>
