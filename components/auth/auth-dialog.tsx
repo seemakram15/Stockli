@@ -52,6 +52,8 @@ export function AuthDialogPanel({
   onModeChange: (mode: AuthMode) => void;
   initialState?: AuthStateInput;
 }) {
+  const formKey = `${mode}:${initialState?.error ?? ""}:${initialState?.message ?? ""}:${initialState?.email ?? ""}`;
+
   return (
     <div>
       {/* Branded banner (full-bleed to the dialog edges) */}
@@ -92,7 +94,7 @@ export function AuthDialogPanel({
 
       <div className="pt-5">
         <AuthForm
-          key={mode}
+          key={formKey}
           mode={mode}
           redirectTo={redirectTo}
           demo={demo}

@@ -51,48 +51,28 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
-  const isModalAuthRoute = MODAL_AUTH_ROUTES.some((p) => pathname.startsWith(p));
+  const isAuthRoute = MODAL_AUTH_ROUTES.some((p) => pathname.startsWith(p));
 
+  // Unauthenticated visitor hitting a gated app route → dedicated sign-in screen
+  // (with a redirectTo so we can return them where they were headed).
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
     const redirectTo = `${pathname}${request.nextUrl.search}`;
-    url.pathname = "/";
+    url.pathname = "/login";
     url.search = "";
-    url.searchParams.set("auth", "login");
     url.searchParams.set("redirectTo", redirectTo);
     return NextResponse.redirect(url);
   }
 
-  if (!user && isModalAuthRoute) {
-    const url = request.nextUrl.clone();
-    const redirectTo = request.nextUrl.searchParams.get("redirectTo");
-    url.pathname = "/";
-    url.search = "";
-    url.searchParams.set(
-      "auth",
-      pathname.startsWith("/signup")
-        ? "signup"
-        : pathname.startsWith("/forgot-password")
-          ? "forgot-password"
-          : "login"
-    );
-    if (redirectTo) url.searchParams.set("redirectTo", redirectTo);
-    forwardAuthContext(request, url);
-    return NextResponse.redirect(url);
-  }
-
-  if (user && isModalAuthRoute) {
+  // Already signed in but visiting an auth screen → straight to the dashboard.
+  if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 
+  // Auth screens (/login, /signup, /forgot-password) now render as real pages
+  // for signed-out visitors — no modal redirect.
   return supabaseResponse;
-}
-
-function forwardAuthContext(request: NextRequest, url: URL) {
-  for (const key of ["authError", "authMessage", "authEmail"]) {
-    const value = request.nextUrl.searchParams.get(key);
-    if (value) url.searchParams.set(key, value);
-  }
 }

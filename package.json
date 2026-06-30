@@ -6,6 +6,8 @@
     "dev": "next dev",
     "audit:fundamentals": "node scripts/audit-fundamentals-cache.mjs",
     "archive:fundamentals": "node scripts/archive-fundamentals.mjs",
+    "supabase:auth-email:check": "node scripts/configure-supabase-auth-email.mjs --dry-run",
+    "supabase:auth-email:apply": "node scripts/configure-supabase-auth-email.mjs",
     "migrate": "node scripts/apply-migrations.mjs",
     "build": "npm run migrate && next build",
     "start": "next start",

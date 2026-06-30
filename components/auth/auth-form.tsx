@@ -71,7 +71,11 @@ export function AuthForm({
   );
   const [showPassword, setShowPassword] = React.useState(false);
 
-  if (mode === "signup" && state.nextStep === "confirm-signup" && state.email) {
+  if (
+    (mode === "signup" || mode === "forgot-password") &&
+    state.nextStep === "confirm-signup" &&
+    state.email
+  ) {
     return (
       <SignupConfirmationView
         email={state.email}
@@ -114,6 +118,7 @@ export function AuthForm({
           id="email"
           name="email"
           type="email"
+          defaultValue={state.email ?? initialState?.email ?? ""}
           placeholder="you@example.com"
           autoComplete="email"
           required
