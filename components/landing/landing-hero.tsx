@@ -1,20 +1,16 @@
 "use client";
 
-import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowRight, ArrowUpRight, LockKeyhole, ShieldCheck, TrendingUp } from "lucide-react";
-import { AuthDialog } from "@/components/auth/auth-dialog";
 import {
   AuroraField,
   CountUp,
   FloatingBadge,
   LandingCommandPanel,
 } from "@/components/landing/landing-motion";
-import { Logo } from "@/components/logo";
 import { InstallAppButton } from "@/components/pwa/install-app-button";
-import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { DataDelayBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
@@ -37,6 +33,7 @@ const fadeUp = {
 export function LandingHero({ demo }: { demo: boolean }) {
   const reduce = useReducedMotion();
   const primaryLabel = demo ? "Open demo" : "Start tracking free";
+  const primaryHref = demo ? "/dashboard" : "/signup";
 
   const animateProps = (i: number) =>
     reduce
@@ -59,38 +56,7 @@ export function LandingHero({ demo }: { demo: boolean }) {
       <div className="absolute inset-0 bg-grid-faint opacity-[0.5] [mask-image:radial-gradient(80%_80%_at_50%_0%,black,transparent)]" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/70 to-transparent" />
 
-      <header className="relative z-20 mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
-        <Link href="/" aria-label={`${APP_NAME} home`}>
-          <Logo className="text-white" />
-        </Link>
-        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-          <ThemeToggle />
-          {demo ? (
-            <Button asChild variant="ghost" size="sm" className="text-white hover:bg-white/10 hover:text-white">
-              <Link href="/dashboard">Demo</Link>
-            </Button>
-          ) : (
-            <AuthDialog initialMode="login" demo={demo}>
-              <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 hover:text-white">
-                Sign in
-              </Button>
-            </AuthDialog>
-          )}
-          {demo ? (
-            <Button asChild size="sm" className="hidden bg-white text-[#07130f] hover:bg-white/90 sm:inline-flex">
-              <Link href="/dashboard">Launch</Link>
-            </Button>
-          ) : (
-            <AuthDialog initialMode="signup" demo={demo}>
-              <Button size="sm" className="hidden bg-white text-[#07130f] hover:bg-white/90 sm:inline-flex">
-                Sign up
-              </Button>
-            </AuthDialog>
-          )}
-        </div>
-      </header>
-
-      <div className="relative z-10 mx-auto grid min-h-[calc(94svh-4.5rem)] max-w-7xl items-center gap-10 px-4 pb-14 pt-6 sm:min-h-[calc(94svh-5rem)] sm:px-6 sm:pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(23rem,0.78fr)] lg:px-8">
+      <div className="relative z-10 mx-auto grid min-h-[88svh] max-w-7xl items-center gap-10 px-4 pb-14 pt-24 sm:px-6 sm:pb-20 sm:pt-28 lg:grid-cols-[minmax(0,1fr)_minmax(23rem,0.78fr)] lg:px-8">
         <div className="min-w-0">
           <motion.div
             className="mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-emerald-50 backdrop-blur-md"
@@ -120,30 +86,17 @@ export function LandingHero({ demo }: { demo: boolean }) {
 
           <motion.div className="mt-7 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3" {...animateProps(3)}>
             <div className="min-w-0">
-              {demo ? (
-                <Button
-                  asChild
-                  size="lg"
-                  className="group h-11 w-full min-w-0 gap-1 bg-emerald-400 px-2 text-xs font-semibold text-[#07130f] shadow-[0_8px_30px_rgba(16,185,129,0.35)] hover:bg-emerald-300 sm:w-auto sm:px-5 sm:text-sm"
-                >
-                  <Link href="/dashboard">
-                    <span className="sm:hidden">Start</span>
-                    <span className="hidden sm:inline">{primaryLabel}</span>
-                    <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                </Button>
-              ) : (
-                <AuthDialog initialMode="signup" demo={demo}>
-                  <Button
-                    size="lg"
-                    className="group h-11 w-full min-w-0 gap-1 bg-emerald-400 px-2 text-xs font-semibold text-[#07130f] shadow-[0_8px_30px_rgba(16,185,129,0.35)] hover:bg-emerald-300 sm:w-auto sm:px-5 sm:text-sm"
-                  >
-                    <span className="sm:hidden">Start</span>
-                    <span className="hidden sm:inline">{primaryLabel}</span>
-                    <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
-                  </Button>
-                </AuthDialog>
-              )}
+              <Button
+                asChild
+                size="lg"
+                className="group h-11 w-full min-w-0 gap-1 bg-emerald-400 px-2 text-xs font-semibold text-[#07130f] shadow-[0_8px_30px_rgba(16,185,129,0.35)] hover:bg-emerald-300 sm:w-auto sm:px-5 sm:text-sm"
+              >
+                <Link href={primaryHref}>
+                  <span className="sm:hidden">Start</span>
+                  <span className="hidden sm:inline">{primaryLabel}</span>
+                  <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              </Button>
             </div>
             <div className="min-w-0">
               <Button

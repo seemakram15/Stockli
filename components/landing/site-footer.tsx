@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { motion, useReducedMotion } from "motion/react";
+import { useReducedMotion } from "motion/react";
 import { ArrowUp, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { APP_NAME } from "@/lib/constants";
@@ -59,7 +59,14 @@ export function SiteFooter() {
       <div className="pointer-events-none absolute left-1/2 top-0 h-px w-[60%] -translate-x-1/2 bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent" />
       <div className="pointer-events-none absolute -top-24 left-1/2 h-48 w-[36rem] -translate-x-1/2 rounded-full bg-emerald-500/15 blur-3xl" />
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 pt-14 sm:px-6 lg:px-8">
+      {/* Giant brand wordmark — background layer behind the footer items */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 flex select-none justify-center overflow-hidden" aria-hidden>
+        <span className="translate-y-[20%] bg-gradient-to-b from-white/[0.08] to-white/[0.015] bg-clip-text text-[24vw] font-bold uppercase leading-none tracking-tighter text-transparent">
+          {APP_NAME}
+        </span>
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-7xl px-4 pt-14 pb-10 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[1.4fr_2fr]">
           {/* Brand */}
           <div>
@@ -127,20 +134,6 @@ export function SiteFooter() {
           </button>
         </div>
       </div>
-
-      {/* Giant brand watermark */}
-      <motion.div
-        aria-hidden
-        className="pointer-events-none relative z-0 flex w-full select-none justify-center overflow-hidden"
-        initial={reduce ? false : { opacity: 0, y: 30 }}
-        whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <span className="-mb-[0.18em] bg-gradient-to-b from-white/[0.07] to-white/[0.01] bg-clip-text text-[26vw] font-bold uppercase leading-[0.78] tracking-tighter text-transparent">
-          {APP_NAME}
-        </span>
-      </motion.div>
     </footer>
   );
 }

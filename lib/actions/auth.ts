@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { isDemoMode, config } from "@/lib/config";
+import { config, isDemoMode, isSupabaseAdminConfigured } from "@/lib/config";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { safeRedirectPath } from "@/lib/security/validation";
 
@@ -15,8 +16,26 @@ export interface AuthState {
 const DEMO_MSG =
   "Auth is disabled in demo mode. Add your Supabase keys to .env.local to enable sign-in.";
 
-function authErrorMessage(message: string) {
+type AuthErrorLike =
+  | string
+  | {
+      message?: string;
+      status?: number;
+      name?: string;
+    }
+  | null
+  | undefined;
+
+function authErrorMessage(error: AuthErrorLike) {
+  const message = typeof error === "string" ? error : error?.message ?? "";
+  const status = typeof error === "object" && error ? error.status : undefined;
   const normalized = message.toLowerCase();
+  if (!message || normalized === "{}" || normalized === "internal server error") {
+    return "We could not send the authentication email right now. Please try again in a minute. If it keeps happening, our email delivery settings need attention.";
+  }
+  if (status && status >= 500) {
+    return "We could not complete that auth request right now. Please try again in a minute.";
+  }
   if (normalized.includes("rate limit") || normalized.includes("too many")) {
     return "Too many confirmation emails were requested. Please wait a few minutes before trying again, or sign in if your account is already confirmed.";
   }
@@ -41,7 +60,7 @@ export async function signIn(
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: authErrorMessage(error.message) };
+  if (error) return { error: authErrorMessage(error) };
 
   redirect(safeRedirectPath(formData.get("redirectTo")));
 }
@@ -68,7 +87,7 @@ export async function signUp(
       emailRedirectTo: `${config.siteUrl}/auth/callback`,
     },
   });
-  if (error) return { error: authErrorMessage(error.message) };
+  if (error) return { error: authErrorMessage(error) };
 
   return {
     email,
@@ -98,7 +117,7 @@ export async function resendSignupConfirmation(
 
   if (error) {
     return {
-      error: authErrorMessage(error.message),
+      error: authErrorMessage(error),
       email,
       nextStep: "confirm-signup",
     };
@@ -120,17 +139,54 @@ export async function requestPasswordReset(
   const email = String(formData.get("email") ?? "").trim();
   if (!email) return { error: "Email is required." };
 
+  const normalizedEmail = email.toLowerCase();
+  if (isSupabaseAdminConfigured) {
+    const admin = createAdminClient();
+    const { data: usersData, error: usersError } = await admin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+
+    if (!usersError) {
+      const matchingUser = usersData.users.find(
+        (user) => user.email?.toLowerCase() === normalizedEmail
+      );
+
+      if (matchingUser && !matchingUser.email_confirmed_at) {
+        const supabase = await createClient();
+        const { error } = await supabase.auth.resend({
+          type: "signup",
+          email,
+          options: {
+            emailRedirectTo: `${config.siteUrl}/auth/callback`,
+          },
+        });
+
+        if (error) {
+          return { error: authErrorMessage(error), email };
+        }
+
+        return {
+          email,
+          message:
+            "This account still needs email confirmation. We sent a fresh confirmation email. Please open that first, then come back if you still need a password reset.",
+          nextStep: "confirm-signup",
+        };
+      }
+    }
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${config.siteUrl}/auth/callback?next=/reset-password`,
   });
 
-  if (error) return { error: authErrorMessage(error.message), email };
+  if (error) return { error: authErrorMessage(error), email };
 
   return {
     email,
     message:
-      "If that email is registered, we just sent a password reset link. Open it on the same device or browser to continue.",
+      "If that email is registered, we just sent a password reset link. It can take 1 to 2 minutes. Please check spam, junk, or promotions for the email as well.",
     nextStep: "reset-email-sent",
   };
 }
@@ -164,7 +220,7 @@ export async function updatePassword(
   }
 
   const { error } = await supabase.auth.updateUser({ password });
-  if (error) return { error: authErrorMessage(error.message) };
+  if (error) return { error: authErrorMessage(error) };
 
   return {
     message: "Password updated successfully. You can continue to your dashboard now.",
@@ -179,7 +235,7 @@ export async function signInWithGoogle(): Promise<AuthState> {
     provider: "google",
     options: { redirectTo: `${config.siteUrl}/auth/callback` },
   });
-  if (error) return { error: authErrorMessage(error.message) };
+  if (error) return { error: authErrorMessage(error) };
   if (data.url) redirect(data.url);
   return {};
 }

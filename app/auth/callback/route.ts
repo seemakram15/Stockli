@@ -19,20 +19,20 @@ export async function GET(request: Request) {
   const supabase = await createClient();
 
   if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(new URL(next, config.siteUrl));
+      return redirectAfterSuccess(type, next, data.user?.email ?? data.session?.user?.email);
     }
     return redirectToLoginWithError("We could not complete that sign-in link. Please try again.");
   }
 
   if (tokenHash && type) {
-    const { error } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
       type,
     });
     if (!error) {
-      return NextResponse.redirect(new URL(next, config.siteUrl));
+      return redirectAfterSuccess(type, next, data.user?.email);
     }
     return redirectToLoginWithError(callbackErrorMessage(type));
   }
@@ -44,6 +44,23 @@ function redirectToLoginWithError(message: string) {
   const loginUrl = new URL("/login", config.siteUrl);
   loginUrl.searchParams.set("authError", message);
   return NextResponse.redirect(loginUrl);
+}
+
+function redirectToLoginWithMessage(message: string, email?: string | null) {
+  const loginUrl = new URL("/login", config.siteUrl);
+  loginUrl.searchParams.set("authMessage", message);
+  if (email) loginUrl.searchParams.set("authEmail", email);
+  return NextResponse.redirect(loginUrl);
+}
+
+function redirectAfterSuccess(type: EmailOtpType | null, next: string, email?: string | null) {
+  if (type === "signup") {
+    return redirectToLoginWithMessage(
+      "Email verified successfully. Sign in to continue to your Stockli dashboard.",
+      email
+    );
+  }
+  return NextResponse.redirect(new URL(next, config.siteUrl));
 }
 
 function normalizeOtpType(value: string | null): EmailOtpType | null {
