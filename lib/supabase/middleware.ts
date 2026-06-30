@@ -13,7 +13,7 @@ const PROTECTED_PREFIXES = [
   "/admin",
 ];
 
-const AUTH_ROUTES = ["/login", "/signup"];
+const MODAL_AUTH_ROUTES = ["/login", "/signup", "/forgot-password"];
 
 /**
  * Refreshes the Supabase auth session on every request and enforces
@@ -51,7 +51,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
-  const isAuthRoute = AUTH_ROUTES.some((p) => pathname.startsWith(p));
+  const isModalAuthRoute = MODAL_AUTH_ROUTES.some((p) => pathname.startsWith(p));
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
@@ -63,21 +63,36 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (!user && isAuthRoute) {
+  if (!user && isModalAuthRoute) {
     const url = request.nextUrl.clone();
     const redirectTo = request.nextUrl.searchParams.get("redirectTo");
     url.pathname = "/";
     url.search = "";
-    url.searchParams.set("auth", pathname.startsWith("/signup") ? "signup" : "login");
+    url.searchParams.set(
+      "auth",
+      pathname.startsWith("/signup")
+        ? "signup"
+        : pathname.startsWith("/forgot-password")
+          ? "forgot-password"
+          : "login"
+    );
     if (redirectTo) url.searchParams.set("redirectTo", redirectTo);
+    forwardAuthContext(request, url);
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthRoute) {
+  if (user && isModalAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
 
   return supabaseResponse;
+}
+
+function forwardAuthContext(request: NextRequest, url: URL) {
+  for (const key of ["authError", "authMessage", "authEmail"]) {
+    const value = request.nextUrl.searchParams.get(key);
+    if (value) url.searchParams.set(key, value);
+  }
 }

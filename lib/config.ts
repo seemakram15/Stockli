@@ -19,21 +19,16 @@ const defaultStockFundamentalsApiBaseUrl = `https://api.${"ask" + "analyst"}.com
 const productionSiteUrl = "https://mystockli.vercel.app";
 
 function normalizedSiteUrl() {
-  const configured =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    process.env.SITE_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
+  if (process.env.NODE_ENV !== "production") return "http://localhost:3001";
 
-  if (process.env.NODE_ENV === "production") {
-    if (!configured) return productionSiteUrl;
-    const url = configured.replace(/\/$/, "");
-    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(url)) {
-      return productionSiteUrl;
-    }
-    return url;
+  const configured = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL;
+  if (!configured) return productionSiteUrl;
+
+  const url = configured.replace(/\/$/, "");
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(url)) {
+    return productionSiteUrl;
   }
-
-  return configured ?? "http://localhost:3001";
+  return url;
 }
 
 const defaultSiteUrl = normalizedSiteUrl();
