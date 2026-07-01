@@ -68,7 +68,11 @@ export async function deleteAlert(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   const supabase = await createClient();
-  await supabase.from("alerts").delete().eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from("alerts").delete().eq("id", id).eq("user_id", user.id);
   revalidatePath("/alerts");
 }
 
@@ -78,6 +82,14 @@ export async function toggleAlert(formData: FormData): Promise<void> {
   const active = String(formData.get("active") ?? "") === "true";
   if (!id) return;
   const supabase = await createClient();
-  await supabase.from("alerts").update({ is_active: !active }).eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase
+    .from("alerts")
+    .update({ is_active: !active })
+    .eq("id", id)
+    .eq("user_id", user.id);
   revalidatePath("/alerts");
 }

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { isDemoMode } from "@/lib/config";
 import {
   refreshStockFinancials,
   type StockFinancialsRefreshResult,
 } from "@/lib/services/stock-fundamentals";
 import { normalizeSymbol } from "@/lib/security/validation";
+import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +15,16 @@ export async function POST(
   _request: Request,
   { params }: { params: Promise<{ symbol: string }> }
 ) {
+  if (!isDemoMode) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
   const { symbol: rawSymbol } = await params;
   const symbol = normalizeSymbol(rawSymbol);
   if (!symbol) {

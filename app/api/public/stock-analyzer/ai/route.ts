@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { STOCK_ANALYZER_AI_MODELS } from "@/lib/analysis/stock-analyzer-ai";
+import { isDemoMode } from "@/lib/config";
 import { normalizeSymbol } from "@/lib/security/validation";
+import { createClient } from "@/lib/supabase/server";
 import {
   getStockAnalyzeAiInsight,
   getStockCompareAiInsight,
@@ -29,6 +31,16 @@ const requestSchema = z.union([analyzeSchema, compareSchema]);
 
 export async function POST(request: Request) {
   try {
+    if (!isDemoMode) {
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid AI analyzer request." }, { status: 400 });
@@ -52,7 +64,7 @@ export async function POST(request: Request) {
         },
         {
           headers: {
-            "Cache-Control": "public, s-maxage=300, stale-while-revalidate=86400",
+            "Cache-Control": "private, no-store, max-age=0",
           },
         }
       );
@@ -79,7 +91,7 @@ export async function POST(request: Request) {
       },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=86400",
+          "Cache-Control": "private, no-store, max-age=0",
         },
       }
     );

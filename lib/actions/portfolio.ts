@@ -27,6 +27,23 @@ async function requireUser() {
   return { supabase, user };
 }
 
+async function requireOwnedPortfolio(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  portfolioId: string
+) {
+  const { data, error } = await supabase
+    .from("portfolios")
+    .select("id")
+    .eq("id", portfolioId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Portfolio not found.");
+  return data.id;
+}
+
 // ── Portfolios ────────────────────────────────────────────────
 
 const portfolioSchema = z.object({
@@ -75,11 +92,13 @@ export async function updatePortfolio(
     return { error: parsed.success ? "Missing id" : parsed.error.issues[0].message };
 
   try {
-    const { supabase } = await requireUser();
+    const { supabase, user } = await requireUser();
+    await requireOwnedPortfolio(supabase, user.id, id);
     const { error } = await supabase
       .from("portfolios")
       .update({ name: parsed.data.name, description: parsed.data.description ?? null })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", user.id);
     if (error) return { error: error.message };
     revalidatePath("/portfolios");
     revalidatePath(`/portfolios/${id}`);
@@ -94,8 +113,9 @@ export async function deletePortfolio(formData: FormData): Promise<void> {
   if (isDemoMode) return;
   const id = String(formData.get("id") ?? "");
   if (!id) return;
-  const { supabase } = await requireUser();
-  await supabase.from("portfolios").delete().eq("id", id);
+  const { supabase, user } = await requireUser();
+  await requireOwnedPortfolio(supabase, user.id, id);
+  await supabase.from("portfolios").delete().eq("id", id).eq("user_id", user.id);
   revalidatePath("/portfolios");
   revalidatePath("/dashboard");
 }
@@ -135,7 +155,8 @@ export async function addHolding(
   const when = date ? new Date(date).toISOString() : new Date().toISOString();
 
   try {
-    const { supabase } = await requireUser();
+    const { supabase, user } = await requireUser();
+    await requireOwnedPortfolio(supabase, user.id, portfolioId);
 
     // Ensure the ticker exists (FK) — insert a minimal row if missing.
     await supabase.from("tickers").upsert({ symbol: sym }, { onConflict: "symbol" });
@@ -191,7 +212,8 @@ export async function sellHolding(
   const when = date ? new Date(date).toISOString() : new Date().toISOString();
 
   try {
-    const { supabase } = await requireUser();
+    const { supabase, user } = await requireUser();
+    await requireOwnedPortfolio(supabase, user.id, portfolioId);
     const { data: existing } = await supabase
       .from("holdings")
       .select("*")
@@ -233,10 +255,11 @@ export async function removeHolding(formData: FormData): Promise<void> {
   const holdingId = String(formData.get("holdingId") ?? "");
   const portfolioId = String(formData.get("portfolioId") ?? "");
   const symbol = normalizeSymbol(formData.get("symbol"));
-  if (!holdingId) return;
-  const { supabase } = await requireUser();
+  if (!holdingId || !portfolioId) return;
+  const { supabase, user } = await requireUser();
+  await requireOwnedPortfolio(supabase, user.id, portfolioId);
   await supabase.from("holdings").delete().eq("id", holdingId);
-  if (portfolioId && symbol) {
+  if (symbol) {
     await supabase.from("transactions").insert({
       portfolio_id: portfolioId,
       symbol,

@@ -96,18 +96,28 @@ function fillFromSeed(map: Map<string, Ticker>, symbols: string[]): Map<string, 
 
 export async function getPortfolios(): Promise<Portfolio[]> {
   if (isDemoMode) return DEMO_PORTFOLIOS;
+  const user = await getSessionUser();
+  if (!user) return [];
   const supabase = await createClient();
   const { data } = await supabase
     .from("portfolios")
     .select("*")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: true });
   return (data as Portfolio[] | null) ?? [];
 }
 
 export async function getPortfolio(id: string): Promise<Portfolio | null> {
   if (isDemoMode) return DEMO_PORTFOLIOS.find((p) => p.id === id) ?? null;
+  const user = await getSessionUser();
+  if (!user) return null;
   const supabase = await createClient();
-  const { data } = await supabase.from("portfolios").select("*").eq("id", id).single();
+  const { data } = await supabase
+    .from("portfolios")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
   return (data as Portfolio | null) ?? null;
 }
 
@@ -143,6 +153,8 @@ export async function getTransactions(portfolioId?: string): Promise<Transaction
       : DEMO_TRANSACTIONS;
     return [...list].sort((a, b) => b.transacted_at.localeCompare(a.transacted_at));
   }
+  const user = await getSessionUser();
+  if (!user) return [];
   const supabase = await createClient();
   let q = supabase.from("transactions").select("*").order("transacted_at", { ascending: false });
   if (portfolioId) q = q.eq("portfolio_id", portfolioId);
@@ -159,10 +171,9 @@ export async function getTransactionsForSymbol(symbol: string): Promise<Transact
       a.transacted_at.localeCompare(b.transacted_at)
     );
   }
-  const supabase = await createClient();
-  const { data: pfs } = await supabase.from("portfolios").select("id");
-  const ids = (pfs as { id: string }[] | null)?.map((p) => p.id) ?? [];
+  const ids = (await getPortfolios()).map((portfolio) => portfolio.id);
   if (ids.length === 0) return [];
+  const supabase = await createClient();
   const { data } = await supabase
     .from("transactions")
     .select("*")
@@ -296,8 +307,13 @@ export async function getDashboard(): Promise<DashboardData> {
 
 export async function getWatchlistSymbols(): Promise<string[]> {
   if (isDemoMode) return DEMO_WATCHLIST_ITEMS.map((i) => i.symbol);
+  const user = await getSessionUser();
+  if (!user) return [];
   const supabase = await createClient();
-  const { data: lists } = await supabase.from("watchlists").select("id");
+  const { data: lists } = await supabase
+    .from("watchlists")
+    .select("id")
+    .eq("user_id", user.id);
   const ids = (lists as { id: string }[] | null)?.map((l) => l.id) ?? [];
   if (ids.length === 0) return [];
   const { data } = await supabase
@@ -309,10 +325,13 @@ export async function getWatchlistSymbols(): Promise<string[]> {
 
 export async function getAlerts(): Promise<Alert[]> {
   if (isDemoMode) return DEMO_ALERTS;
+  const user = await getSessionUser();
+  if (!user) return [];
   const supabase = await createClient();
   const { data } = await supabase
     .from("alerts")
     .select("*")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
   return (data as Alert[] | null) ?? [];
 }

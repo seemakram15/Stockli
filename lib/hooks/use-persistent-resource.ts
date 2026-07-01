@@ -18,6 +18,11 @@ const STORE_NAME = "resources";
 const DB_VERSION = 1;
 const MEMORY_CACHE = new Map<string, CachedRecord<unknown>>();
 const EMPTY_LEGACY_CACHE_KEYS: string[] = [];
+const PRIVATE_CACHE_PREFIX = "private:";
+const PRIVATE_SESSION_PREFIX = "stockli:private-resource:";
+const ACTIVE_PRIVATE_USER_KEY = "stockli:private-cache-user";
+const LEGACY_PRIVATE_CACHE_CLEANUP_KEY = "stockli:private-cache-cleaned:v2";
+const PORTFOLIO_MUTATION_STORAGE_PREFIX = "stockli:portfolio-mutated-at";
 
 async function fetchResource<T>(url: string): Promise<T> {
   const response = await fetch(url, {
@@ -53,7 +58,7 @@ export function usePersistentResource<T>({
   );
   const [, setClockTick] = React.useState(0);
   const hasPauseRule = Boolean(pauseWhen);
-  const isPrivateResource = cacheKey.startsWith("private:");
+  const isPrivateResource = isPrivateCacheKey(cacheKey);
   const keepPrevious = isPrivateResource ? false : keepPreviousData;
 
   React.useEffect(() => {
@@ -64,10 +69,10 @@ export function usePersistentResource<T>({
     legacyCacheKeys.forEach((key) => {
       if (key && key !== cacheKey) {
         MEMORY_CACHE.delete(key);
-        deleteCached(key).catch(() => undefined);
+        deleteStorageCached(key).catch(() => undefined);
       }
     });
-    readCached<T>(cacheKey)
+    readStorageCached<T>(cacheKey)
       .then((record) => {
         if (record) writeMemoryCached(record);
         if (!cancelled) setCached(record ?? memoryRecord);
@@ -98,17 +103,17 @@ export function usePersistentResource<T>({
     swrKey,
     ([, requestUrl]: readonly [string, string]) => fetchResource<T>(requestUrl),
     {
-    dedupingInterval: 15_000,
-    keepPreviousData: keepPrevious,
-    revalidateOnFocus: !isPaused,
-    revalidateOnReconnect: !isPaused,
-    refreshInterval: (latest) => {
-      const value = latest ?? rawCachedValue;
-      if (pauseWhen?.(value ?? null)) return 0;
-      return typeof refreshInterval === "function"
-        ? refreshInterval(value ?? null)
-        : refreshInterval;
-    },
+      dedupingInterval: 15_000,
+      keepPreviousData: keepPrevious,
+      revalidateOnFocus: !isPaused,
+      revalidateOnReconnect: !isPaused,
+      refreshInterval: (latest) => {
+        const value = latest ?? rawCachedValue;
+        if (pauseWhen?.(value ?? null)) return 0;
+        return typeof refreshInterval === "function"
+          ? refreshInterval(value ?? null)
+          : refreshInterval;
+      },
     }
   );
 
@@ -117,7 +122,7 @@ export function usePersistentResource<T>({
     const record = makeCachedRecord(cacheKey, swr.data);
     writeMemoryCached(record);
     setCached(record);
-    writeCached(record).catch(() => undefined);
+    writeStorageCached(record).catch(() => undefined);
   }, [cacheKey, swr.data]);
 
   const refreshNow = React.useCallback(async () => {
@@ -126,7 +131,7 @@ export function usePersistentResource<T>({
     writeMemoryCached(record);
     setCached(record);
     await Promise.all([
-      writeCached(record).catch(() => undefined),
+      writeStorageCached(record).catch(() => undefined),
       swr.mutate(value, { revalidate: false }),
     ]);
     return value;
@@ -153,7 +158,7 @@ export async function writePersistentResourceCache<T>(
 ): Promise<CachedRecord<T>> {
   const record = makeCachedRecord(cacheKey, value);
   writeMemoryCached(record);
-  await writeCached(record);
+  await writeStorageCached(record);
   return record;
 }
 
@@ -173,13 +178,71 @@ export async function writePersistentResourceCacheBatch(
   }));
 
   records.forEach((record) => writeMemoryCached(record));
-  await writeCachedBatch(records);
+  await writeStorageCachedBatch(records);
   return records.length;
 }
 
 export async function deletePersistentResourceCache(cacheKey: string): Promise<void> {
   MEMORY_CACHE.delete(cacheKey);
-  await deleteCached(cacheKey);
+  await deleteStorageCached(cacheKey);
+}
+
+export async function clearPrivateResourceCaches(options?: {
+  includeLegacyDeviceCache?: boolean;
+}): Promise<void> {
+  MEMORY_CACHE.forEach((_, key) => {
+    if (isPrivateCacheKey(key)) MEMORY_CACHE.delete(key);
+  });
+
+  const sessionStorageRef = getStorage("session");
+  if (sessionStorageRef) {
+    const keysToRemove: string[] = [];
+    for (let index = 0; index < sessionStorageRef.length; index += 1) {
+      const key = sessionStorageRef.key(index);
+      if (
+        key &&
+        (key.startsWith(PRIVATE_SESSION_PREFIX) || key === ACTIVE_PRIVATE_USER_KEY)
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((key) => sessionStorageRef.removeItem(key));
+  }
+
+  const localStorageRef = getStorage("local");
+  if (localStorageRef) {
+    const keysToRemove: string[] = [];
+    for (let index = 0; index < localStorageRef.length; index += 1) {
+      const key = localStorageRef.key(index);
+      if (key?.startsWith(PORTFOLIO_MUTATION_STORAGE_PREFIX)) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((key) => localStorageRef.removeItem(key));
+  }
+
+  if (options?.includeLegacyDeviceCache) {
+    await purgeLegacyPrivateIndexedDbCaches();
+  }
+}
+
+export async function syncPrivateResourceCacheUser(userId: string): Promise<void> {
+  const sessionStorageRef = getStorage("session");
+  if (sessionStorageRef) {
+    const activeUser = sessionStorageRef.getItem(ACTIVE_PRIVATE_USER_KEY);
+    if (activeUser && activeUser !== userId) {
+      await clearPrivateResourceCaches();
+    }
+    sessionStorageRef.setItem(ACTIVE_PRIVATE_USER_KEY, userId);
+  }
+
+  const localStorageRef = getStorage("local");
+  if (!localStorageRef || localStorageRef.getItem(LEGACY_PRIVATE_CACHE_CLEANUP_KEY) === "1") {
+    return;
+  }
+
+  await purgeLegacyPrivateIndexedDbCaches();
+  localStorageRef.setItem(LEGACY_PRIVATE_CACHE_CLEANUP_KEY, "1");
 }
 
 function makeCachedRecord<T>(key: string, value: T): CachedRecord<T> {
@@ -188,6 +251,23 @@ function makeCachedRecord<T>(key: string, value: T): CachedRecord<T> {
     value,
     savedAt: new Date().toISOString(),
   };
+}
+
+function isPrivateCacheKey(cacheKey: string) {
+  return cacheKey.startsWith(PRIVATE_CACHE_PREFIX);
+}
+
+function privateSessionStorageKey(cacheKey: string) {
+  return `${PRIVATE_SESSION_PREFIX}${cacheKey}`;
+}
+
+function getStorage(kind: "session" | "local"): Storage | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return kind === "session" ? window.sessionStorage : window.localStorage;
+  } catch {
+    return null;
+  }
 }
 
 async function openCacheDb(): Promise<IDBDatabase> {
@@ -204,7 +284,67 @@ async function openCacheDb(): Promise<IDBDatabase> {
   });
 }
 
-async function readCached<T>(key: string): Promise<CachedRecord<T> | null> {
+async function readStorageCached<T>(key: string): Promise<CachedRecord<T> | null> {
+  if (isPrivateCacheKey(key)) {
+    return readPrivateCached<T>(key);
+  }
+  return readPublicCached<T>(key);
+}
+
+async function writeStorageCached<T>(record: CachedRecord<T>): Promise<void> {
+  if (isPrivateCacheKey(record.key)) {
+    writePrivateCached(record);
+    return;
+  }
+  await writePublicCached(record);
+}
+
+async function writeStorageCachedBatch(records: CachedRecord<unknown>[]): Promise<void> {
+  const privateRecords = records.filter((record) => isPrivateCacheKey(record.key));
+  const publicRecords = records.filter((record) => !isPrivateCacheKey(record.key));
+
+  privateRecords.forEach((record) => writePrivateCached(record));
+  await writePublicCachedBatch(publicRecords);
+}
+
+async function deleteStorageCached(key: string): Promise<void> {
+  if (isPrivateCacheKey(key)) {
+    deletePrivateCached(key);
+    return;
+  }
+  await deletePublicCached(key);
+}
+
+function readPrivateCached<T>(key: string): CachedRecord<T> | null {
+  const sessionStorageRef = getStorage("session");
+  if (!sessionStorageRef) return null;
+
+  const raw = sessionStorageRef.getItem(privateSessionStorageKey(key));
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as CachedRecord<T>;
+    if (parsed?.key !== key || typeof parsed.savedAt !== "string") return null;
+    return parsed;
+  } catch {
+    sessionStorageRef.removeItem(privateSessionStorageKey(key));
+    return null;
+  }
+}
+
+function writePrivateCached<T>(record: CachedRecord<T>): void {
+  const sessionStorageRef = getStorage("session");
+  if (!sessionStorageRef) return;
+  sessionStorageRef.setItem(privateSessionStorageKey(record.key), JSON.stringify(record));
+}
+
+function deletePrivateCached(key: string): void {
+  const sessionStorageRef = getStorage("session");
+  if (!sessionStorageRef) return;
+  sessionStorageRef.removeItem(privateSessionStorageKey(key));
+}
+
+async function readPublicCached<T>(key: string): Promise<CachedRecord<T> | null> {
   if (typeof indexedDB === "undefined") return null;
   const db = await openCacheDb();
   try {
@@ -219,7 +359,7 @@ async function readCached<T>(key: string): Promise<CachedRecord<T> | null> {
   }
 }
 
-async function writeCached<T>(record: CachedRecord<T>): Promise<void> {
+async function writePublicCached<T>(record: CachedRecord<T>): Promise<void> {
   if (typeof indexedDB === "undefined") return;
   const db = await openCacheDb();
   try {
@@ -234,7 +374,7 @@ async function writeCached<T>(record: CachedRecord<T>): Promise<void> {
   }
 }
 
-async function writeCachedBatch(records: CachedRecord<unknown>[]): Promise<void> {
+async function writePublicCachedBatch(records: CachedRecord<unknown>[]): Promise<void> {
   if (typeof indexedDB === "undefined" || records.length === 0) return;
   const db = await openCacheDb();
   try {
@@ -252,7 +392,7 @@ async function writeCachedBatch(records: CachedRecord<unknown>[]): Promise<void>
   }
 }
 
-async function deleteCached(key: string): Promise<void> {
+async function deletePublicCached(key: string): Promise<void> {
   if (typeof indexedDB === "undefined") return;
   const db = await openCacheDb();
   try {
@@ -260,6 +400,45 @@ async function deleteCached(key: string): Promise<void> {
       const tx = db.transaction(STORE_NAME, "readwrite");
       tx.objectStore(STORE_NAME).delete(key);
       tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function purgeLegacyPrivateIndexedDbCaches(): Promise<number> {
+  if (typeof indexedDB === "undefined") return 0;
+  const db = await openCacheDb();
+  try {
+    return await new Promise<number>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.openCursor();
+      let removed = 0;
+
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve(removed);
+          return;
+        }
+
+        const key = typeof cursor.key === "string" ? cursor.key : "";
+        if (!isPrivateCacheKey(key)) {
+          cursor.continue();
+          return;
+        }
+
+        const deleteRequest = cursor.delete();
+        deleteRequest.onsuccess = () => {
+          removed += 1;
+          cursor.continue();
+        };
+        deleteRequest.onerror = () => reject(deleteRequest.error);
+      };
+
+      request.onerror = () => reject(request.error);
       tx.onerror = () => reject(tx.error);
     });
   } finally {

@@ -14,7 +14,11 @@ interface ConsentState {
   notificationConsentStatus: "unknown" | "granted" | "denied";
 }
 
-export function ConsentManager() {
+function scopedConsentKey(baseKey: string, userId: string) {
+  return `${baseKey}:${userId}`;
+}
+
+export function ConsentManager({ userId }: { userId: string }) {
   const [mounted, setMounted] = React.useState(false);
   const [visible, setVisible] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
@@ -86,8 +90,10 @@ export function ConsentManager() {
       .then((state) => {
         if (cancelled) return;
         setVapidPublicKey(state.vapidPublicKey);
-        const deviceConsentAccepted = window.localStorage.getItem(DEVICE_CONSENT_KEY) === "accepted";
-        const dismissed = window.localStorage.getItem(DEVICE_CONSENT_DISMISS_KEY) === "1";
+        const consentKey = scopedConsentKey(DEVICE_CONSENT_KEY, userId);
+        const dismissKey = scopedConsentKey(DEVICE_CONSENT_DISMISS_KEY, userId);
+        const deviceConsentAccepted = window.localStorage.getItem(consentKey) === "accepted";
+        const dismissed = window.localStorage.getItem(dismissKey) === "1";
         const permission = supported ? Notification.permission : "denied";
         setVisible(!deviceConsentAccepted && !dismissed);
 
@@ -101,28 +107,30 @@ export function ConsentManager() {
         }
       })
       .catch(() => {
-        const deviceConsentAccepted = window.localStorage.getItem(DEVICE_CONSENT_KEY) === "accepted";
-        const dismissed = window.localStorage.getItem(DEVICE_CONSENT_DISMISS_KEY) === "1";
+        const consentKey = scopedConsentKey(DEVICE_CONSENT_KEY, userId);
+        const dismissKey = scopedConsentKey(DEVICE_CONSENT_DISMISS_KEY, userId);
+        const deviceConsentAccepted = window.localStorage.getItem(consentKey) === "accepted";
+        const dismissed = window.localStorage.getItem(dismissKey) === "1";
         setVisible(!deviceConsentAccepted && !dismissed);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [syncPushSubscription]);
+  }, [syncPushSubscription, userId]);
 
   if (!mounted || !visible) return null;
 
   const canEnablePush = pushSupported && Boolean(vapidPublicKey);
 
   async function acceptDeviceConsent() {
-    window.localStorage.setItem(DEVICE_CONSENT_KEY, "accepted");
-    window.localStorage.removeItem(DEVICE_CONSENT_DISMISS_KEY);
+    window.localStorage.setItem(scopedConsentKey(DEVICE_CONSENT_KEY, userId), "accepted");
+    window.localStorage.removeItem(scopedConsentKey(DEVICE_CONSENT_DISMISS_KEY, userId));
     await postConsent({ cookieConsent: true });
   }
 
   async function dismiss() {
-    window.localStorage.setItem(DEVICE_CONSENT_DISMISS_KEY, "1");
+    window.localStorage.setItem(scopedConsentKey(DEVICE_CONSENT_DISMISS_KEY, userId), "1");
     setVisible(false);
   }
 

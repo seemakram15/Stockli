@@ -15,7 +15,12 @@ async function ensureWatchlist(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string
 ): Promise<string | null> {
-  const { data } = await supabase.from("watchlists").select("id").limit(1).maybeSingle();
+  const { data } = await supabase
+    .from("watchlists")
+    .select("id")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
   if (data?.id) return data.id;
   const { data: created } = await supabase
     .from("watchlists")
@@ -69,8 +74,18 @@ export async function removeFromWatchlist(formData: FormData): Promise<void> {
   const symbol = normalizeSymbol(formData.get("symbol"));
   if (!symbol) return;
   const supabase = await createClient();
-  const { data: lists } = await supabase.from("watchlists").select("id");
-  const ids = (lists as { id: string }[] | null)?.map((l) => l.id) ?? [];
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+  const { data: lists } = await supabase
+    .from("watchlists")
+    .select("id")
+    .eq("user_id", user.id);
+  const ids =
+    ((lists as { id: string }[] | null) ?? [])
+      .filter((list) => Boolean(list.id))
+      .map((list) => list.id) ?? [];
   if (ids.length === 0) return;
   await supabase.from("watchlist_items").delete().in("watchlist_id", ids).eq("symbol", symbol);
   revalidatePath("/watchlist");

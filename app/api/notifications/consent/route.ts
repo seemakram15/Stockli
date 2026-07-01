@@ -15,13 +15,25 @@ export async function GET() {
     notificationConsentStatus: "unknown" as NotificationConsentStatus,
   };
 
-  if (isDemoMode) return NextResponse.json(base);
+  if (isDemoMode) {
+    return NextResponse.json(base, {
+      headers: {
+        "Cache-Control": "private, no-store, max-age=0",
+      },
+    });
+  }
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json(base);
+  if (!user) {
+    return NextResponse.json(base, {
+      headers: {
+        "Cache-Control": "private, no-store, max-age=0",
+      },
+    });
+  }
 
   const { data } = await supabase
     .from("profiles")
@@ -29,12 +41,19 @@ export async function GET() {
     .eq("id", user.id)
     .maybeSingle();
 
-  return NextResponse.json({
-    ...base,
-    cookieConsentAt: (data?.cookie_consent_at as string | null) ?? null,
-    notificationConsentStatus:
-      ((data?.notification_consent_status as NotificationConsentStatus | null) ?? "unknown"),
-  });
+  return NextResponse.json(
+    {
+      ...base,
+      cookieConsentAt: (data?.cookie_consent_at as string | null) ?? null,
+      notificationConsentStatus:
+        ((data?.notification_consent_status as NotificationConsentStatus | null) ?? "unknown"),
+    },
+    {
+      headers: {
+        "Cache-Control": "private, no-store, max-age=0",
+      },
+    }
+  );
 }
 
 export async function POST(request: Request) {
@@ -65,7 +84,14 @@ export async function POST(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json(
+    { ok: true },
+    {
+      headers: {
+        "Cache-Control": "private, no-store, max-age=0",
+      },
+    }
+  );
 }
 
 async function safeJson(request: Request): Promise<{

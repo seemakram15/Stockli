@@ -140,6 +140,8 @@ export async function requestPasswordReset(
   if (!email) return { error: "Email is required." };
 
   const normalizedEmail = email.toLowerCase();
+  const genericResetMessage =
+    "If this email belongs to a Stockli account, we just sent the next step. Please check your inbox, spam, junk, or promotions within 1 to 2 minutes.";
   if (isSupabaseAdminConfigured) {
     const admin = createAdminClient();
     const { data: usersData, error: usersError } = await admin.auth.admin.listUsers({
@@ -168,9 +170,8 @@ export async function requestPasswordReset(
 
         return {
           email,
-          message:
-            "This account still needs email confirmation. We sent a fresh confirmation email. Please open that first, then come back if you still need a password reset.",
-          nextStep: "confirm-signup",
+          message: genericResetMessage,
+          nextStep: "reset-email-sent",
         };
       }
     }
@@ -185,8 +186,7 @@ export async function requestPasswordReset(
 
   return {
     email,
-    message:
-      "If that email is registered, we just sent a password reset link. It can take 1 to 2 minutes. Please check spam, junk, or promotions for the email as well.",
+    message: genericResetMessage,
     nextStep: "reset-email-sent",
   };
 }

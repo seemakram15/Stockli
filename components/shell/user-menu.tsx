@@ -13,6 +13,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/actions/auth";
+import { clearPrivateResourceCaches } from "@/lib/hooks/use-persistent-resource";
 
 function initials(name: string | null, email: string | null): string {
   const base = name || email || "U";
@@ -69,7 +70,12 @@ export function UserMenu({
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <form action={signOut}>
+        <form
+          action={signOut}
+          onSubmit={() => {
+            void clearPrivateResourceCaches({ includeLegacyDeviceCache: true });
+          }}
+        >
           <button type="submit" className="w-full">
             <DropdownMenuItem variant="destructive" asChild>
               <span className="cursor-pointer">

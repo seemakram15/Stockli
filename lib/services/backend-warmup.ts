@@ -28,6 +28,7 @@ export interface BackendWarmupOptions {
   userId?: string | null;
   force?: boolean;
   forcePsxRefresh?: boolean;
+  allowPrivilegedWrites?: boolean;
 }
 
 const FUNDAMENTALS_ARCHIVE_CURSOR_KEY = "stock-fundamentals:archive-cursor:v1";
@@ -42,6 +43,7 @@ export async function runBackendWarmup({
   userId = null,
   force = false,
   forcePsxRefresh = false,
+  allowPrivilegedWrites = trigger === "cron",
 }: BackendWarmupOptions) {
   const startedAt = new Date();
   const status = marketStatus(startedAt);
@@ -80,7 +82,7 @@ export async function runBackendWarmup({
     psxRefreshAllowed,
     marketStatus: status,
     tradingDay: isTradingDay(startedAt),
-    persisted: isSupabaseAdminConfigured,
+    persisted: isSupabaseAdminConfigured && allowPrivilegedWrites,
     startedAt: startedAt.toISOString(),
   };
   if (psxRefreshError) {
@@ -95,6 +97,14 @@ export async function runBackendWarmup({
     result.publicCaches = await warmPublicCaches({ includePsx: psxRefreshAllowed });
     result.fundamentalsArchive = await warmFundamentalsArchive(trigger);
     result.note = "Demo mode — cache warmed, no DB writes (add Supabase keys to persist).";
+    return result;
+  }
+
+  if (!allowPrivilegedWrites) {
+    result.publicCaches = await warmPublicCaches({ includePsx: psxRefreshAllowed });
+    result.fundamentalsArchive = await warmFundamentalsArchive(trigger);
+    result.note =
+      "User-scoped warmup only — shared caches refreshed without touching other users' database rows, alerts, or notifications.";
     return result;
   }
 
