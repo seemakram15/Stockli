@@ -3,7 +3,11 @@ import { getMemoryCache, setMemoryCache } from "@/lib/cache/memory";
 import { getRedisClients } from "@/lib/cache/redis";
 import { getStaleCached } from "@/lib/cache/stale";
 import { config } from "@/lib/config";
+import { formatCompact, formatMarketPrice, formatNumber, formatPKR, formatPercent } from "@/lib/format";
+import { getEodCandlesCached } from "@/lib/services/history";
+import { getQuote } from "@/lib/services/prices";
 import { normalizeSymbol } from "@/lib/security/validation";
+import type { Candle, Quote } from "@/lib/types";
 import type {
   FundamentalsCompany,
   FinancialMetric,
@@ -136,8 +140,9 @@ export async function getStockFinancials(symbolRaw: string) {
 
   const cached = await readStockFinancialsSnapshot(symbol);
   if (cached?.value) {
+    const hydrated = await enrichOverviewSnapshot(cached.value);
     return {
-      value: cached.value,
+      value: hydrated,
       status: Date.now() < cached.freshUntil ? "fresh" : "stale",
       storedAt: cached.storedAt,
     } satisfies StockFinancialsCacheResult;
@@ -145,16 +150,18 @@ export async function getStockFinancials(symbolRaw: string) {
 
   const incomplete = await readIncompleteStockFinancials(symbol);
   if (incomplete) {
+    const hydrated = await enrichOverviewSnapshot(attachFinancialAvailability(incomplete.data, incomplete));
     return {
-      value: attachFinancialAvailability(incomplete.data, incomplete),
+      value: hydrated,
       status: "miss",
       storedAt: incomplete.updatedAt,
     } satisfies StockFinancialsCacheResult;
   }
 
   const company = await resolveCompany(symbol);
+  const preparing = await enrichOverviewSnapshot(buildPreparingFinancials(symbol, company));
   return {
-    value: buildPreparingFinancials(symbol, company),
+    value: preparing,
     status: "miss",
     storedAt: new Date().toISOString(),
   } satisfies StockFinancialsCacheResult;
@@ -181,8 +188,11 @@ export async function refreshStockFinancials(
         missingTabs,
         "Fresh fundamentals did not include statement rows."
       );
+      const hydrated = await enrichOverviewSnapshot(
+        attachFinancialAvailability(previous.value, incomplete)
+      );
       return {
-        value: attachFinancialAvailability(previous.value, incomplete),
+        value: hydrated,
         storedAt: incomplete.updatedAt,
         usedFallback: true,
         hadMeaningfulFreshData: false,
@@ -192,8 +202,9 @@ export async function refreshStockFinancials(
     }
 
     const envelope = await storeStockFinancialsSnapshot(symbol, previous.value);
+    const hydrated = await enrichOverviewSnapshot(previous.value);
     return {
-      value: previous.value,
+      value: hydrated,
       storedAt: envelope.storedAt,
       usedFallback: true,
       hadMeaningfulFreshData: false,
@@ -206,8 +217,9 @@ export async function refreshStockFinancials(
   if (!hasCompleteFinancialData(nextValue)) {
     if (previous?.value && hasCompleteFinancialData(previous.value)) {
       const envelope = await storeStockFinancialsSnapshot(symbol, previous.value);
+      const hydrated = await enrichOverviewSnapshot(previous.value);
       return {
-        value: previous.value,
+        value: hydrated,
         storedAt: envelope.storedAt,
         usedFallback: true,
         hadMeaningfulFreshData: hasMeaningfulFreshData,
@@ -224,8 +236,9 @@ export async function refreshStockFinancials(
       missingTabs,
       `Incomplete fundamentals: ${missingTabs.join(", ")}`
     );
+    const hydrated = await enrichOverviewSnapshot(attachFinancialAvailability(nextValue, incomplete));
     return {
-      value: attachFinancialAvailability(nextValue, incomplete),
+      value: hydrated,
       storedAt: new Date().toISOString(),
       usedFallback: false,
       hadMeaningfulFreshData: hasMeaningfulFreshData,
@@ -235,8 +248,9 @@ export async function refreshStockFinancials(
   }
 
   const envelope = await storeStockFinancialsSnapshot(symbol, nextValue);
+  const hydrated = await enrichOverviewSnapshot(nextValue);
   return {
-    value: nextValue,
+    value: hydrated,
     storedAt: envelope.storedAt,
     usedFallback: false,
     hadMeaningfulFreshData: hasMeaningfulFreshData,
@@ -1021,24 +1035,31 @@ function buildPreparingFinancials(
 }
 
 async function buildOverviewTab(company: FundamentalsCompany): Promise<FinancialTabData> {
-  const [priceResult, companyFinancialsResult, stockDataResult, industryAveragesResult] =
-    await Promise.allSettled([
-      fundamentalsFetch<Record<string, unknown>>(`/sharepricedatanew/${company.id}`),
-      fundamentalsFetch<RawFinancialRow[]>(
-        `/companyfinancialnew/${company.id}?companyfinancial=true&&test=true`
-      ),
-      fundamentalsFetch<RawFinancialSection[]>(`/stockpricedatanew/${company.id}`),
-      fundamentalsFetch<Array<{ label?: string; unit?: string; value?: string | number | null }>>(
-        `/industrynew/${company.id}`
-      ),
-    ]);
+  const normalizedSymbol = normalizeSymbol(company.symbol || company.label2) ?? company.symbol ?? company.label2;
+  const [
+    priceResult,
+    companyFinancialsResult,
+    stockDataResult,
+    industryAveragesResult,
+    quoteResult,
+    candlesResult,
+  ] = await Promise.allSettled([
+    fundamentalsFetch<Record<string, unknown>>(`/sharepricedatanew/${company.id}`),
+    fundamentalsFetch<RawFinancialRow[]>(
+      `/companyfinancialnew/${company.id}?companyfinancial=true&&test=true`
+    ),
+    fundamentalsFetch<RawFinancialSection[]>(`/stockpricedatanew/${company.id}`),
+    fundamentalsFetch<Array<{ label?: string; unit?: string; value?: string | number | null }>>(
+      `/industrynew/${company.id}`
+    ),
+    getQuote(normalizedSymbol),
+    getEodCandlesCached(normalizedSymbol),
+  ]);
 
   const price = fulfilledOr(priceResult, {});
   const companyFinancials = fulfilledOr(companyFinancialsResult, []);
   const stockData = fulfilledOr(stockDataResult, []);
   const industryAverages = fulfilledOr(industryAveragesResult, []);
-
-  const highlights = buildOverviewHighlights(price);
   const tables: FinancialTable[] = [
     normalizeFlatRows("Company financials", companyFinancials),
     normalizeSectionedRows("Stock data", stockData),
@@ -1053,6 +1074,27 @@ async function buildOverviewTab(company: FundamentalsCompany): Promise<Financial
       })),
     },
   ].filter((table) => table.rows.length > 0);
+
+  const snapshot: StockFinancialsData = {
+    symbol: normalizedSymbol,
+    company,
+    source: "fundamentals",
+    updatedAt: new Date().toISOString(),
+    tabs: {
+      ...EMPTY_TABS,
+      overview: {
+        title: "Overview",
+        description: "Trading, valuation and historical financial snapshots.",
+        status: tables.length ? "ok" : "empty",
+        tables,
+      },
+    },
+  };
+  const highlights = buildOverviewHighlights(snapshot, {
+    price,
+    quote: fulfilledOr<Quote | null>(quoteResult, null),
+    candles: fulfilledOr<Candle[]>(candlesResult, []),
+  });
 
   return {
     title: "Overview",
@@ -1253,21 +1295,222 @@ function collectYears(rows: FinancialTableRow[]) {
   return years;
 }
 
-function buildOverviewHighlights(price: Record<string, unknown>): FinancialMetric[] {
-  const change = toNumber(price.change);
-  const changePct = valueToString(price.change_in_percentage);
+async function enrichOverviewSnapshot(value: StockFinancialsData): Promise<StockFinancialsData> {
+  const symbol = normalizeSymbol(value.symbol);
+  if (!symbol) return value;
+
+  const [quoteResult, candlesResult] = await Promise.allSettled([
+    getQuote(symbol),
+    getEodCandlesCached(symbol),
+  ]);
+  const highlights = buildOverviewHighlights(value, {
+    price: {},
+    quote: fulfilledOr<Quote | null>(quoteResult, null),
+    candles: fulfilledOr<Candle[]>(candlesResult, []),
+  });
+
+  if (highlights.length === 0) return value;
+
+  return {
+    ...value,
+    tabs: {
+      ...value.tabs,
+      overview: {
+        ...value.tabs.overview,
+        status:
+          value.tabs.overview.tables.length || highlights.length ? "ok" : value.tabs.overview.status,
+        highlights,
+      },
+    },
+  };
+}
+
+function buildOverviewHighlights(
+  value: StockFinancialsData,
+  context: {
+    price: Record<string, unknown>;
+    quote: Quote | null;
+    candles: Candle[];
+  }
+): FinancialMetric[] {
+  const { price, quote, candles } = context;
+  const currentPrice = firstFinite(
+    quote?.price ?? null,
+    toNumber(price.current),
+    toNumber(price.close),
+    deriveCurrentPrice(value)
+  );
+  const previousClose = firstFinite(
+    quote?.ldcp ?? null,
+    candles.length > 1 ? candles[candles.length - 2]?.close ?? null : null
+  );
+  const change = firstFinite(
+    quote?.change ?? null,
+    toNumber(price.change),
+    currentPrice != null && previousClose != null ? currentPrice - previousClose : null
+  );
+  const changePct = firstFinite(
+    quote?.changePct ?? null,
+    toNumber(price.change_in_percentage),
+    change != null && previousClose != null && previousClose !== 0
+      ? (change / previousClose) * 100
+      : null
+  );
+  const dayLow = firstFinite(quote?.low ?? null, toNumber(price.low));
+  const dayHigh = firstFinite(quote?.high ?? null, toNumber(price.high));
+  const volume = firstFinite(quote?.volume ?? null, toNumber(price.volume));
+  const marketCapMn = deriveMarketCapMn(value, currentPrice);
+  const pe = derivePe(value, currentPrice, toNumber(price.pe));
+  const pbv = derivePbv(value, currentPrice, toNumber(price.pbv));
+  const dividendYield = deriveDividendYield(value, currentPrice, toNumber(price.dividend_yield));
+  const trailingYear = candles.slice(-252);
+  const week52High = firstFinite(
+    trailingYear.length ? Math.max(...trailingYear.map((candle) => candle.high)) : null,
+    currentPrice,
+    toNumber(price.fifty_two_week_high)
+  );
+  const week52Low = firstFinite(
+    trailingYear.length ? Math.min(...trailingYear.map((candle) => candle.low)) : null,
+    currentPrice,
+    toNumber(price.fifty_two_week_low)
+  );
+
   return [
-    metric("Current price", valueToString(price.current, "—")),
-    metric("Change", `${valueToString(price.change, "—")} (${changePct}%)`, change),
-    metric("Day range", `${valueToString(price.low, "—")} - ${valueToString(price.high, "—")}`),
-    metric("Volume", valueToString(price.volume, "—")),
-    metric("Market cap", valueToString(price.market_cap, "—")),
-    metric("PE", valueToString(price.pe, "—")),
-    metric("PBV", valueToString(price.pbv, "—")),
-    metric("Dividend yield", `${valueToString(price.dividend_yield, "—")}%`),
-    metric("52W high", valueToString(price.fifty_two_week_high, "—")),
-    metric("52W low", valueToString(price.fifty_two_week_low, "—")),
+    metric("Current price", formatPrice(currentPrice)),
+    metric("Change", formatChange(change, changePct), change ?? undefined),
+    metric("Day range", formatDayRange(dayLow, dayHigh)),
+    metric("Volume", volume == null ? "—" : formatCompact(volume)),
+    metric("Market cap", formatMarketCapCrore(marketCapMn)),
+    metric("PE", formatMultiple(pe)),
+    metric("PBV", formatMultiple(pbv)),
+    metric("Dividend yield", dividendYield == null ? "—" : `${formatNumber(dividendYield, 2)}%`),
+    metric("52W high", formatPrice(week52High)),
+    metric("52W low", formatPrice(week52Low)),
   ];
+}
+
+function deriveCurrentPrice(value: StockFinancialsData) {
+  const per = findLatestMetric(value, [/^per$/i, /^per \(x\)$/i, /^p\/e/i], ["ratios", "overview"]);
+  const eps = findLatestMetric(value, [/^eps$/i, /^eps - basic$/i], ["ratios", "income", "latest"]);
+  const pbv = findLatestMetric(value, [/^pbv$/i, /^p\/b/i], ["ratios", "overview"]);
+  const bvps = findLatestMetric(value, [/^bvps$/i, /book value/i], ["ratios", "overview", "latest"]);
+
+  return firstFinite(
+    per != null && eps != null ? per * eps : null,
+    pbv != null && bvps != null ? pbv * bvps : null
+  );
+}
+
+function deriveMarketCapMn(value: StockFinancialsData, currentPrice: number | null) {
+  const totalSharesMn = findLatestMetric(
+    value,
+    [/^total shares$/i, /^outstanding shares$/i, /outstanding shares - adjusted/i],
+    ["overview"]
+  );
+  const cash = findLatestMetric(value, [/^cash & bank balances$/i], ["balance"]);
+  const cashAsPctMktCap = findLatestMetric(value, [/^cash as a % mkt cap$/i], ["ratios"]);
+
+  return firstFinite(
+    currentPrice != null && totalSharesMn != null ? currentPrice * totalSharesMn : null,
+    cash != null && cashAsPctMktCap != null && cashAsPctMktCap > 0
+      ? cash / (cashAsPctMktCap / 100)
+      : null
+  );
+}
+
+function derivePe(value: StockFinancialsData, currentPrice: number | null, directPe: number) {
+  const eps = findLatestMetric(value, [/^eps$/i, /^eps - basic$/i], ["ratios", "income", "latest"]);
+  return firstFinite(
+    currentPrice != null && eps != null && eps !== 0 ? currentPrice / eps : null,
+    directPe,
+    findLatestMetric(value, [/^per$/i, /^per \(x\)$/i, /^p\/e/i], ["ratios", "overview"])
+  );
+}
+
+function derivePbv(value: StockFinancialsData, currentPrice: number | null, directPbv: number) {
+  const bvps = findLatestMetric(value, [/^bvps$/i, /book value/i], ["ratios", "overview", "latest"]);
+  return firstFinite(
+    currentPrice != null && bvps != null && bvps !== 0 ? currentPrice / bvps : null,
+    directPbv,
+    findLatestMetric(value, [/^pbv$/i, /^p\/b/i], ["ratios", "overview"])
+  );
+}
+
+function deriveDividendYield(
+  value: StockFinancialsData,
+  currentPrice: number | null,
+  directDividendYield: number
+) {
+  const dps = findLatestMetric(value, [/^dps$/i, /dividend per share/i], ["ratios", "latest"]);
+  return firstFinite(
+    currentPrice != null && dps != null && currentPrice > 0 ? (dps / currentPrice) * 100 : null,
+    directDividendYield,
+    findLatestMetric(value, [/^div yield$/i, /dividend yield/i], ["ratios", "overview"])
+  );
+}
+
+function findLatestMetric(
+  value: StockFinancialsData,
+  patterns: RegExp[],
+  tabs: StockFinancialTabId[]
+) {
+  for (const tabId of tabs) {
+    const tab = value.tabs[tabId];
+    for (const table of tab?.tables ?? []) {
+      for (const row of table.rows) {
+        if (row.isSection) continue;
+        if (!patterns.some((pattern) => pattern.test(row.label))) continue;
+        const latest = latestNumericValue(row);
+        if (latest != null) return latest;
+      }
+    }
+  }
+  return null;
+}
+
+function latestNumericValue(row: FinancialTableRow) {
+  const entries = Object.entries(row.values).sort((left, right) =>
+    compareFinancialPeriods(left[0], right[0])
+  );
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const numeric = toNumber(entries[index][1]);
+    if (Number.isFinite(numeric)) return numeric;
+  }
+  return null;
+}
+
+function firstFinite(...values: Array<number | null | undefined>) {
+  for (const value of values) {
+    if (value != null && Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function formatPrice(value: number | null) {
+  return value == null ? "—" : formatMarketPrice(value, "Rs");
+}
+
+function formatChange(change: number | null, changePct: number | null) {
+  if (change == null && changePct == null) return "—";
+  if (change == null) return formatPercent(changePct);
+  const move = formatPKR(change, { sign: true });
+  if (changePct == null) return move;
+  return `${move} (${formatPercent(changePct)})`;
+}
+
+function formatDayRange(low: number | null, high: number | null) {
+  if (low == null && high == null) return "—";
+  if (low == null) return formatPrice(high);
+  if (high == null) return formatPrice(low);
+  return `${formatPrice(low)} - ${formatPrice(high)}`;
+}
+
+function formatMultiple(value: number | null) {
+  return value == null ? "—" : `${formatNumber(value, 2)}x`;
+}
+
+function formatMarketCapCrore(valueMn: number | null) {
+  return valueMn == null ? "—" : `Rs ${formatNumber(valueMn / 10, 2)} Cr`;
 }
 
 function findMetricRow(
@@ -1381,11 +1624,6 @@ function toNumber(value: unknown): number {
   if (!normalized) return Number.NaN;
   const parsed = Number(normalized);
   return value.includes("(") ? -parsed : parsed;
-}
-
-function valueToString(value: unknown, fallback = ""): string {
-  if (value === null || value === undefined || value === "") return fallback;
-  return String(value);
 }
 
 function emptyTab(title: string, description: string): FinancialTabData {
