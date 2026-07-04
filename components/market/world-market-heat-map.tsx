@@ -4,7 +4,6 @@ import * as React from "react";
 import {
   Activity,
   Globe2,
-  MapPinned,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
@@ -119,24 +118,12 @@ export function WorldMarketHeatMap({
     [visibleQuotes]
   );
 
-  const bestQuote = React.useMemo(() => topMoved(visibleQuotes, "gain")[0] ?? null, [visibleQuotes]);
-  const worstQuote = React.useMemo(() => topMoved(visibleQuotes, "loss")[0] ?? null, [visibleQuotes]);
-  const regionRows = React.useMemo(() => regionSummary(quotes), [quotes]);
+  const regionRows = React.useMemo(() => regionSummary(visibleQuotes), [visibleQuotes]);
   const gainers = React.useMemo(() => topMoved(visibleQuotes, "gain"), [visibleQuotes]);
   const decliners = React.useMemo(() => topMoved(visibleQuotes, "loss"), [visibleQuotes]);
   const selectedAverage = React.useMemo(() => averageChange(visibleQuotes), [visibleQuotes]);
   const activeFilterLabel = labelForRegion(activeRegion);
   const legendRange = React.useMemo(() => moveRange(visibleQuotes), [visibleQuotes]);
-  const dailyBoard = React.useMemo(
-    () =>
-      [...visibleQuotes].sort((left, right) => {
-        const leftMove = left.changePct ?? -999;
-        const rightMove = right.changePct ?? -999;
-        if (rightMove !== leftMove) return rightMove - leftMove;
-        return left.country?.localeCompare(right.country ?? "") ?? 0;
-      }),
-    [visibleQuotes]
-  );
 
   const regionControls = (
     <div className="rounded-[28px] border border-border bg-card p-3 shadow-soft">
@@ -234,14 +221,11 @@ export function WorldMarketHeatMap({
       </CardHeader>
 
       <CardContent className="space-y-4 p-4 sm:p-5">
-        {regionControls}
-        {mapPanel}
-
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <SnapshotCard
             label="Countries covered"
-            value={`${quotes.length}`}
-            detail="Main country exchanges on the live board."
+            value={`${visibleQuotes.length}`}
+            detail={`${activeFilterLabel} exchanges shown in this live view.`}
             tone="neutral"
           />
           <SnapshotCard
@@ -264,105 +248,38 @@ export function WorldMarketHeatMap({
           />
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-border bg-background p-4">
-              <div className="flex items-center gap-2">
-                <Activity className="size-4 text-primary" />
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Regional breadth
-                </h3>
-              </div>
-              <div className="mt-3 space-y-2.5">
-                {regionRows.map((region) => (
-                  <div key={region.name} className="rounded-xl border border-border bg-card p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-medium">{region.name}</p>
-                      <span className={cn("font-semibold tabular-nums", plColorClass(region.avg))}>
-                        {formatPercent(region.avg, 2)}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="text-gain">{region.up} green</span>
-                      <span>{region.flat} flat</span>
-                      <span className="text-loss">{region.down} red</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+        {regionControls}
+        {mapPanel}
 
-            <MoveList title="Top green days" rows={gainers} tone="gain" />
-            <MoveList title="Top red days" rows={decliners} tone="loss" />
-          </div>
-
+        <div className="grid gap-4 xl:grid-cols-3">
           <div className="rounded-2xl border border-border bg-background p-4">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2">
-                <MapPinned className="size-4 text-primary" />
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Daily exchange board
-                </h3>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {activeFilterLabel} country exchanges ranked by today&apos;s move.
-              </p>
+            <div className="flex items-center gap-2">
+              <Activity className="size-4 text-primary" />
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Regional breadth
+              </h3>
             </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-              {dailyBoard.map((quote) => (
-                <div
-                  key={`${quote.symbol}-${quote.countryCode}`}
-                  className="rounded-2xl border border-border bg-card p-4 shadow-soft"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        {quote.country}
-                      </p>
-                      <p className="mt-1 text-base font-semibold">{quote.name}</p>
-                    </div>
-                    <span
-                      className={cn(
-                        "rounded-full px-2.5 py-1 text-xs font-semibold",
-                        toneChipClass(quote.changePct)
-                      )}
-                    >
-                      {statusLabel(quote.changePct)}
+            <div className="mt-3 space-y-2.5">
+              {regionRows.map((region) => (
+                <div key={region.name} className="rounded-xl border border-border bg-card p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium">{region.name}</p>
+                    <span className={cn("font-semibold tabular-nums", plColorClass(region.avg))}>
+                      {formatPercent(region.avg, 2)}
                     </span>
                   </div>
-                  <div className="mt-4 flex items-end justify-between gap-3">
-                    <div>
-                      <p className={cn("text-2xl font-semibold tabular-nums", plColorClass(quote.changePct))}>
-                        {formatPercent(quote.changePct, 2)}
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {formatMarketPrice(quote.price, quote.currency)}
-                      </p>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {quote.region}
-                    </span>
+                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="text-gain">{region.up} green</span>
+                    <span>{region.flat} flat</span>
+                    <span className="text-loss">{region.down} red</span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
 
-        <div className="grid gap-3 lg:grid-cols-2">
-          <SignalCard
-            label="Strongest board"
-            quote={bestQuote}
-            tone="gain"
-            fallback="No winning board found in this view yet."
-          />
-          <SignalCard
-            label="Softest board"
-            quote={worstQuote}
-            tone="loss"
-            fallback="No softer board found in this view yet."
-          />
+          <MoveList title="Top green days" rows={gainers} tone="gain" />
+          <MoveList title="Top red days" rows={decliners} tone="loss" />
         </div>
       </CardContent>
     </Card>
@@ -597,47 +514,6 @@ function SnapshotCard({
   );
 }
 
-function SignalCard({
-  label,
-  quote,
-  tone,
-  fallback,
-}: {
-  label: string;
-  quote: GlobalMarketQuote | null;
-  tone: "gain" | "loss";
-  fallback: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-border bg-background p-4 shadow-soft">
-      <div className="flex items-center gap-2">
-        {tone === "gain" ? (
-          <TrendingUp className="size-4 text-gain" />
-        ) : (
-          <TrendingDown className="size-4 text-loss" />
-        )}
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {label}
-        </h3>
-      </div>
-      {quote ? (
-        <div className="mt-3">
-          <p className="text-lg font-semibold">{quote.country}</p>
-          <p className="text-sm text-muted-foreground">{quote.name}</p>
-          <p className={cn("mt-3 text-2xl font-semibold tabular-nums", plColorClass(quote.changePct))}>
-            {formatPercent(quote.changePct, 2)}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {formatMarketPrice(quote.price, quote.currency)}
-          </p>
-        </div>
-      ) : (
-        <p className="mt-3 text-sm text-muted-foreground">{fallback}</p>
-      )}
-    </div>
-  );
-}
-
 function MoveList({
   title,
   rows,
@@ -798,24 +674,6 @@ function mapFillColor(
   if (value <= -1.5) return "#d95866";
   if (value < 0) return "#f4b1ba";
   return "#dbe3ef";
-}
-
-function toneChipClass(value: number | null | undefined) {
-  if (value == null || Number.isNaN(value) || value === 0) {
-    return "bg-slate-100 text-slate-700";
-  }
-  if (value >= 1.5) return "bg-emerald-100 text-emerald-700";
-  if (value > 0) return "bg-lime-100 text-lime-700";
-  if (value <= -1.5) return "bg-rose-100 text-rose-700";
-  return "bg-rose-50 text-rose-600";
-}
-
-function statusLabel(value: number | null | undefined) {
-  if (value == null || Number.isNaN(value) || value === 0) return "Flat";
-  if (value >= 1.5) return "Strong green";
-  if (value > 0) return "Light green";
-  if (value <= -1.5) return "Red";
-  return "Light red";
 }
 
 function buildCountryTooltip(quote: GlobalMarketQuote) {

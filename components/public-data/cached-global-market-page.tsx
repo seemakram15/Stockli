@@ -67,7 +67,20 @@ export function CachedGlobalMarketPage({
       />
 
       {data ? (
-        <GlobalMarketBoard data={data} showMap={market === "world"} accent={theme.accent} />
+        <GlobalMarketBoard
+          data={data}
+          showMap={market === "world"}
+          accent={theme.accent}
+          hideSummaryStats={market === "world"}
+          sectionTitle={market === "world" ? "Daily exchange board" : "Markets"}
+          sectionDescription={
+            market === "world"
+              ? `All country exchanges ranked by today's move. ${data.sourceLabel}`
+              : undefined
+          }
+          useTableOnMobile={market === "world"}
+          rowNoun={market === "world" ? "exchange" : "market"}
+        />
       ) : isLoading ? (
         <PageLoadingState message={`Loading ${title}...`} variant="global-market" />
       ) : (

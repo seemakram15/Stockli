@@ -97,6 +97,10 @@ function pktDateString(parts: PktParts): string {
   return `${parts.year}-${mm}-${dd}`;
 }
 
+export function psxLocalDateString(date: Date = new Date()): string {
+  return pktDateString(pktParts(date));
+}
+
 function minutes(hour: number, minute: number) {
   return hour * 60 + minute;
 }
@@ -241,6 +245,32 @@ export function nextPsxRefreshAt(date: Date = new Date()): Date | null {
   }
 
   return null;
+}
+
+/**
+ * Most recent regular-session close observed in Pakistan time. Useful for
+ * deciding whether a "frozen while closed" device cache is still current or if
+ * it predates the latest completed market session and must be refreshed once.
+ */
+export function lastCompletedPsxSessionEnd(date: Date = new Date()): Date | null {
+  const now = date.getTime();
+  const today = pktParts(date);
+
+  for (let offset = 0; offset < 14; offset += 1) {
+    const day = addPktDays(today, -offset);
+    const sessions = tradingSessionsForDate(day).filter((session) => session.kind === "open");
+    for (let index = sessions.length - 1; index >= 0; index -= 1) {
+      const candidate = pktInstant(day, sessions[index].end);
+      if (candidate.getTime() <= now + 1_000) return candidate;
+    }
+  }
+
+  return null;
+}
+
+export function lastCompletedPsxSessionDate(date: Date = new Date()): string | null {
+  const sessionEnd = lastCompletedPsxSessionEnd(date);
+  return sessionEnd ? psxLocalDateString(sessionEnd) : null;
 }
 
 export function secondsUntilNextPsxRefresh(date: Date = new Date()): number | null {

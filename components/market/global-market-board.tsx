@@ -42,10 +42,20 @@ export function GlobalMarketBoard({
   data,
   showMap = false,
   accent = "indigo",
+  hideSummaryStats = false,
+  sectionTitle = "Markets",
+  sectionDescription,
+  useTableOnMobile = false,
+  rowNoun = "market",
 }: {
   data: GlobalMarketData;
   showMap?: boolean;
   accent?: Accent;
+  hideSummaryStats?: boolean;
+  sectionTitle?: string;
+  sectionDescription?: string;
+  useTableOnMobile?: boolean;
+  rowNoun?: string;
 }) {
   const [query, setQuery] = React.useState("");
   const [type, setType] = React.useState("all");
@@ -78,7 +88,7 @@ export function GlobalMarketBoard({
       })
       .sort((a, b) => compareQuotes(a, b, sortKey, sortDir));
   }, [data.quotes, query, region, sortDir, sortKey, type]);
-  const filterSummary = `${rows.length} market${rows.length === 1 ? "" : "s"} · ${
+  const filterSummary = `${rows.length} ${rowNoun}${rows.length === 1 ? "" : "s"} · ${
     type === "all" ? "All types" : type
   }`;
 
@@ -93,36 +103,38 @@ export function GlobalMarketBoard({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
-          label="Average move"
-          value={formatPercent(data.summary.avgChangePct)}
-          tone={toneFor(data.summary.avgChangePct)}
-          accent={accent}
-          icon={<Globe2 className="size-4" />}
-        />
-        <StatCard
-          label="Advancers"
-          value={String(data.summary.advancers)}
-          tone="gain"
-          accent="emerald"
-          icon={<TrendingUp className="size-4" />}
-        />
-        <StatCard
-          label="Decliners"
-          value={String(data.summary.decliners)}
-          tone="loss"
-          accent="rose"
-          icon={<TrendingDown className="size-4" />}
-        />
-        <StatCard
-          label="Best move"
-          value={data.summary.best ? `${shortMarketLabel(data.summary.best)} ${formatPercent(data.summary.best.changePct)}` : "—"}
-          tone={toneFor(data.summary.best?.changePct)}
-          accent="violet"
-          icon={<Trophy className="size-4" />}
-        />
-      </div>
+      {!hideSummaryStats ? (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard
+            label="Average move"
+            value={formatPercent(data.summary.avgChangePct)}
+            tone={toneFor(data.summary.avgChangePct)}
+            accent={accent}
+            icon={<Globe2 className="size-4" />}
+          />
+          <StatCard
+            label="Advancers"
+            value={String(data.summary.advancers)}
+            tone="gain"
+            accent="emerald"
+            icon={<TrendingUp className="size-4" />}
+          />
+          <StatCard
+            label="Decliners"
+            value={String(data.summary.decliners)}
+            tone="loss"
+            accent="rose"
+            icon={<TrendingDown className="size-4" />}
+          />
+          <StatCard
+            label="Best move"
+            value={data.summary.best ? `${shortMarketLabel(data.summary.best)} ${formatPercent(data.summary.best.changePct)}` : "—"}
+            tone={toneFor(data.summary.best?.changePct)}
+            accent="violet"
+            icon={<Trophy className="size-4" />}
+          />
+        </div>
+      ) : null}
 
       {showMap && <WorldMarketHeatMap data={data} />}
 
@@ -132,9 +144,9 @@ export function GlobalMarketBoard({
             <div className="flex items-center gap-3">
               <IconChip accent={accent} variant="gradient"><Globe2 /></IconChip>
               <div>
-                <CardTitle>Markets</CardTitle>
+                <CardTitle>{sectionTitle}</CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {data.sourceLabel}
+                  {sectionDescription ?? data.sourceLabel}
                 </p>
               </div>
             </div>
@@ -188,22 +200,29 @@ export function GlobalMarketBoard({
             </div>
           </FilterPanel>
         </CardHeader>
-        <CardContent className="px-3 pb-4 sm:px-2">
-          <div className="space-y-3 sm:hidden">
-            {rows.map((quote) => (
-              <MarketMobileCard
-                key={`${quote.symbol}-mobile`}
-                quote={quote}
-                universe={data.universe}
-              />
-            ))}
-            {rows.length === 0 ? (
-              <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
-                No markets match the current filters.
-              </div>
-            ) : null}
-          </div>
-          <div className="hidden overflow-x-auto scrollbar-thin sm:block">
+        <CardContent
+          className={cn(
+            "pb-4",
+            useTableOnMobile ? "px-0" : "px-3 sm:px-2"
+          )}
+        >
+          {!useTableOnMobile ? (
+            <div className="space-y-3 sm:hidden">
+              {rows.map((quote) => (
+                <MarketMobileCard
+                  key={`${quote.symbol}-mobile`}
+                  quote={quote}
+                  universe={data.universe}
+                />
+              ))}
+              {rows.length === 0 ? (
+                <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
+                  No markets match the current filters.
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          <div className={cn("overflow-x-auto scrollbar-thin", useTableOnMobile ? "" : "hidden sm:block")}>
             <Table>
               <TableHeader>
                 <TableRow>

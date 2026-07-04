@@ -96,10 +96,14 @@ export function ManualDataRefreshButton({
             accept: "application/json",
             "content-type": "application/json",
           },
-          body: JSON.stringify({ mode: "manual", force: true }),
+          body: JSON.stringify({ mode: "manual", force: true, scope: "backend-only" }),
         });
         if (!response.ok) {
           throw new Error(`Backend refresh failed (${response.status})`);
+        }
+        const json = (await response.json()) as { ok?: boolean; error?: string };
+        if (!json.ok) {
+          throw new Error(json.error || "Backend refresh failed.");
         }
       });
 

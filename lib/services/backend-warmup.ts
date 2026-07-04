@@ -13,13 +13,13 @@ import {
   getPivotPointsData,
   getUsefulLinksData,
 } from "@/lib/services/market-resources";
-import { getMarketRows, refreshMarketWatch } from "@/lib/services/prices";
+import { getMarketRows, marketWatchRowToQuote, refreshMarketWatch } from "@/lib/services/prices";
 import { getMufapFunds } from "@/lib/services/mufap";
 import { getPublicMarketPageData } from "@/lib/services/public-market-page";
 import { archiveStockFundamentals } from "@/lib/services/stock-fundamentals";
 import { createNotification, runSystemNotificationJobs } from "@/lib/services/system-notifications";
 import { getYoutubeVideos } from "@/lib/services/youtube";
-import type { Quote } from "@/lib/types";
+import type { MarketWatchRow, Quote } from "@/lib/types";
 
 export type BackendWarmupTrigger = "cron" | "login" | "manual";
 
@@ -29,6 +29,8 @@ export interface BackendWarmupOptions {
   force?: boolean;
   forcePsxRefresh?: boolean;
   allowPrivilegedWrites?: boolean;
+  includePublicCaches?: boolean;
+  includeFundamentalsArchive?: boolean;
 }
 
 const FUNDAMENTALS_ARCHIVE_CURSOR_KEY = "stock-fundamentals:archive-cursor:v1";
@@ -44,6 +46,8 @@ export async function runBackendWarmup({
   force = false,
   forcePsxRefresh = false,
   allowPrivilegedWrites = trigger === "cron",
+  includePublicCaches = true,
+  includeFundamentalsArchive = true,
 }: BackendWarmupOptions) {
   const startedAt = new Date();
   const status = marketStatus(startedAt);
@@ -66,11 +70,22 @@ export async function runBackendWarmup({
   }
 
   let psxRefreshError: string | null = null;
+  let marketRows: MarketWatchRow[] = [];
   let quotes = new Map<string, Quote>();
   if (psxRefreshAllowed) {
     try {
-      quotes = await refreshMarketWatch();
+      await refreshMarketWatch();
     } catch (err) {
+      psxRefreshError = err instanceof Error ? err.message : String(err);
+    }
+  }
+  try {
+    marketRows = await getMarketRows();
+    quotes = new Map(
+      marketRows.map((row) => [row.symbol.toUpperCase(), marketWatchRowToQuote(row)])
+    );
+  } catch (err) {
+    if (!psxRefreshError) {
       psxRefreshError = err instanceof Error ? err.message : String(err);
     }
   }
@@ -94,15 +109,23 @@ export async function runBackendWarmup({
   }
 
   if (!isSupabaseAdminConfigured) {
-    result.publicCaches = await warmPublicCaches({ includePsx: psxRefreshAllowed });
-    result.fundamentalsArchive = await warmFundamentalsArchive(trigger);
+    await attachOptionalWarmups(result, {
+      includePsx: psxRefreshAllowed,
+      trigger,
+      includePublicCaches,
+      includeFundamentalsArchive,
+    });
     result.note = "Demo mode — cache warmed, no DB writes (add Supabase keys to persist).";
     return result;
   }
 
   if (!allowPrivilegedWrites) {
-    result.publicCaches = await warmPublicCaches({ includePsx: psxRefreshAllowed });
-    result.fundamentalsArchive = await warmFundamentalsArchive(trigger);
+    await attachOptionalWarmups(result, {
+      includePsx: psxRefreshAllowed,
+      trigger,
+      includePublicCaches,
+      includeFundamentalsArchive,
+    });
     result.note =
       "User-scoped warmup only — shared caches refreshed without touching other users' database rows, alerts, or notifications.";
     return result;
@@ -129,12 +152,12 @@ export async function runBackendWarmup({
     }
   }
 
-  if (isMarketOpen(startedAt)) {
+  const dailyPlDate = resolveDailyPlDate(startedAt, marketRows);
+  if (dailyPlDate) {
     try {
       const { data: holdings } = await admin
         .from("holdings")
         .select("portfolio_id, symbol, quantity");
-      const today = isoDateInPkt(startedAt);
       const dailyRows = (holdings ?? [])
         .map((holding: { portfolio_id: string; symbol: string; quantity: number }) => {
           const quote = quotes.get(holding.symbol.toUpperCase());
@@ -145,7 +168,7 @@ export async function runBackendWarmup({
           return {
             portfolio_id: holding.portfolio_id,
             symbol: holding.symbol,
-            date: today,
+            date: dailyPlDate,
             open_value: openValue,
             close_value: closeValue,
             day_pl: dayPl,
@@ -159,6 +182,7 @@ export async function runBackendWarmup({
           .upsert(dailyRows as object[], { onConflict: "portfolio_id,symbol,date" });
       }
       result.dailyPlRows = dailyRows.length;
+      result.dailyPlDate = dailyPlDate;
     } catch (err) {
       result.dailyPlError = String(err);
     }
@@ -219,9 +243,35 @@ export async function runBackendWarmup({
     result.notificationError = String(err);
   }
 
-  result.publicCaches = await warmPublicCaches({ includePsx: psxRefreshAllowed });
-  result.fundamentalsArchive = await warmFundamentalsArchive(trigger);
+  await attachOptionalWarmups(result, {
+    includePsx: psxRefreshAllowed,
+    trigger,
+    includePublicCaches,
+    includeFundamentalsArchive,
+  });
   return result;
+}
+
+async function attachOptionalWarmups(
+  result: Record<string, unknown>,
+  {
+    includePsx,
+    trigger,
+    includePublicCaches,
+    includeFundamentalsArchive,
+  }: {
+    includePsx: boolean;
+    trigger: BackendWarmupTrigger;
+    includePublicCaches: boolean;
+    includeFundamentalsArchive: boolean;
+  }
+) {
+  if (includePublicCaches) {
+    result.publicCaches = await warmPublicCaches({ includePsx });
+  }
+  if (includeFundamentalsArchive) {
+    result.fundamentalsArchive = await warmFundamentalsArchive(trigger);
+  }
 }
 
 async function warmPublicCaches({ includePsx }: { includePsx: boolean }) {
@@ -335,6 +385,27 @@ function isoDateInPkt(date: Date): string {
     day: "2-digit",
   });
   return fmt.format(date);
+}
+
+function resolveDailyPlDate(
+  startedAt: Date,
+  marketRows: MarketWatchRow[]
+): string | null {
+  if (marketRows.length === 0) {
+    return isMarketOpen(startedAt) ? isoDateInPkt(startedAt) : null;
+  }
+
+  const latestCapturedAt = marketRows
+    .map((row) => Date.parse(row.capturedAt ?? ""))
+    .filter((value) => Number.isFinite(value))
+    .sort((a, b) => b - a)[0];
+
+  if (!Number.isFinite(latestCapturedAt)) {
+    return isMarketOpen(startedAt) ? isoDateInPkt(startedAt) : null;
+  }
+
+  const snapshotDate = new Date(latestCapturedAt);
+  return isTradingDay(snapshotDate) ? isoDateInPkt(snapshotDate) : null;
 }
 
 async function readFundamentalsArchiveCursor() {

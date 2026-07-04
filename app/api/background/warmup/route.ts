@@ -22,11 +22,14 @@ export async function POST(request: Request) {
 
   const body = await safeJson(request);
   const manual = body?.mode === "manual" || body?.force === true;
+  const backendOnly = body?.scope === "backend-only";
   const result = await runBackendWarmup({
     trigger: manual ? "manual" : "login",
     userId,
     forcePsxRefresh: manual,
     allowPrivilegedWrites: false,
+    includePublicCaches: !backendOnly,
+    includeFundamentalsArchive: !backendOnly,
   });
   return NextResponse.json(result, {
     headers: {
@@ -35,9 +38,11 @@ export async function POST(request: Request) {
   });
 }
 
-async function safeJson(request: Request): Promise<{ mode?: string; force?: boolean } | null> {
+async function safeJson(
+  request: Request
+): Promise<{ mode?: string; force?: boolean; scope?: string } | null> {
   try {
-    return (await request.json()) as { mode?: string; force?: boolean };
+    return (await request.json()) as { mode?: string; force?: boolean; scope?: string };
   } catch {
     return null;
   }
