@@ -5,6 +5,7 @@ import { PSX_INDICES, SEED_TICKERS } from "@/lib/psx/symbols";
 import { sanitizeSearchQuery } from "@/lib/security/validation";
 import { getMufapFunds, type MufapFund, type MufapFundsData } from "@/lib/services/mufap";
 import { getGlobalMarketInstruments } from "@/lib/services/global-markets";
+import { getMarketDisplaySymbol } from "@/lib/market-symbols";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,6 +36,7 @@ const SUPPORTED_INDEX_PAGES = new Set(["^GSPC", "^DJI", "^NDX", "^NSEI", "^BSESN
 const SEARCH_LIMIT = 48;
 
 const PAGE_RESULTS = [
+  pageResult("page:world-monitor", "World Monitor", "Live world map with hotspots, disasters and market stress", "/explore/world-monitor"),
   pageResult("page:psx", "Pakistan Stock Market", "Stocks, sectors, performers and PSX indexes", "/market"),
   pageResult("page:strategy", "Funds Daily Returns Report", "Estimated daily stock fund returns by AMC", "/market/strategy"),
   pageResult("page:mutual-funds", "Mutual Funds", "MUFAP funds, AMCs, NAVs and returns", "/market/mutual-funds"),
@@ -192,7 +194,7 @@ function getGlobalInstrumentResults(q: string) {
             : `/market/${universe}`;
         return makeResult({
           id: `global:${universe}:${item.symbol}`,
-          title: item.displaySymbol ?? item.symbol,
+          title: getMarketDisplaySymbol(item.symbol, item.displaySymbol),
           subtitle: `${item.name} · ${item.country ?? item.type}`,
           href,
           category,

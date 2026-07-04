@@ -222,6 +222,10 @@ function getLoadingStateForPath(pathname: string): {
     return { message: "Loading stock details...", variant: "stock" };
   }
 
+  if (pathname === "/explore/world-monitor") {
+    return { message: "Loading world monitor...", variant: "global-market" };
+  }
+
   if (pathname.startsWith("/explore/") || pathname === "/youtubers") {
     return { message: "Loading page...", variant: "list" };
   }

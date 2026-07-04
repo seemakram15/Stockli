@@ -65,6 +65,7 @@ const FILTERS: SearchCategory[] = [
 ];
 
 const POPULAR_RESULTS: SearchResult[] = [
+  popularResult("popular:world-monitor", "page", "World Monitor", "Live world map with hotspots, disasters and market stress", "/explore/world-monitor", "Pages"),
   popularResult("popular:mari", "stock", "MARI", "Mari Petroleum Co.", "/stock/MARI", "Stocks", "MARI"),
   popularResult("popular:mebl", "stock", "MEBL", "Meezan Bank Limited", "/stock/MEBL", "Stocks", "MEBL"),
   popularResult("popular:kse100", "index", "KSE100", "KSE-100 Index", "/market", "Indexes", "KSE100"),

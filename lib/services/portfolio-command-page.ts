@@ -1,6 +1,7 @@
 import "server-only";
 import type { DashboardTickerItem } from "@/components/dashboard/index-ticker-strip";
 import { getGlobalMarketData, type GlobalMarketQuote } from "@/lib/services/global-markets";
+import { getMarketDisplaySymbol } from "@/lib/market-symbols";
 import { getPortfolioCalendar, type StockCalendar } from "@/lib/services/daily-pl";
 import { getPortfolioPerformance, type PerformanceResult } from "@/lib/services/performance";
 import { getDashboard, type DashboardData } from "@/lib/services/portfolio";
@@ -106,7 +107,7 @@ function marketToTicker(
     return null;
   }
   return {
-    symbol: quote.symbol,
+    symbol: getMarketDisplaySymbol(quote.symbol, quote.displaySymbol),
     label,
     current: quote.price,
     change: quote.change,

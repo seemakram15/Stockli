@@ -18,12 +18,18 @@ import {
   Wallet,
 } from "lucide-react";
 import { IndexTickerStrip, type DashboardTickerItem } from "@/components/dashboard/index-ticker-strip";
+import { WorldMarketHeatMap } from "@/components/market/world-market-heat-map";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AccentPill, IconChip, ACCENT_GRADIENT, type Accent } from "@/components/ui/accent";
 import { ChangeBadge } from "@/components/change-badge";
 import { usePersistentResource, type CachedRecord } from "@/lib/hooks/use-persistent-resource";
+import { getMarketDisplaySymbol } from "@/lib/market-symbols";
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
+import type {
+  GlobalMarketData as PublicGlobalMarketData,
+  GlobalMarketQuote as PublicGlobalQuote,
+} from "@/lib/services/global-markets";
 import {
   isPortfolioCacheFresh,
   PORTFOLIO_MUTATION_EVENT,
@@ -82,32 +88,8 @@ interface PublicMarketData {
   updatedAt: string;
 }
 
-interface GlobalQuote {
-  symbol: string;
-  displaySymbol?: string;
-  name: string;
-  type: string;
-  country?: string;
-  currency?: string;
-  price: number | null;
-  change: number | null;
-  changePct: number | null;
-  volume: number | null;
-}
-
-interface GlobalMarketData {
-  title: string;
-  description: string;
-  quotes: GlobalQuote[];
-  summary: {
-    advancers: number;
-    decliners: number;
-    flat: number;
-    avgChangePct: number;
-    best: GlobalQuote | null;
-    worst: GlobalQuote | null;
-  };
-}
+type GlobalQuote = PublicGlobalQuote;
+type GlobalMarketData = PublicGlobalMarketData;
 
 type HubResponseMap = {
   portfolio: DashboardData;
@@ -243,6 +225,16 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
         onRefresh={refreshAll}
       />
 
+      <section>
+        <DashboardWorldMapCard
+          href="/market/world"
+          title="World view"
+          eyebrow="Country exchange map"
+          data={data.world}
+          featured={worldFeatured}
+        />
+      </section>
+
       <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <DashboardMarketCard
           href="/market"
@@ -261,15 +253,6 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
           eyebrow="Famous names"
           featured={usFeatured}
           rows={quoteRows(data.us, ["GOOGL", "NVDA", "META", "TSLA", "AAPL", "MSFT", "AMZN"])}
-        />
-        <DashboardMarketCard
-          href="/market/world"
-          accent="indigo"
-          icon={<Globe2 className="size-5" />}
-          title="World indices"
-          eyebrow="Famous global indices"
-          featured={worldFeatured}
-          rows={quoteRows(data.world, ["^GSPC", "^FTSE", "^GDAXI", "^FCHI", "^NSEI", "^N225", "^HSI", "000001.SS"])}
         />
         <DashboardMarketCard
           href="/market/commodities"
@@ -544,6 +527,70 @@ function DashboardMarketCard({
   );
 }
 
+function DashboardWorldMapCard({
+  href,
+  title,
+  eyebrow,
+  data,
+  featured,
+}: {
+  href: string;
+  title: string;
+  eyebrow: string;
+  data: GlobalMarketData | undefined;
+  featured: FeaturedMarketMove | null;
+}) {
+  return (
+    <Card className="overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-soft-lg">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className={cn("flex size-11 shrink-0 items-center justify-center rounded-2xl", ACCENT_GRADIENT.indigo)}>
+              <Globe2 className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <CardTitle className="text-xl leading-tight">{title}</CardTitle>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {eyebrow}
+              </p>
+            </div>
+          </div>
+          <Button asChild variant="ghost" size="icon" className="size-10 shrink-0">
+            <Link href={href} aria-label={`Open ${title}`}>
+              <ArrowRight className="size-5" />
+            </Link>
+          </Button>
+        </div>
+
+        {featured ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/35 px-4 py-3">
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Strongest board
+            </span>
+            <span className="text-sm font-semibold text-foreground">{featured.label}</span>
+            <span className={cn("text-sm font-semibold tabular-nums", plColorClass(featured.changePct))}>
+              {featured.value}
+            </span>
+            <span className={cn("text-sm font-semibold tabular-nums", plColorClass(featured.changePct))}>
+              {featured.change}
+            </span>
+          </div>
+        ) : null}
+      </CardHeader>
+      <CardContent>
+        {data ? (
+          <WorldMarketHeatMap data={data} compact />
+        ) : (
+          <div className="flex min-h-[32rem] items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
+            <Loader2 className="mr-2 size-4 animate-spin" />
+            Loading world map...
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function DashboardRowItem({ row, ariaHidden }: { row: DashboardRow; ariaHidden?: boolean }) {
   const content = (
     <div
@@ -687,17 +734,11 @@ function quoteRows(data: GlobalMarketData | undefined, symbols: string[]): Dashb
 }
 
 function quoteTitle(quote: GlobalQuote) {
-  if (quote.symbol.includes("=")) return quote.name;
-  return quote.displaySymbol ?? quote.symbol;
+  return getMarketDisplaySymbol(quote.symbol, quote.displaySymbol);
 }
 
 function quoteSubtitle(quote: GlobalQuote) {
-  if (quote.symbol.includes("=")) return cleanFuturesSymbol(quote.symbol);
   return quote.name;
-}
-
-function cleanFuturesSymbol(symbol: string) {
-  return symbol.replace(/=F$/i, "").replace("=", "");
 }
 
 function marketHrefForQuote(quote: GlobalQuote) {
@@ -732,7 +773,7 @@ function quotesToTicker(quotes: GlobalQuote[]): DashboardTickerItem[] {
     .filter((quote) => quote.price != null && quote.change != null && quote.changePct != null)
     .map((quote) => ({
       symbol: quote.symbol,
-      label: quote.displaySymbol ?? quote.symbol,
+      label: getMarketDisplaySymbol(quote.symbol, quote.displaySymbol),
       current: quote.price ?? 0,
       change: quote.change ?? 0,
       changePct: quote.changePct ?? 0,

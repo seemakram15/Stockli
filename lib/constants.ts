@@ -61,6 +61,11 @@ export const TOOL_NAV_ITEMS = [
 
 export const EXPLORE_NAV_ITEMS = [
   {
+    href: "/explore/world-monitor",
+    label: "World Monitor",
+    icon: "Globe2",
+  },
+  {
     href: "/explore/useful-links",
     label: "Useful Links",
     icon: "Link2",

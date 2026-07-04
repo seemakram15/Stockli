@@ -1,5 +1,6 @@
 import "server-only";
 import { parse, type HTMLElement } from "node-html-parser";
+import { getMarketDisplaySymbol } from "@/lib/market-symbols";
 import type { MarketUniverse } from "@/lib/services/global-markets";
 
 export interface GlobalIndexConstituent {
@@ -240,7 +241,7 @@ function friendlyIndexTitle(symbol: string) {
     "^BSESN": "SENSEX constituents",
     "^NSEBANK": "NIFTY Bank constituents",
   };
-  return map[symbol] ?? `${symbol.replace(/^\^/, "")} constituents`;
+  return map[symbol] ?? `${getMarketDisplaySymbol(symbol)} constituents`;
 }
 
 function bankNifty(symbol: string, name: string): GlobalIndexConstituent {
