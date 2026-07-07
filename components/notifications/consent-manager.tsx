@@ -68,7 +68,7 @@ export function ConsentManager({ userId }: { userId: string }) {
       }
 
       if (showSuccessToast) {
-        toast.success("Notifications are enabled. Stockli can now alert you even when the app is closed.");
+        toast.success("Notifications are enabled. You can now receive alerts even when the app is closed.");
       }
       return true;
     },
@@ -139,7 +139,7 @@ export function ConsentManager({ userId }: { userId: string }) {
     try {
       await acceptDeviceConsent();
       if (!canEnablePush || !vapidPublicKey) {
-        toast.info("Cookies are saved for this device. Notifications will be available after push is configured.");
+        toast.info("Cookies are saved for this device. Notifications will become available once push is configured.");
         setVisible(false);
         return;
       }
@@ -150,7 +150,7 @@ export function ConsentManager({ userId }: { userId: string }) {
       });
 
       if (permission !== "granted") {
-        toast.info("Cookies are saved. You can enable notifications later from this browser's settings.");
+        toast.info("Cookies are saved. You can enable notifications later from this browser or app settings.");
         setVisible(false);
         return;
       }

@@ -77,12 +77,12 @@ self.addEventListener("push", (event) => {
     payload = event.data ? event.data.json() : {};
   } catch {
     payload = {
-      title: "Stockli",
-      body: event.data ? event.data.text() : "You have a new Stockli notification.",
+      title: "Market update",
+      body: event.data ? event.data.text() : "Open the app to see the latest update.",
     };
   }
 
-  const title = payload.title || "Stockli";
+  const title = payload.title || "Market update";
   const options = {
     body: payload.body || "",
     icon: "/icons/icon-192.png",

@@ -15,15 +15,13 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import {
-  buildDeterministicPortfolioSuggestionInsight,
-  type PortfolioSuggestionAiInsight,
-} from "@/lib/analysis/sector-portfolio-ai";
+import { type PortfolioSuggestionAiInsight } from "@/lib/analysis/sector-portfolio-ai";
 import {
   type PortfolioDuration,
   type PortfolioObjective,
@@ -33,14 +31,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 
-type PortfolioAiPayload = {
-  duration: PortfolioDuration;
-  objective: PortfolioObjective;
-  holdings: number;
+type PortfolioSuggestionPayload = {
+  portfolio: SuggestedPortfolio;
   deterministic: PortfolioSuggestionAiInsight;
   insight: PortfolioSuggestionAiInsight;
+  mode: "ai" | "fallback";
   generatedAt: string;
 };
 
@@ -51,56 +47,83 @@ export function PortfolioSuggestions() {
   const [duration, setDuration] = React.useState<PortfolioDuration>("long-term");
   const [objective, setObjective] = React.useState<PortfolioObjective>("income-and-growth");
   const [holdings, setHoldings] = React.useState(6);
+  const [buildAction, setBuildAction] = React.useState<"suggest" | "change">("suggest");
   const [submitted, setSubmitted] = React.useState({
     duration: "long-term" as PortfolioDuration,
     objective: "income-and-growth" as PortfolioObjective,
     holdings: 6,
+    variation: 0,
+    currentSymbols: [] as string[],
+    excludedSymbols: [] as string[],
+    currentScore: null as number | null,
   });
 
-  const cacheKey = React.useMemo(
-    () =>
-      `public:portfolio-suggestions:v5:${submitted.duration}:${submitted.objective}:${submitted.holdings}`,
-    [submitted.duration, submitted.holdings, submitted.objective]
-  );
-  const url = React.useMemo(
-    () =>
-      `/api/public/portfolio-suggestions?duration=${submitted.duration}&objective=${submitted.objective}&holdings=${submitted.holdings}`,
-    [submitted.duration, submitted.holdings, submitted.objective]
-  );
-  const resource = usePersistentResource<SuggestedPortfolio>({
-    cacheKey,
-    url,
-    refreshInterval: 30 * 60 * 1000,
-  });
-
-  const aiFallback = React.useMemo(
-    () => (resource.data ? buildDeterministicPortfolioSuggestionInsight(resource.data) : null),
-    [resource.data]
-  );
   const aiBody = React.useMemo(
     () =>
-      resource.data
-        ? ({
-            duration: resource.data.duration,
-            objective: resource.data.objective,
-            holdings: resource.data.holdingsRequested,
-          } satisfies {
-            duration: PortfolioDuration;
-            objective: PortfolioObjective;
-            holdings: number;
-          })
-        : null,
-    [resource.data]
+      ({
+        duration: submitted.duration,
+        objective: submitted.objective,
+        holdings: submitted.holdings,
+        variation: submitted.variation,
+        currentSymbols: submitted.currentSymbols,
+        excludedSymbols: submitted.excludedSymbols,
+        currentScore: submitted.currentScore,
+      }) satisfies {
+        duration: PortfolioDuration;
+        objective: PortfolioObjective;
+        holdings: number;
+        variation: number;
+        currentSymbols: string[];
+        excludedSymbols: string[];
+        currentScore: number | null;
+      },
+    [submitted]
   );
-  const { data: aiData, loading: aiLoading, error: aiError, refresh } =
-    usePostJson<PortfolioAiPayload>("/api/private/portfolio-suggestions/ai", aiBody);
-  const aiInsight = aiData?.insight ?? aiFallback;
+  const {
+    data: suggestionData,
+    loading: portfolioLoading,
+    error: portfolioError,
+    refresh,
+  } = usePostJson<PortfolioSuggestionPayload>("/api/private/portfolio-suggestions", aiBody);
+  const portfolio = suggestionData?.portfolio ?? null;
+  const aiInsight = suggestionData?.insight ?? null;
+  const isFallbackMode = suggestionData?.mode === "fallback";
+
+  React.useEffect(() => {
+    if (!portfolioLoading) {
+      setBuildAction("suggest");
+    }
+  }, [portfolioLoading]);
 
   function generatePortfolio() {
-    setSubmitted({ duration, objective, holdings });
+    setBuildAction("suggest");
+    setSubmitted({
+      duration,
+      objective,
+      holdings,
+      variation: 0,
+      currentSymbols: [],
+      excludedSymbols: [],
+      currentScore: null,
+    });
   }
 
-  const portfolio = resource.data;
+  function changeSuggestion() {
+    if (!portfolio) return;
+    setBuildAction("change");
+    setSubmitted((current) => ({
+      ...current,
+      variation: current.variation + 1,
+      currentSymbols: portfolio.holdings.map((holding) => holding.symbol),
+      excludedSymbols: Array.from(
+        new Set([
+          ...current.excludedSymbols,
+          ...portfolio.holdings.map((holding) => holding.symbol),
+        ])
+      ),
+      currentScore: portfolio.score,
+    }));
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
@@ -116,9 +139,9 @@ export function PortfolioSuggestions() {
               </h1>
               <p className="mt-3 max-w-4xl text-sm leading-7 text-muted-foreground sm:text-base">
                 Tell Stockli how long you want to hold, what kind of return you want, and how many
-                names you are comfortable tracking. The shortlist then leans toward stronger sectors,
-                healthier fundamentals, blue-chip anchors, and credible growth names instead of
-                chasing weak quality rallies.
+                names you are comfortable tracking. AI will draft the basket first from stronger
+                sectors, healthier fundamentals, blue-chip anchors, and cleaner growth names.
+                Stockli then scores that suggested mix on the same numbers.
               </p>
             </div>
           </div>
@@ -143,7 +166,7 @@ export function PortfolioSuggestions() {
                   </p>
                 </div>
                 <Badge variant="success" className="h-8 rounded-full px-3 text-xs">
-                  AI summary included automatically
+                  AI picks first, score follows
                 </Badge>
               </div>
 
@@ -206,22 +229,34 @@ export function PortfolioSuggestions() {
                         What Stockli will prefer
                       </p>
                       <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                        Stronger earnings, cleaner cash flow, manageable debt, larger franchise quality,
-                        and sectors where more than one company looks investable.
+                        Stronger earnings, cleaner cash flow, manageable debt, healthy dividend support,
+                        larger franchise quality, and sectors where more than one company looks investable.
                       </p>
                     </div>
-                    <Button
-                      type="submit"
-                      size="lg"
-                      className="h-12 gap-2 bg-gradient-to-r from-emerald-500 to-teal-400 text-white shadow-md shadow-emerald-500/20 hover:from-emerald-500 hover:to-teal-300 hover:text-white"
-                    >
-                      {resource.isRefreshing ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <Target className="size-4" />
-                      )}
-                      Suggest portfolio
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="submit"
+                        size="lg"
+                        className="h-12 gap-2 bg-gradient-to-r from-emerald-500 to-teal-400 text-white shadow-md shadow-emerald-500/20 hover:from-emerald-500 hover:to-teal-300 hover:text-white"
+                      >
+                        {portfolioLoading ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Target className="size-4" />
+                        )}
+                        Suggest portfolio
+                      </Button>
+                      {portfolio ? (
+                        <Button type="button" size="lg" variant="outline" className="h-12 gap-2" onClick={changeSuggestion}>
+                          {portfolioLoading && submitted.currentSymbols.length ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <Brain className="size-4" />
+                          )}
+                          Change suggestion
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -249,37 +284,57 @@ export function PortfolioSuggestions() {
               <SummaryBlurb
                 icon={<Brain className="size-5" />}
                 eyebrow="AI guidance"
-                title="AI first, numbers underneath"
-                copy="Stockli asks AI to explain the shortlist first. If the model is busy, the page falls back to the same numbers-backed read."
+                title="AI picks, Stockli checks"
+                copy="AI suggests the basket first, then Stockli scores the same basket for quality, diversification, return mix, and risk balance."
               />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {resource.isLoading ? (
-        <PortfolioLoading />
+      {portfolioLoading ? (
+        <PortfolioLoading action={buildAction} />
       ) : portfolio ? (
         <>
           <Card variant="feature" className="overflow-hidden">
             <CardContent className="space-y-6 p-5 sm:p-6">
               <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
                 <div className="rounded-[2rem] border bg-background/90 p-5 shadow-soft">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="success">{humanObjective(portfolio.objective)}</Badge>
-                    <Badge variant="outline">{humanDuration(portfolio.duration)}</Badge>
-                    <Badge variant="outline">{portfolio.holdingsRequested} holdings</Badge>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="success">{humanObjective(portfolio.objective)}</Badge>
+                      <Badge variant="outline">{humanDuration(portfolio.duration)}</Badge>
+                      <Badge variant="outline">{portfolio.holdingsRequested} holdings</Badge>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {aiInsight ? <Badge variant="violet">{aiInsight.confidence} confidence</Badge> : null}
+                      {portfolioLoading ? <Badge variant="outline">Refreshing suggestion...</Badge> : null}
+                    </div>
                   </div>
                   <h2 className="mt-4 text-3xl font-bold tracking-tight">
                     Portfolio score {portfolio.score}/100
                   </h2>
                   <p className="mt-3 text-sm leading-7 text-muted-foreground">{portfolio.summary}</p>
+                  {isFallbackMode ? (
+                    <div className="mt-4 rounded-2xl border border-amber-500/25 bg-amber-500/5 p-4 text-sm text-amber-700 dark:text-amber-200">
+                      AI is taking a little longer right now, so Stockli is showing the strongest
+                      numbers-led basket for the moment.
+                    </div>
+                  ) : null}
                   <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                    <MiniStat label="Expected annual return" value={`${portfolio.expectedAnnualReturn.toFixed(1)}%`} tone="gain" />
+                    <MiniStat
+                      label="Expected annual return"
+                      value={`${portfolio.expectedAnnualReturn.toFixed(1)}%`}
+                      tone="gain"
+                    />
                     <MiniStat label="Sectors covered" value={String(portfolio.sectorsCovered)} />
                     <MiniStat
                       label="Dividend yield"
-                      value={portfolio.expectedDividendYield == null ? "—" : `${portfolio.expectedDividendYield.toFixed(1)}%`}
+                      value={
+                        portfolio.expectedDividendYield == null
+                          ? "—"
+                          : `${portfolio.expectedDividendYield.toFixed(1)}%`
+                      }
                     />
                   </div>
                   <div className="mt-4 rounded-[1.6rem] border border-emerald-500/20 bg-emerald-500/5 p-4">
@@ -310,129 +365,47 @@ export function PortfolioSuggestions() {
 
           <Card>
             <CardHeader className="flex-row items-start gap-3">
-              <div className="rounded-2xl bg-violet-500/10 p-3 text-violet-600 dark:text-violet-300">
-                <Brain className="size-5" />
+              <div className="rounded-2xl bg-sky-500/10 p-3 text-sky-600 dark:text-sky-300">
+                <BarChart3 className="size-5" />
               </div>
               <div>
-                <CardTitle>AI portfolio read</CardTitle>
+                <CardTitle>Allocation by stock</CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Stockli asks AI to explain the shortlist first, then falls back to the same
-                  numbers-backed view if the model is busy.
+                  Higher weights go to the stronger overall ideas in this mix.
                 </p>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
-                {aiInsight ? <Badge variant="violet">{aiInsight.confidence} confidence</Badge> : null}
-                <Badge variant="success">{humanObjective(portfolio.objective)}</Badge>
-                <Button type="button" variant="outline" size="sm" onClick={refresh}>
-                  Refresh summary
-                </Button>
-              </div>
-
-              {aiLoading && !aiData ? (
-                <PortfolioAiLoading />
-              ) : aiInsight ? (
-                <div className="space-y-4">
-                  {aiError ? (
-                    <div className="rounded-2xl border border-amber-500/25 bg-amber-500/5 p-4 text-sm text-amber-700 dark:text-amber-200">
-                      AI summary is taking a little longer right now. Stockli is showing the
-                      numbers-backed read for the moment.
-                    </div>
-                  ) : null}
-                  <div className="rounded-[1.8rem] border border-violet-500/20 bg-violet-500/5 p-5">
-                    <h3 className="text-2xl font-semibold">{aiInsight.headline}</h3>
-                    <p className="mt-2 text-sm leading-7 text-muted-foreground">{aiInsight.summary}</p>
-                  </div>
-                  <div className="grid gap-4 xl:grid-cols-3">
-                    <InsightCard title="Why this portfolio fits" items={aiInsight.portfolioFit} tone="success" />
-                    <InsightCard
-                      title="What stands out in the picks"
-                      items={aiInsight.holdingCalls.map((item) => `${item.symbol}: ${item.note}`)}
-                      tone="info"
+            <CardContent className="h-[340px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={portfolio.holdings} margin={{ top: 24, right: 8, left: -18, bottom: 0 }}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="rgba(148,163,184,0.16)"
+                  />
+                  <XAxis dataKey="symbol" tickLine={false} axisLine={false} fontSize={12} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={12} />
+                  <Tooltip content={<AllocationTooltip />} cursor={{ fill: "rgba(14,165,233,0.08)" }} />
+                  <Bar dataKey="weight" radius={[10, 10, 0, 0]}>
+                    <LabelList
+                      dataKey="weight"
+                      position="insideTop"
+                      formatter={(value) =>
+                        typeof value === "number" ? `${value.toFixed(1)}%` : `${Number(value ?? 0).toFixed(1)}%`
+                      }
+                      className="fill-white text-[11px] font-semibold"
                     />
-                    <InsightCard title="What to watch" items={aiInsight.watchouts} tone="warning" />
-                  </div>
-                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-7 text-foreground/90">
-                    <p className="font-semibold text-emerald-700 dark:text-emerald-200">AI suggestion</p>
-                    <p className="mt-2">{aiInsight.suggestion}</p>
-                  </div>
-                </div>
-              ) : null}
+                    {portfolio.holdings.map((holding, index) => (
+                      <Cell
+                        key={holding.symbol}
+                        fill={CHART_COLORS[index % CHART_COLORS.length] ?? "#10b981"}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
-
-          <div className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
-            <Card>
-              <CardHeader className="flex-row items-start gap-3">
-                <div className="rounded-2xl bg-sky-500/10 p-3 text-sky-600 dark:text-sky-300">
-                  <BarChart3 className="size-5" />
-                </div>
-                <div>
-                  <CardTitle>Allocation by stock</CardTitle>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Higher weights go to the stronger overall ideas in this mix.
-                  </p>
-                </div>
-              </CardHeader>
-              <CardContent className="h-[320px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={portfolio.holdings}
-                    margin={{ top: 12, right: 8, left: -18, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.16)" />
-                    <XAxis dataKey="symbol" tickLine={false} axisLine={false} fontSize={12} />
-                    <YAxis tickLine={false} axisLine={false} fontSize={12} />
-                    <Tooltip content={<AllocationTooltip />} cursor={{ fill: "rgba(14,165,233,0.08)" }} />
-                    <Bar dataKey="weight" radius={[10, 10, 0, 0]}>
-                      {portfolio.holdings.map((holding, index) => (
-                        <Cell key={holding.symbol} fill={CHART_COLORS[index % CHART_COLORS.length] ?? "#10b981"} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex-row items-start gap-3">
-                <div className="rounded-2xl bg-violet-500/10 p-3 text-violet-600 dark:text-violet-300">
-                  <PieChart className="size-5" />
-                </div>
-                <div>
-                  <CardTitle>Sector mix</CardTitle>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    This is where the diversification is coming from.
-                  </p>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {portfolio.sectorMix.map((sector, index) => (
-                  <div key={sector.sector} className="rounded-[1.4rem] border bg-background/80 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-semibold">{sector.sector}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {sector.holdings} holding{sector.holdings === 1 ? "" : "s"}
-                        </p>
-                      </div>
-                      <Badge variant="outline">{sector.weight.toFixed(1)}%</Badge>
-                    </div>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${sector.weight}%`,
-                          backgroundColor: CHART_COLORS[index % CHART_COLORS.length] ?? "#10b981",
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
 
           <Card>
             <CardHeader className="flex-row items-start gap-3">
@@ -452,7 +425,98 @@ export function PortfolioSuggestions() {
               ))}
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="flex-row items-start gap-3">
+              <div className="rounded-2xl bg-violet-500/10 p-3 text-violet-600 dark:text-violet-300">
+                <PieChart className="size-5" />
+              </div>
+              <div>
+                <CardTitle>Sector mix</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  This is where the diversification is coming from.
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {portfolio.sectorMix.map((sector, index) => (
+                <div key={sector.sector} className="rounded-[1.4rem] border bg-background/80 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold">{sector.sector}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {sector.holdings} holding{sector.holdings === 1 ? "" : "s"}
+                      </p>
+                    </div>
+                    <Badge variant="outline">{sector.weight.toFixed(1)}%</Badge>
+                  </div>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${sector.weight}%`,
+                        backgroundColor: CHART_COLORS[index % CHART_COLORS.length] ?? "#10b981",
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {aiInsight ? (
+            <Card>
+              <CardHeader className="flex-row items-start gap-3">
+                <div className="rounded-2xl bg-violet-500/10 p-3 text-violet-600 dark:text-violet-300">
+                  <Brain className="size-5" />
+                </div>
+                <div>
+                  <CardTitle>AI portfolio read</CardTitle>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    AI suggests the basket first, then Stockli checks the same mix against quality,
+                    diversification, return balance, and risk support.
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="violet">{aiInsight.confidence} confidence</Badge>
+                  <Badge variant="success">{humanObjective(portfolio.objective)}</Badge>
+                </div>
+                <div className="rounded-[1.8rem] border border-violet-500/20 bg-violet-500/5 p-5">
+                  <h3 className="text-2xl font-semibold">{aiInsight.headline}</h3>
+                  <p className="mt-2 text-sm leading-7 text-muted-foreground">{aiInsight.summary}</p>
+                </div>
+                <div className="grid gap-4 xl:grid-cols-3">
+                  <InsightCard title="Why this portfolio fits" items={aiInsight.portfolioFit} tone="success" />
+                  <InsightCard
+                    title="What stands out in the picks"
+                    items={aiInsight.holdingCalls.map((item) => `${item.symbol}: ${item.note}`)}
+                    tone="info"
+                  />
+                  <InsightCard title="What to watch" items={aiInsight.watchouts} tone="warning" />
+                </div>
+                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-7 text-foreground/90">
+                  <p className="font-semibold text-emerald-700 dark:text-emerald-200">AI suggestion</p>
+                  <p className="mt-2">{aiInsight.suggestion}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
         </>
+      ) : portfolioError ? (
+        <Card>
+          <CardContent className="space-y-4 p-8">
+            <div className="rounded-2xl border border-amber-500/25 bg-amber-500/5 p-4 text-sm text-amber-700 dark:text-amber-200">
+              We could not build the portfolio suggestion right now. Please try again in a moment.
+            </div>
+            <div>
+              <Button type="button" variant="outline" onClick={refresh}>
+                Try again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       ) : null}
     </div>
   );
@@ -666,13 +730,26 @@ function InsightCard({
   );
 }
 
-function PortfolioLoading() {
-  const steps = [
-    "Pulling the scored fundamentals universe",
-    "Filtering candidates for your goal and duration",
-    "Spreading the shortlist across sectors",
-    "Building weights, return range and notes",
-  ];
+function PortfolioLoading({ action }: { action: "suggest" | "change" }) {
+  const steps =
+    action === "change"
+      ? [
+          "Reviewing the current basket and score",
+          "Finding stronger alternates from other high-quality names",
+          "Asking AI to rotate the mix with better diversification",
+          "Scoring the new basket and writing the updated portfolio read",
+        ]
+      : [
+          "Reading your duration, return goal and basket size",
+          "Screening stronger companies and healthier sectors",
+          "Asking AI to draft a diversified stock mix",
+          "Scoring the final basket and writing the portfolio read",
+        ];
+  const title = action === "change" ? "Refreshing your portfolio idea" : "Building your portfolio";
+  const summary =
+    action === "change"
+      ? "Stockli is trying a fresh combination from the stronger names instead of repeating the same basket."
+      : "Stockli is screening the stronger names first, then checking the AI basket on the same numbers.";
 
   return (
     <Card>
@@ -680,10 +757,8 @@ function PortfolioLoading() {
         <div className="flex items-center gap-3">
           <Loader2 className="size-5 animate-spin text-emerald-500" />
           <div>
-            <p className="text-lg font-semibold">Building your portfolio</p>
-            <p className="text-sm text-muted-foreground">
-              Stockli is ranking the ready fundamentals and assembling the shortlist.
-            </p>
+            <p className="text-lg font-semibold">{title}</p>
+            <p className="text-sm text-muted-foreground">{summary}</p>
           </div>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
@@ -696,22 +771,6 @@ function PortfolioLoading() {
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function PortfolioAiLoading() {
-  return (
-    <div className="rounded-[1.8rem] border bg-background/80 p-5">
-      <div className="flex items-center gap-3">
-        <Loader2 className="size-5 animate-spin text-violet-500" />
-        <div>
-          <p className="font-semibold">Writing the AI portfolio summary</p>
-          <p className="text-sm text-muted-foreground">
-            The model is reading the holdings, weights, diversification and projected return range.
-          </p>
-        </div>
-      </div>
-    </div>
   );
 }
 

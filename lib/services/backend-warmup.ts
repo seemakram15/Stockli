@@ -105,7 +105,8 @@ export async function runBackendWarmup({
   }
 
   if (!psxRefreshAllowed) {
-    result.psxRefreshSkipped = `PSX ${status.label.toLowerCase()}; serving cached data until the next refresh window.`;
+    result.psxRefreshSkipped =
+      "PSX is closed right now, so we are keeping the latest saved market snapshot on screen until trading resumes.";
   }
 
   if (!isSupabaseAdminConfigured) {
@@ -115,7 +116,7 @@ export async function runBackendWarmup({
       includePublicCaches,
       includeFundamentalsArchive,
     });
-    result.note = "Demo mode — cache warmed, no DB writes (add Supabase keys to persist).";
+    result.note = "Demo mode is active. We refreshed the available market data, but nothing was saved to the database.";
     return result;
   }
 
@@ -127,7 +128,7 @@ export async function runBackendWarmup({
       includeFundamentalsArchive,
     });
     result.note =
-      "User-scoped warmup only — shared caches refreshed without touching other users' database rows, alerts, or notifications.";
+      "This refresh updated shared market data for your session without changing alerts, notifications, or any other user's records.";
     return result;
   }
 

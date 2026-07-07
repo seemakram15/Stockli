@@ -24,12 +24,12 @@ interface RefreshStep {
 }
 
 const INITIAL_STEPS: RefreshStep[] = [
-  { id: "backend", label: "Updating PSX prices and snapshots", state: "pending" },
-  { id: "dashboard", label: "Updating dashboard and portfolios", state: "pending" },
-  { id: "market", label: "Updating market pages", state: "pending" },
-  { id: "funds", label: "Updating funds and daily returns report", state: "pending" },
-  { id: "global", label: "Updating global markets, crypto and oil", state: "pending" },
-  { id: "finish", label: "Saving fresh device cache", state: "pending" },
+  { id: "backend", label: "Getting the latest PSX prices", state: "pending" },
+  { id: "dashboard", label: "Refreshing your dashboard and portfolios", state: "pending" },
+  { id: "market", label: "Refreshing market pages", state: "pending" },
+  { id: "funds", label: "Refreshing funds and return screens", state: "pending" },
+  { id: "global", label: "Refreshing global markets and commodities", state: "pending" },
+  { id: "finish", label: "Saving the latest data on this device", state: "pending" },
 ];
 
 const MARKET_CACHE_JOBS = [
@@ -70,12 +70,12 @@ export function ManualDataRefreshButton({
   const [open, setOpen] = React.useState(false);
   const [running, setRunning] = React.useState(false);
   const [steps, setSteps] = React.useState<RefreshStep[]>(INITIAL_STEPS);
-  const [message, setMessage] = React.useState("Ready to refresh live data.");
+  const [message, setMessage] = React.useState("Ready to load the latest market data.");
   const [errors, setErrors] = React.useState<string[]>([]);
 
   const reset = React.useCallback(() => {
     setSteps(INITIAL_STEPS);
-    setMessage("Ready to refresh live data.");
+    setMessage("Ready to load the latest market data.");
     setErrors([]);
   }, []);
 
@@ -83,13 +83,13 @@ export function ManualDataRefreshButton({
     setOpen(true);
     setRunning(true);
     setErrors([]);
-    setMessage("Connecting to live feeds...");
+    setMessage("Connecting to the latest market feeds...");
     setSteps(INITIAL_STEPS);
 
     const failures: string[] = [];
 
     try {
-      await runStep("backend", "Fetching latest prices and backend caches", async () => {
+      await runStep("backend", "Bringing in the latest PSX prices", async () => {
         const response = await fetch("/api/background/warmup", {
           method: "POST",
           headers: {
@@ -107,7 +107,7 @@ export function ManualDataRefreshButton({
         }
       });
 
-      await runStep("dashboard", "Refreshing dashboard, portfolios and stock pages", async () => {
+      await runStep("dashboard", "Refreshing your dashboard, portfolios, and stock pages", async () => {
         const dashboardData = await onDashboardRefresh();
         await writePersistentResourceCache(`private:portfolios:${userId}`, {
           portfolios: dashboardData.dashboard.portfolios,
@@ -129,32 +129,32 @@ export function ManualDataRefreshButton({
         failures.push(...(await refreshCacheJobs([...portfolioJobs, ...stockJobs])));
       });
 
-      await runStep("market", "Refreshing market pages", async () => {
+      await runStep("market", "Refreshing PSX market pages", async () => {
         failures.push(...(await refreshCacheJobs(MARKET_CACHE_JOBS)));
       });
 
-      await runStep("funds", "Refreshing funds and daily returns report", async () => {
+      await runStep("funds", "Refreshing funds, strategy, and return data", async () => {
         failures.push(...(await refreshCacheJobs(FUND_CACHE_JOBS)));
       });
 
-      await runStep("global", "Refreshing global markets", async () => {
+      await runStep("global", "Refreshing global markets, commodities, oil, and crypto", async () => {
         failures.push(...(await refreshCacheJobs(GLOBAL_CACHE_JOBS)));
       });
 
-      await runStep("finish", "Finishing local cache", async () => {
+      await runStep("finish", "Saving a fresh copy on this device", async () => {
         failures.push(...(await refreshCacheJobs(OTHER_CACHE_JOBS)));
       });
 
       setErrors(failures);
       if (failures.length > 0) {
-        setMessage("Core data updated. Some optional feeds could not refresh.");
-        toast.warning("Live data refreshed with a few feed warnings.");
+        setMessage("Your main data is updated. A few optional feeds need another try.");
+        toast.warning("Latest data loaded with a few feed warnings.");
       } else {
         setMessage("Everything is up to date.");
-        toast.success("Live data refreshed.");
+        toast.success("Latest market data is ready.");
       }
     } catch (error) {
-      const text = error instanceof Error ? error.message : "Live refresh failed.";
+      const text = error instanceof Error ? error.message : "We could not refresh live data right now.";
       setMessage(text);
       setErrors((current) => [...current, text]);
       setSteps((current) =>
@@ -205,7 +205,7 @@ export function ManualDataRefreshButton({
           <DialogHeader>
             <DialogTitle>Refreshing live data</DialogTitle>
             <DialogDescription>
-              We will update prices, portfolio views, market pages and local cache.
+              We will refresh prices, portfolio screens, market pages, and the saved copy on this device.
             </DialogDescription>
           </DialogHeader>
 
@@ -225,7 +225,7 @@ export function ManualDataRefreshButton({
               />
               <p className="mt-3 text-base font-semibold">{message}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                You can keep using Stockli after this finishes.
+                You can keep using the app while this runs.
               </p>
             </div>
 

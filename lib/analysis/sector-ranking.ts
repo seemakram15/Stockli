@@ -58,6 +58,7 @@ export type SectorLeaderStock = {
   epsGrowth: number | null;
   priceReturn1Y: number | null;
   dividendYield: number | null;
+  payoutRatio: number | null;
   metricsAvailable: number;
   metrics: SectorMetricValue[];
   strongestMetrics: string[];
@@ -333,6 +334,7 @@ function buildSectorStock(
     epsGrowth: ctx.summary.epsGrowth,
     priceReturn1Y: ctx.summary.priceReturn1Y,
     dividendYield: ctx.summary.dividendYield,
+    payoutRatio: ctx.summary.payoutRatio,
     metricsAvailable: availableMetrics.length,
     metrics,
     strongestMetrics,

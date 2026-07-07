@@ -26,6 +26,7 @@ export type SuggestedPortfolioHolding = {
   analyzerScore: number;
   expectedAnnualReturn: number;
   dividendYield: number | null;
+  payoutRatio: number | null;
   currentPrice: number | null;
   reasons: string[];
   highlights: Array<{ label: string; value: string }>;
@@ -60,6 +61,41 @@ export type SuggestedPortfolio = {
 };
 
 export type PortfolioRole = "Blue-chip anchor" | "Growth leader" | "Quality compounder";
+
+export type PortfolioSuggestionCandidate = {
+  symbol: string;
+  name: string;
+  sector: string;
+  currentPrice: number | null;
+  marketCap: number | null;
+  totalScore: number;
+  analyzerScore: number;
+  qualityScore: number;
+  cashScore: number;
+  balanceScore: number;
+  valuationScore: number;
+  revenueGrowth: number | null;
+  epsGrowth: number | null;
+  priceReturn1Y: number | null;
+  dividendYield: number | null;
+  payoutRatio: number | null;
+  metricsAvailable: number;
+  strongestMetrics: string[];
+  weakestMetrics: string[];
+  portfolioRole: PortfolioRole;
+  composite: number;
+  expectedAnnualReturn: number;
+  objectiveFit: number;
+  durationFit: number;
+  growthScore: number;
+  dividendScore: number;
+  valueScore: number;
+  safetyScore: number;
+  franchiseScore: number;
+  marketCapScore: number;
+  sectorStrength: number;
+  reasons: string[];
+};
 
 type SectorProfile = {
   sector: string;
@@ -99,30 +135,157 @@ export function buildPortfolioSuggestion({
   holdings: number;
 }): SuggestedPortfolio {
   const targetHoldings = clamp(Math.round(holdings), 3, 12);
-  const universe = dataset.leaderboards.flatMap((board) => board.stocks);
-  const marketCapScoreMap = buildMarketCapScoreMap(universe);
-  const sectorProfileMap = buildSectorProfileMap(dataset, marketCapScoreMap);
-  const allCandidates = universe
-    .map((stock) =>
-      buildCandidate(
-        stock,
-        duration,
-        objective,
-        sectorProfileMap.get(stock.symbol),
-        marketCapScoreMap.get(stock.symbol) ?? 35
-      )
-    )
-    .filter((candidate): candidate is Candidate => Boolean(candidate));
-  const candidatePool = pickCandidatePool(allCandidates, targetHoldings);
-  const candidates = candidatePool
-    .sort((left, right) => {
-      if (right.composite !== left.composite) return right.composite - left.composite;
-      if (right.franchiseScore !== left.franchiseScore) return right.franchiseScore - left.franchiseScore;
-      return right.stock.totalScore - left.stock.totalScore;
-    });
-
+  const candidates = buildSortedCandidatePool(dataset, duration, objective, targetHoldings);
   const maxPerSector = targetHoldings <= 4 ? 1 : targetHoldings <= 8 ? 2 : 3;
   const selectedCandidates = pickDiversifiedCandidates(candidates, targetHoldings, maxPerSector);
+  return buildPortfolioFromCandidates(selectedCandidates, {
+    duration,
+    objective,
+    targetHoldings,
+  });
+}
+
+export function buildPortfolioSuggestionCandidatePool({
+  dataset,
+  duration,
+  objective,
+  holdings,
+  limit,
+}: {
+  dataset: SectorLeadersDataset;
+  duration: PortfolioDuration;
+  objective: PortfolioObjective;
+  holdings: number;
+  limit?: number;
+}): PortfolioSuggestionCandidate[] {
+  const targetHoldings = clamp(Math.round(holdings), 3, 12);
+  const safeLimit =
+    typeof limit === "number" && Number.isFinite(limit)
+      ? Math.max(targetHoldings, Math.round(limit))
+      : null;
+  const candidates = buildSortedCandidatePool(dataset, duration, objective, targetHoldings);
+  const sliced = safeLimit == null ? candidates : candidates.slice(0, safeLimit);
+
+  return sliced.map((candidate) => ({
+    symbol: candidate.stock.symbol,
+    name: candidate.stock.name,
+    sector: candidate.stock.sector,
+    currentPrice: candidate.stock.currentPrice,
+    marketCap: candidate.stock.marketCap,
+    totalScore: candidate.stock.totalScore,
+    analyzerScore: candidate.stock.analyzerScore,
+    qualityScore: candidate.stock.qualityScore,
+    cashScore: candidate.stock.cashScore,
+    balanceScore: candidate.stock.balanceScore,
+    valuationScore: candidate.stock.valuationScore,
+    revenueGrowth: candidate.stock.revenueGrowth,
+    epsGrowth: candidate.stock.epsGrowth,
+    priceReturn1Y: candidate.stock.priceReturn1Y,
+    dividendYield: candidate.stock.dividendYield,
+    payoutRatio: candidate.stock.payoutRatio,
+    metricsAvailable: candidate.stock.metricsAvailable,
+    strongestMetrics: candidate.stock.strongestMetrics,
+    weakestMetrics: candidate.stock.weakestMetrics,
+    portfolioRole: candidate.portfolioRole,
+    composite: round0(candidate.composite),
+    expectedAnnualReturn: candidate.expectedAnnualReturn,
+    objectiveFit: candidate.objectiveFit,
+    durationFit: candidate.durationFit,
+    growthScore: candidate.growthScore,
+    dividendScore: candidate.dividendScore,
+    valueScore: candidate.valueScore,
+    safetyScore: candidate.safetyScore,
+    franchiseScore: candidate.franchiseScore,
+    marketCapScore: candidate.marketCapScore,
+    sectorStrength: candidate.sectorProfile.sectorStrength,
+    reasons: buildHoldingReasons(candidate),
+  }));
+}
+
+export function buildPortfolioSuggestionFromSelection({
+  dataset,
+  duration,
+  objective,
+  holdings,
+  selectedSymbols,
+  avoidSymbols = [],
+}: {
+  dataset: SectorLeadersDataset;
+  duration: PortfolioDuration;
+  objective: PortfolioObjective;
+  holdings: number;
+  selectedSymbols: string[];
+  avoidSymbols?: string[];
+}): SuggestedPortfolio {
+  const targetHoldings = clamp(Math.round(holdings), 3, 12);
+  const candidates = buildSortedCandidatePool(dataset, duration, objective, targetHoldings);
+  const candidateMap = new Map(
+    candidates.map((candidate) => [candidate.stock.symbol.toUpperCase(), candidate] as const)
+  );
+  const avoidSet = new Set(avoidSymbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean));
+  const maxPerSector = targetHoldings <= 4 ? 1 : targetHoldings <= 8 ? 2 : 3;
+  const selected: Candidate[] = [];
+  const sectorCounts = new Map<string, number>();
+
+  selectedSymbols.forEach((symbol) => {
+    if (selected.length >= targetHoldings) return;
+    const candidate = candidateMap.get(symbol.trim().toUpperCase());
+    if (!candidate) return;
+    tryAddCandidate(selected, sectorCounts, candidate, maxPerSector);
+  });
+
+  const preferredCandidates = candidates.filter(
+    (candidate) => !avoidSet.has(candidate.stock.symbol.toUpperCase())
+  );
+  const avoidedCandidates = candidates.filter((candidate) =>
+    avoidSet.has(candidate.stock.symbol.toUpperCase())
+  );
+
+  addCandidatesFromGroup(
+    selected,
+    sectorCounts,
+    preferredCandidates,
+    Math.max(0, targetHoldings - selected.length),
+    maxPerSector
+  );
+  if (selected.length < targetHoldings) {
+    addCandidatesFromGroup(
+      selected,
+      sectorCounts,
+      preferredCandidates,
+      Math.max(0, targetHoldings - selected.length),
+      targetHoldings
+    );
+  }
+  if (selected.length < targetHoldings) {
+    addCandidatesFromGroup(
+      selected,
+      sectorCounts,
+      avoidedCandidates,
+      Math.max(0, targetHoldings - selected.length),
+      targetHoldings
+    );
+  }
+
+  return buildPortfolioFromCandidates(selected.slice(0, targetHoldings), {
+    duration,
+    objective,
+    targetHoldings,
+  });
+}
+
+function buildPortfolioFromCandidates(
+  selectedCandidates: Candidate[],
+  {
+    duration,
+    objective,
+    targetHoldings,
+  }: {
+    duration: PortfolioDuration;
+    objective: PortfolioObjective;
+    targetHoldings: number;
+  }
+) {
   const weights = buildWeights(selectedCandidates);
   const holdingsList = selectedCandidates.map((candidate, index) =>
     buildHolding(candidate, weights[index] ?? 0, index + 1)
@@ -193,6 +356,37 @@ export function buildPortfolioSuggestion({
     summary,
     watchouts,
   };
+}
+
+function buildSortedCandidatePool(
+  dataset: SectorLeadersDataset,
+  duration: PortfolioDuration,
+  objective: PortfolioObjective,
+  holdings: number
+) {
+  const universe = dataset.leaderboards.flatMap((board) => board.stocks);
+  const marketCapScoreMap = buildMarketCapScoreMap(universe);
+  const sectorProfileMap = buildSectorProfileMap(dataset, marketCapScoreMap);
+  const allCandidates = universe
+    .map((stock) =>
+      buildCandidate(
+        stock,
+        duration,
+        objective,
+        sectorProfileMap.get(stock.symbol),
+        marketCapScoreMap.get(stock.symbol) ?? 35
+      )
+    )
+    .filter((candidate): candidate is Candidate => Boolean(candidate));
+  const candidatePool = pickCandidatePool(allCandidates, holdings);
+
+  return [...candidatePool].sort((left, right) => {
+    if (right.composite !== left.composite) return right.composite - left.composite;
+    if (right.franchiseScore !== left.franchiseScore) {
+      return right.franchiseScore - left.franchiseScore;
+    }
+    return right.stock.totalScore - left.stock.totalScore;
+  });
 }
 
 function buildCandidate(
@@ -382,6 +576,7 @@ function buildHolding(candidate: Candidate, weight: number, rank: number): Sugge
     analyzerScore: stock.analyzerScore,
     expectedAnnualReturn: candidate.expectedAnnualReturn,
     dividendYield: stock.dividendYield,
+    payoutRatio: stock.payoutRatio,
     currentPrice: stock.currentPrice,
     reasons: buildHoldingReasons(candidate),
     highlights: [

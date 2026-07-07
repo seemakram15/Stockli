@@ -6,6 +6,11 @@ import {
   marketStatus,
   shouldRefreshPsxData,
 } from "@/lib/psx/market-hours";
+import {
+  getGlobalMarketData,
+  type GlobalMarketData,
+  type GlobalMarketQuote,
+} from "@/lib/services/global-markets";
 import { getIndexCards } from "@/lib/services/market";
 import { getMarketRows, marketWatchRowToQuote } from "@/lib/services/prices";
 import { sendPushToAll, sendPushToUser } from "@/lib/services/push-notifications";
@@ -79,10 +84,11 @@ export async function runSystemNotificationJobs({
   psxRefreshError,
 }: WarmupNotificationOptions) {
   const results: Record<string, unknown> = {};
-  const [marketEvent, kseEvent, portfolioEvent, feedEvent] = await Promise.allSettled([
+  const [marketEvent, kseEvent, portfolioEvent, macroEvent, feedEvent] = await Promise.allSettled([
     createMarketSituationNotification(admin, now),
     createKse100ChangeNotification(admin, now),
     createPortfolioPulseNotifications(admin, now, quotes, triggerUserId),
+    createGlobalMacroNotifications(admin),
     psxRefreshError ? createFeedIssueNotification(admin, now, psxRefreshError) : Promise.resolve(null),
   ]);
 
@@ -92,6 +98,8 @@ export async function runSystemNotificationJobs({
     kseEvent.status === "fulfilled" ? kseEvent.value : String(kseEvent.reason);
   results.portfolioPulse =
     portfolioEvent.status === "fulfilled" ? portfolioEvent.value : String(portfolioEvent.reason);
+  results.globalMacro =
+    macroEvent.status === "fulfilled" ? macroEvent.value : String(macroEvent.reason);
   if (psxRefreshError) {
     results.marketFeed =
       feedEvent.status === "fulfilled" ? feedEvent.value : String(feedEvent.reason);
@@ -105,22 +113,22 @@ async function createMarketSituationNotification(admin: SupabaseClient, now: Dat
   const keyStatus = status.label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   const betweenSessions = status.label.toLowerCase().includes("between sessions");
   const title = betweenSessions
-    ? "PSX is on its trading break"
+    ? "PSX is on its mid-session break"
     : ({
-        open: "PSX market is now open",
+        open: "PSX is live right now",
         "pre-open": "PSX pre-open has started",
-        closed: "PSX market is now closed",
+        closed: "PSX is closed for now",
         weekend: "PSX is closed for the weekend",
-        holiday: "PSX is closed for a market holiday",
+        holiday: "PSX is closed for the holiday",
       }[status.status] ?? "PSX market update");
 
   const body = betweenSessions
-    ? `Trading is paused between sessions. Live updates resume ${formatNextRefresh(status.nextRefreshAt)}.`
+    ? `The current session has paused for the break. ${describeNextTradingWindow(status.nextRefreshAt)}`
     : status.status === "open"
-      ? "Live prices, portfolio moves, and price alerts are active during the trading session."
+      ? "Live prices, portfolio moves, and alerts are updating during the trading session."
       : status.status === "pre-open"
-        ? "Pre-open trading is underway. Live market updates will continue when the regular session opens."
-        : `${status.label}. The next refresh window starts ${formatNextRefresh(status.nextRefreshAt)}.`;
+        ? `Pre-open is underway. ${describeCurrentRegularOpen(now)}`
+        : `${status.label}. ${describeNextTradingWindow(status.nextRefreshAt)}`;
 
   return createNotification(admin, {
     type: "MARKET",
@@ -137,9 +145,9 @@ async function createFeedIssueNotification(admin: SupabaseClient, now: Date, mes
   const { hour } = pktParts(now);
   return createNotification(admin, {
     type: "MARKET",
-    title: "PSX feed update is delayed",
+    title: "Live PSX prices are delayed",
     body:
-      "The live PSX feed did not respond during the last refresh attempt. Stockli is still showing cached market data while it retries in the background.",
+      "We are still showing the latest available market snapshot while the live PSX feed reconnects in the background.",
     href: "/market",
     eventKey: `market-feed-issue:${pktDate(now)}:${hour}`,
     eventPayload: { message: message.slice(0, 500) },
@@ -157,8 +165,8 @@ async function createKse100ChangeNotification(admin: SupabaseClient, now: Date) 
   const direction = kse100.change >= 0 ? "up" : "down";
   return createNotification(admin, {
     type: "MARKET",
-    title: `KSE100 moved ${formatSignedPct(kse100.changePct)} today`,
-    body: `The index is ${direction} ${formatSignedNumber(kse100.change)} points and is now at ${formatNumber(kse100.current)}.`,
+    title: `KSE-100 is ${direction} ${formatPct(Math.abs(kse100.changePct))} today`,
+    body: `Pakistan's benchmark index is ${direction} ${formatSignedNumber(kse100.change)} points and is trading near ${formatNumber(kse100.current)}.`,
     symbol: "KSE100",
     href: "/market",
     eventKey: `kse100-change:${pktDate(now)}:${bucket}:${direction}`,
@@ -219,11 +227,12 @@ async function createPortfolioPulseNotifications(
       if (Math.abs(total.dayPl) < 1) return;
       const move = formatSignedMoney(total.dayPl);
       const holdingLabel = total.positions === 1 ? "holding" : "holdings";
+      const direction = total.dayPl >= 0 ? "up" : "down";
       const result = await createNotification(admin, {
         userId,
         type: "PORTFOLIO",
-        title: `Portfolio update: ${move} today`,
-        body: `Your portfolio is ${total.dayPl >= 0 ? "up" : "down"} ${move} today across ${total.positions} ${holdingLabel}.`,
+        title: `Your portfolio is ${direction} ${move} today`,
+        body: `Across ${total.positions} ${holdingLabel}, today's move is ${move} based on the latest PSX prices.`,
         href: "/dashboard",
         eventKey: `portfolio-pulse:${userId}:${pktDate(now)}:${bucket}`,
         eventPayload: total,
@@ -233,6 +242,94 @@ async function createPortfolioPulseNotifications(
   );
 
   return { created };
+}
+
+async function createGlobalMacroNotifications(admin: SupabaseClient) {
+  const [oilData, commodityData, usData] = await Promise.all([
+    getGlobalMarketData("oil"),
+    getGlobalMarketData("commodities"),
+    getGlobalMarketData("us"),
+  ]);
+
+  const [oil, gold, us] = await Promise.all([
+    createOilNotification(admin, oilData),
+    createGoldNotification(admin, commodityData),
+    createUsMarketNotification(admin, usData),
+  ]);
+
+  return { oil, gold, us };
+}
+
+async function createOilNotification(admin: SupabaseClient, data: GlobalMarketData) {
+  const oil =
+    pickQuote(data, ["BZ=F", "CL=F"]) ??
+    data.summary.best ??
+    data.summary.worst;
+  if (!oil || !hasMove(oil, 1)) return null;
+
+  const direction = (oil.changePct ?? 0) >= 0 ? "up" : "down";
+  const moveDate = notificationDateForQuote(oil);
+  return createNotification(admin, {
+    type: "MARKET",
+    title: `Oil is ${direction} ${formatPct(Math.abs(oil.changePct ?? 0))} today`,
+    body: `${oil.name} is trading near USD ${formatNumber(oil.price ?? 0)} a barrel after a ${formatSignedNumber(oil.change ?? 0)} move.`,
+    href: "/market/oil",
+    symbol: oil.displaySymbol ?? oil.symbol,
+    eventKey: `macro-oil:${moveDate}:${direction}`,
+    eventPayload: {
+      symbol: oil.symbol,
+      name: oil.name,
+      price: oil.price,
+      change: oil.change,
+      changePct: oil.changePct,
+    },
+  });
+}
+
+async function createGoldNotification(admin: SupabaseClient, data: GlobalMarketData) {
+  const gold = pickQuote(data, ["GC=F"]);
+  if (!gold || !hasMove(gold, 0.75)) return null;
+
+  const direction = (gold.changePct ?? 0) >= 0 ? "up" : "down";
+  const moveDate = notificationDateForQuote(gold);
+  return createNotification(admin, {
+    type: "MARKET",
+    title: `Gold is ${direction} ${formatPct(Math.abs(gold.changePct ?? 0))} today`,
+    body: `${gold.name} is trading near USD ${formatNumber(gold.price ?? 0)} an ounce after a ${formatSignedNumber(gold.change ?? 0)} move.`,
+    href: "/market/commodities",
+    symbol: gold.displaySymbol ?? gold.symbol,
+    eventKey: `macro-gold:${moveDate}:${direction}`,
+    eventPayload: {
+      symbol: gold.symbol,
+      name: gold.name,
+      price: gold.price,
+      change: gold.change,
+      changePct: gold.changePct,
+    },
+  });
+}
+
+async function createUsMarketNotification(admin: SupabaseClient, data: GlobalMarketData) {
+  const sp500 = pickQuote(data, ["^GSPC", "SPY"]);
+  if (!sp500 || !hasMove(sp500, 0.75)) return null;
+
+  const direction = (sp500.changePct ?? 0) >= 0 ? "higher" : "lower";
+  const moveDate = notificationDateForQuote(sp500);
+  return createNotification(admin, {
+    type: "MARKET",
+    title: `US stocks are ${direction} today`,
+    body: `The ${sp500.name} is ${formatSignedPct(sp500.changePct ?? 0)} and is trading near ${formatNumber(sp500.price ?? 0)}.`,
+    href: "/market/us",
+    symbol: sp500.displaySymbol ?? sp500.symbol,
+    eventKey: `macro-us:${moveDate}:${direction}`,
+    eventPayload: {
+      symbol: sp500.symbol,
+      name: sp500.name,
+      price: sp500.price,
+      change: sp500.change,
+      changePct: sp500.changePct,
+    },
+  });
 }
 
 function twoHourBucket(date: Date) {
@@ -251,17 +348,28 @@ function pktParts(date: Date) {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    weekday: "short",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
   }).formatToParts(date);
   const value = (type: string) => parts.find((part) => part.type === type)?.value ?? "0";
+  const weekdayMap: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
   let hour = Number(value("hour"));
   if (hour === 24) hour = 0;
   return {
     year: Number(value("year")),
     month: Number(value("month")),
     day: Number(value("day")),
+    weekday: weekdayMap[value("weekday")] ?? 0,
     hour,
     minute: Number(value("minute")),
   };
@@ -269,11 +377,63 @@ function pktParts(date: Date) {
 
 function formatNextRefresh(value: string | null) {
   if (!value) return "when the next session starts";
-  return new Intl.DateTimeFormat("en-PK", {
+  const date = new Date(value);
+  const day = new Intl.DateTimeFormat("en-PK", {
+    timeZone: "Asia/Karachi",
+    weekday: "long",
+  }).format(date);
+  const time = new Intl.DateTimeFormat("en-PK", {
     timeZone: "Asia/Karachi",
     hour: "numeric",
     minute: "2-digit",
-  }).format(new Date(value));
+  }).format(date);
+  return `${day} at ${time}`;
+}
+
+function describeNextTradingWindow(value: string | null) {
+  if (!value) return "We will resume updates as soon as the next PSX session begins.";
+  const preOpen = new Date(value);
+  const regularOpen = new Date(preOpen.getTime() + 17 * 60 * 1000);
+  return `Pre-open starts ${formatNextRefresh(value)} and regular trading starts ${formatNextRefresh(regularOpen.toISOString())}.`;
+}
+
+function describeCurrentRegularOpen(date: Date) {
+  const current = pktParts(date);
+  const regularOpen =
+    current.weekday === 5
+      ? current.hour < 12
+        ? pktMoment(current, 9, 17)
+        : pktMoment(current, 14, 32)
+      : pktMoment(current, 9, 32);
+  return describeRegularTradingAt(regularOpen);
+}
+
+function describeRegularTradingAt(date: Date) {
+  return `Regular trading begins ${formatNextRefresh(date.toISOString())}.`;
+}
+
+function pktMoment(
+  parts: ReturnType<typeof pktParts>,
+  hour: number,
+  minute: number
+) {
+  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day, hour - 5, minute));
+}
+
+function pickQuote(data: GlobalMarketData, symbols: string[]) {
+  const preferred = symbols
+    .map((symbol) => data.quotes.find((quote) => quote.symbol === symbol))
+    .find(Boolean);
+  return preferred ?? null;
+}
+
+function hasMove(quote: GlobalMarketQuote, minimumChangePct: number) {
+  return quote.price != null && quote.change != null && Math.abs(quote.changePct ?? 0) >= minimumChangePct;
+}
+
+function notificationDateForQuote(quote: GlobalMarketQuote) {
+  if (quote.updatedAt) return quote.updatedAt.slice(0, 10);
+  return pktDate(new Date());
 }
 
 function formatPct(value: number) {
