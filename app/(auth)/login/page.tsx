@@ -15,9 +15,10 @@ export default async function LoginPage({
     authError?: string;
     authMessage?: string;
     authEmail?: string;
+    accountDeleted?: string;
   }>;
 }) {
-  const { redirectTo, authError, authMessage, authEmail } = await searchParams;
+  const { redirectTo, authError, authMessage, authEmail, accountDeleted } = await searchParams;
 
   return (
     <AuthCardShell
@@ -30,6 +31,7 @@ export default async function LoginPage({
         mode="login"
         redirectTo={redirectTo}
         demo={isDemoMode}
+        clearPrivateCachesOnMount={accountDeleted === "1"}
         initialState={{ error: authError, message: authMessage, email: authEmail }}
       />
     </AuthCardShell>

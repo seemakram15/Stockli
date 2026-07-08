@@ -67,6 +67,7 @@ export default async function AppLayout({
             <UserMenu
               displayName={user.displayName}
               email={user.email}
+              avatarUrl={user.avatarUrl}
               demo={isDemoMode}
             />
           </header>

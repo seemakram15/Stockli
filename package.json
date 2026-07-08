@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "restart:all": "bash scripts/restart-all.sh",
     "audit:fundamentals": "node scripts/audit-fundamentals-cache.mjs",
     "archive:fundamentals": "node scripts/archive-fundamentals.mjs",
     "supabase:auth-email:check": "node scripts/configure-supabase-auth-email.mjs --dry-run",

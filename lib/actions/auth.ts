@@ -2,6 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { isDemoMode, isSupabaseAdminConfigured } from "@/lib/config";
+import {
+  enforceRateLimit,
+  formatRetryAfter,
+  getRequestClientIp,
+  rateLimitKeyPart,
+} from "@/lib/security/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { safeRedirectPath } from "@/lib/security/validation";
@@ -14,8 +20,16 @@ export interface AuthState {
   nextStep?: "confirm-signup" | "reset-email-sent" | "password-reset-complete";
 }
 
+export interface DeleteAccountState {
+  error?: string;
+}
+
 const DEMO_MSG =
   "Auth is disabled in demo mode. Add your Supabase keys to .env.local to enable sign-in.";
+
+const LOGIN_WINDOW_SECONDS = 10 * 60;
+const EMAIL_FLOW_WINDOW_SECONDS = 30 * 60;
+const DELETE_ACCOUNT_WINDOW_SECONDS = 60 * 60;
 
 type AuthErrorLike =
   | string
@@ -53,11 +67,81 @@ async function resolveAuthSiteUrl() {
   return resolveRequestSiteUrl();
 }
 
-function buildLoginUrl(siteUrl: string, message: string, email?: string | null) {
+function buildLoginUrl(
+  siteUrl: string,
+  message: string,
+  email?: string | null,
+  options?: { accountDeleted?: boolean }
+) {
   const loginUrl = new URL("/login", siteUrl);
   loginUrl.searchParams.set("authMessage", message);
   if (email) loginUrl.searchParams.set("authEmail", email);
+  if (options?.accountDeleted) loginUrl.searchParams.set("accountDeleted", "1");
   return loginUrl.toString();
+}
+
+async function checkAuthRateLimit(
+  action: "login" | "signup" | "resend-signup" | "forgot-password",
+  email: string
+) {
+  const ip = await getRequestClientIp();
+
+  switch (action) {
+    case "login":
+      return enforceRateLimit({
+        scope: "auth:login",
+        windowSeconds: LOGIN_WINDOW_SECONDS,
+        buckets: [
+          { key: `ip:${rateLimitKeyPart(ip)}`, limit: 20 },
+          { key: `ip-email:${rateLimitKeyPart(`${ip}:${email}`)}`, limit: 6 },
+        ],
+      });
+    case "signup":
+      return enforceRateLimit({
+        scope: "auth:signup",
+        windowSeconds: EMAIL_FLOW_WINDOW_SECONDS,
+        buckets: [
+          { key: `ip:${rateLimitKeyPart(ip)}`, limit: 8 },
+          { key: `email:${rateLimitKeyPart(email)}`, limit: 3 },
+        ],
+      });
+    case "resend-signup":
+      return enforceRateLimit({
+        scope: "auth:resend-signup",
+        windowSeconds: EMAIL_FLOW_WINDOW_SECONDS,
+        buckets: [
+          { key: `ip:${rateLimitKeyPart(ip)}`, limit: 10 },
+          { key: `email:${rateLimitKeyPart(email)}`, limit: 4 },
+        ],
+      });
+    case "forgot-password":
+      return enforceRateLimit({
+        scope: "auth:forgot-password",
+        windowSeconds: EMAIL_FLOW_WINDOW_SECONDS,
+        buckets: [
+          { key: `ip:${rateLimitKeyPart(ip)}`, limit: 10 },
+          { key: `email:${rateLimitKeyPart(email)}`, limit: 5 },
+        ],
+      });
+  }
+}
+
+function authRateLimitMessage(action: "login" | "signup" | "resend-signup" | "forgot-password", retryAfterSeconds: number) {
+  const wait = formatRetryAfter(retryAfterSeconds);
+  if (action === "login") {
+    return `Too many sign-in attempts were made from this device. Please wait ${wait} before trying again.`;
+  }
+  if (action === "signup") {
+    return `Too many sign-up attempts were made recently. Please wait ${wait} before creating another account.`;
+  }
+  if (action === "resend-signup") {
+    return `Too many confirmation emails were requested. Please wait ${wait} before asking for another one.`;
+  }
+  return `Too many password reset requests were made recently. Please wait ${wait} before trying again.`;
+}
+
+function normalizeEmail(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
 }
 
 export async function signIn(
@@ -66,9 +150,14 @@ export async function signIn(
 ): Promise<AuthState> {
   if (isDemoMode) return { error: DEMO_MSG };
 
-  const email = String(formData.get("email") ?? "").trim();
+  const email = normalizeEmail(formData.get("email"));
   const password = String(formData.get("password") ?? "");
   if (!email || !password) return { error: "Email and password are required." };
+
+  const rateLimit = await checkAuthRateLimit("login", email);
+  if (!rateLimit.allowed) {
+    return { error: authRateLimitMessage("login", rateLimit.retryAfterSeconds), email };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -83,12 +172,17 @@ export async function signUp(
 ): Promise<AuthState> {
   if (isDemoMode) return { error: DEMO_MSG };
 
-  const email = String(formData.get("email") ?? "").trim();
+  const email = normalizeEmail(formData.get("email"));
   const password = String(formData.get("password") ?? "");
   const displayName = String(formData.get("displayName") ?? "").trim();
   if (!email || !password) return { error: "Email and password are required." };
   if (password.length < 8)
     return { error: "Password must be at least 8 characters." };
+
+  const rateLimit = await checkAuthRateLimit("signup", email);
+  if (!rateLimit.allowed) {
+    return { error: authRateLimitMessage("signup", rateLimit.retryAfterSeconds), email };
+  }
 
   const siteUrl = await resolveAuthSiteUrl();
   const supabase = await createClient();
@@ -116,8 +210,17 @@ export async function resendSignupConfirmation(
 ): Promise<AuthState> {
   if (isDemoMode) return { error: DEMO_MSG };
 
-  const email = String(formData.get("email") ?? "").trim();
+  const email = normalizeEmail(formData.get("email"));
   if (!email) return { error: "Email is required.", nextStep: "confirm-signup" };
+
+  const rateLimit = await checkAuthRateLimit("resend-signup", email);
+  if (!rateLimit.allowed) {
+    return {
+      error: authRateLimitMessage("resend-signup", rateLimit.retryAfterSeconds),
+      email,
+      nextStep: "confirm-signup",
+    };
+  }
 
   const siteUrl = await resolveAuthSiteUrl();
   const supabase = await createClient();
@@ -150,10 +253,17 @@ export async function requestPasswordReset(
 ): Promise<AuthState> {
   if (isDemoMode) return { error: DEMO_MSG };
 
-  const email = String(formData.get("email") ?? "").trim();
+  const email = normalizeEmail(formData.get("email"));
   if (!email) return { error: "Email is required." };
 
-  const normalizedEmail = email.toLowerCase();
+  const rateLimit = await checkAuthRateLimit("forgot-password", email);
+  if (!rateLimit.allowed) {
+    return {
+      error: authRateLimitMessage("forgot-password", rateLimit.retryAfterSeconds),
+      email,
+    };
+  }
+
   const genericResetMessage =
     "If this email belongs to a Stockli account, we just sent the next step. Please check your inbox, spam, junk, or promotions within 1 to 2 minutes.";
   const siteUrl = await resolveAuthSiteUrl();
@@ -166,7 +276,7 @@ export async function requestPasswordReset(
 
     if (!usersError) {
       const matchingUser = usersData.users.find(
-        (user) => user.email?.toLowerCase() === normalizedEmail
+        (user) => user.email?.toLowerCase() === email
       );
 
       if (matchingUser && !matchingUser.email_confirmed_at) {
@@ -247,6 +357,17 @@ export async function updatePassword(
 
 export async function signInWithGoogle(): Promise<AuthState> {
   if (isDemoMode) return { error: DEMO_MSG };
+  const ip = await getRequestClientIp();
+  const rateLimit = await enforceRateLimit({
+    scope: "auth:oauth-google",
+    windowSeconds: LOGIN_WINDOW_SECONDS,
+    buckets: [{ key: `ip:${rateLimitKeyPart(ip)}`, limit: 12 }],
+  });
+  if (!rateLimit.allowed) {
+    return {
+      error: `Too many sign-in attempts were made from this device. Please wait ${formatRetryAfter(rateLimit.retryAfterSeconds)} before trying Google sign-in again.`,
+    };
+  }
   const siteUrl = await resolveAuthSiteUrl();
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -264,4 +385,65 @@ export async function signOut(): Promise<void> {
     await supabase.auth.signOut();
   }
   redirect("/login");
+}
+
+export async function deleteAccount(
+  _prev: DeleteAccountState,
+  formData: FormData
+): Promise<DeleteAccountState> {
+  if (isDemoMode) return { error: DEMO_MSG };
+  if (!isSupabaseAdminConfigured) {
+    return { error: "Secure account deletion is not configured yet. Please contact support." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Please sign in again before deleting your account." };
+  }
+
+  const email = normalizeEmail(user.email);
+  const confirmation = normalizeEmail(formData.get("confirmation"));
+  if (!email || confirmation !== email) {
+    return { error: "Type your full account email to confirm permanent deletion." };
+  }
+
+  const ip = await getRequestClientIp();
+  const rateLimit = await enforceRateLimit({
+    scope: "auth:delete-account",
+    windowSeconds: DELETE_ACCOUNT_WINDOW_SECONDS,
+    buckets: [
+      { key: `ip:${rateLimitKeyPart(ip)}`, limit: 3 },
+      { key: `user:${rateLimitKeyPart(user.id)}`, limit: 2 },
+    ],
+  });
+  if (!rateLimit.allowed) {
+    return {
+      error: `Too many account deletion attempts were made. Please wait ${formatRetryAfter(rateLimit.retryAfterSeconds)} before trying again.`,
+    };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.deleteUser(user.id);
+  if (error) {
+    return {
+      error: "We could not delete your account right now. Please try again in a minute.",
+    };
+  }
+
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // The auth record is already removed, so sign-out becomes best-effort.
+  }
+
+  const siteUrl = await resolveAuthSiteUrl();
+  redirect(
+    buildLoginUrl(siteUrl, "Your account and personal data were deleted successfully.", null, {
+      accountDeleted: true,
+    })
+  );
 }

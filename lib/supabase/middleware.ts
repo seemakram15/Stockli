@@ -4,6 +4,7 @@ import { config, isDemoMode } from "@/lib/config";
 import { shouldForceCanonicalHost } from "@/lib/site-url";
 
 const PROTECTED_PREFIXES = [
+  "/account",
   "/dashboard",
   "/portfolios",
   "/watchlist",

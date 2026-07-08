@@ -2,6 +2,22 @@
 
 Stockli is a PSX-focused investing platform built to help users track portfolios, monitor market activity, review company fundamentals, compare stocks, and manage alerts in one place.
 
+## Local Development
+
+- Restart everything needed for local app development:
+
+```bash
+npm run restart:all
+```
+
+- Run the same restart in the background:
+
+```bash
+DETACH=1 npm run restart:all
+```
+
+- Local app URL: `http://localhost:3001`
+
 ## Services
 
 - Portfolio tracking and performance monitoring

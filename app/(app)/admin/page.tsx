@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Users, Wallet, Layers, ShieldCheck, BellRing } from "lucide-react";
+import { Users, Wallet, Layers, ShieldCheck } from "lucide-react";
 import { listUsers, getPlatformStats } from "@/lib/services/admin";
 import { getSessionUser } from "@/lib/services/portfolio";
 import { isDemoMode } from "@/lib/config";
@@ -29,6 +29,7 @@ export default async function AdminDashboardPage() {
         eyebrow="Superadmin only"
         title="Admin"
         description="Platform overview and every user's account."
+        actions={<BroadcastNotificationForm demo={isDemoMode} />}
       />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
@@ -58,23 +59,6 @@ export default async function AdminDashboardPage() {
           sub={<span className="text-muted-foreground">{stats.superadminCount} superadmin(s)</span>}
         />
       </div>
-
-      <Card variant="feature">
-        <CardHeader className="flex-row items-start gap-3">
-          <IconChip accent="violet" variant="gradient">
-            <BellRing />
-          </IconChip>
-          <div className="min-w-0">
-            <CardTitle>Broadcast notification</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Send a system, market, portfolio, or alert notice to every user. Push delivery follows each user&apos;s device consent.
-            </p>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <BroadcastNotificationForm demo={isDemoMode} />
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader className="flex-row items-center gap-3">

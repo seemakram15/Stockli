@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * Centralised configuration + "is this service actually wired up?" detection.
  *

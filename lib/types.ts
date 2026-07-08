@@ -81,6 +81,7 @@ export interface IndexConstituent {
 export interface Profile {
   id: string;
   display_name: string | null;
+  avatar_path: string | null;
   base_currency: string;
   created_at: string;
 }

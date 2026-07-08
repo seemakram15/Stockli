@@ -4,11 +4,17 @@ import { isDemoMode } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
 import { getRequestUser } from "@/lib/auth/current-user";
 import { DEMO_USER } from "@/lib/demo/data";
+import { getProfileAvatarUrl } from "@/lib/profile-avatar";
 
 export type Role = "user" | "superadmin";
 
 export interface SessionContext {
-  user: { id: string; email: string | null; displayName: string | null } | null;
+  user: {
+    id: string;
+    email: string | null;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
   role: Role;
 }
 
@@ -19,7 +25,12 @@ export interface SessionContext {
 export async function getSessionContext(): Promise<SessionContext> {
   if (isDemoMode) {
     return {
-      user: { id: DEMO_USER.id, email: DEMO_USER.email, displayName: DEMO_USER.displayName },
+      user: {
+        id: DEMO_USER.id,
+        email: DEMO_USER.email,
+        displayName: DEMO_USER.displayName,
+        avatarUrl: null,
+      },
       role: "user",
     };
   }
@@ -28,14 +39,27 @@ export async function getSessionContext(): Promise<SessionContext> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("role, display_name")
+    .select("*")
     .eq("id", user.id)
     .maybeSingle();
+
+  const profileAvatarPath =
+    data && typeof data === "object" && "avatar_path" in data && typeof data.avatar_path === "string"
+      ? data.avatar_path
+      : null;
+  const metadataAvatarPath =
+    user.user_metadata && typeof user.user_metadata.avatar_path === "string"
+      ? user.user_metadata.avatar_path
+      : null;
+
   return {
     user: {
       id: user.id,
       email: user.email ?? null,
       displayName: (data?.display_name as string) ?? (user.user_metadata?.display_name as string) ?? null,
+      avatarUrl:
+        getProfileAvatarUrl(profileAvatarPath ?? metadataAvatarPath) ??
+        ((user.user_metadata?.avatar_url as string) ?? null),
     },
     role: (data?.role as Role) === "superadmin" ? "superadmin" : "user",
   };

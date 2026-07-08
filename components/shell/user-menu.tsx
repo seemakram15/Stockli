@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, User as UserIcon, Settings } from "lucide-react";
+import { Bell, LogOut, ShieldCheck, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/actions/auth";
 import { clearPrivateResourceCaches } from "@/lib/hooks/use-persistent-resource";
@@ -24,10 +24,12 @@ function initials(name: string | null, email: string | null): string {
 export function UserMenu({
   displayName,
   email,
+  avatarUrl,
   demo,
 }: {
   displayName: string | null;
   email: string | null;
+  avatarUrl?: string | null;
   demo?: boolean;
 }) {
   return (
@@ -35,6 +37,7 @@ export function UserMenu({
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-9 gap-2 px-1.5 sm:pr-3">
           <Avatar className="size-7">
+            {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName ?? email ?? "Account"} /> : null}
             <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
               {initials(displayName, email)}
             </AvatarFallback>
@@ -66,7 +69,12 @@ export function UserMenu({
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/alerts">
-            <Settings className="size-4" /> Alerts
+            <Bell className="size-4" /> Alerts
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/account">
+            <ShieldCheck className="size-4" /> Account
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

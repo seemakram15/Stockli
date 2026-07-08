@@ -1,8 +1,10 @@
 "use client";
 
+import * as React from "react";
 import { useRouter } from "next/navigation";
 import { AuthForm } from "@/components/auth/auth-form";
 import type { AuthState } from "@/lib/actions/auth";
+import { clearPrivateResourceCaches } from "@/lib/hooks/use-persistent-resource";
 
 type AuthMode = "login" | "signup" | "forgot-password";
 
@@ -16,13 +18,20 @@ export function AuthScreen({
   redirectTo,
   demo,
   initialState,
+  clearPrivateCachesOnMount = false,
 }: {
   mode: AuthMode;
   redirectTo?: string;
   demo?: boolean;
   initialState?: AuthState;
+  clearPrivateCachesOnMount?: boolean;
 }) {
   const router = useRouter();
+
+  React.useEffect(() => {
+    if (!clearPrivateCachesOnMount) return;
+    void clearPrivateResourceCaches({ includeLegacyDeviceCache: true });
+  }, [clearPrivateCachesOnMount]);
 
   function go(next: AuthMode) {
     const qs = next === "login" && redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : "";

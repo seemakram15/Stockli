@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AdminDeleteUserButton } from "@/components/admin/admin-delete-user-button";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { setUserRole, type AdminActionState } from "@/lib/actions/admin";
@@ -56,6 +57,16 @@ export function AdminUsersTable({
                   </Link>
                 </Button>
                 <RoleToggle user={u} isSelf={u.id === currentUserId} demo={demo} />
+                {u.id !== currentUserId ? (
+                  <AdminDeleteUserButton
+                    userId={u.id}
+                    email={u.email}
+                    displayName={u.displayName}
+                    role={u.role}
+                    demo={demo}
+                    iconOnly
+                  />
+                ) : null}
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -111,6 +122,16 @@ export function AdminUsersTable({
                       </Link>
                     </Button>
                     <RoleToggle user={u} isSelf={u.id === currentUserId} demo={demo} />
+                    {u.id !== currentUserId ? (
+                      <AdminDeleteUserButton
+                        userId={u.id}
+                        email={u.email}
+                        displayName={u.displayName}
+                        role={u.role}
+                        demo={demo}
+                        iconOnly
+                      />
+                    ) : null}
                   </div>
                 </TableCell>
               </TableRow>

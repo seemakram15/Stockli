@@ -14,6 +14,8 @@ import { HoldingsTable } from "@/components/holdings-table";
 import { TransactionsTable } from "@/components/transactions-table";
 import { AllocationChart } from "@/components/charts/allocation-chart";
 import { EmptyState } from "@/components/empty-state";
+import { AdminDeleteUserButton } from "@/components/admin/admin-delete-user-button";
+import { getSessionContext } from "@/lib/auth/roles";
 import { formatPKR } from "@/lib/format";
 
 export const metadata: Metadata = { title: "User account" };
@@ -30,12 +32,13 @@ export default async function AdminUserPage({
   // Reject malformed ids early (avoids invalid-uuid query errors / probing).
   if (!isDemoMode && !UUID_RE.test(id)) notFound();
 
-  const overview = await getUserOverview(id);
+  const [{ user: viewer }, overview] = await Promise.all([getSessionContext(), getUserOverview(id)]);
   if (!overview) notFound();
 
   const { profile, email, portfolios, holdings, summary, sectorAllocation, transactions, watchlistSymbols, alerts } =
     overview;
   const portfolioNames = Object.fromEntries(portfolios.map((p) => [p.id, p.name]));
+  const isOwnAccount = viewer?.id === profile.id;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -45,7 +48,9 @@ export default async function AdminUserPage({
       <div className="flex items-center gap-2 rounded-xl border border-sky-500/25 bg-sky-500/10 px-4 py-2.5 text-sm">
         <Eye className="size-4 text-sky-600 dark:text-sky-400" />
         <span className="text-muted-foreground">
-          Viewing another user&apos;s account as superadmin (read-only).
+          {isOwnAccount
+            ? "Viewing your own account inside the admin area."
+            : "Viewing another user's account as superadmin (read-only)."}
         </span>
       </div>
 
@@ -65,6 +70,19 @@ export default async function AdminUserPage({
         }
         description={email ?? profile.id}
       />
+
+      {!isOwnAccount ? (
+        <div className="flex justify-end">
+          <AdminDeleteUserButton
+            userId={profile.id}
+            email={email}
+            displayName={profile.displayName}
+            role={profile.role}
+            demo={isDemoMode}
+            redirectTo="/admin"
+          />
+        </div>
+      ) : null}
 
       <LiveSummaryCards holdings={holdings} realizedPL={summary.realizedPL} />
 
