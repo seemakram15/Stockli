@@ -29,12 +29,14 @@ export function AddTradeDialog({
   defaultTab = "buy",
   trigger,
   userId,
+  holdingsBySymbol,
 }: {
   portfolioId: string;
   defaultSymbol?: string;
   defaultTab?: "buy" | "sell";
   trigger?: React.ReactNode;
   userId?: string | null;
+  holdingsBySymbol?: Record<string, number>;
 }) {
   const [open, setOpen] = React.useState(false);
 
@@ -65,6 +67,7 @@ export function AddTradeDialog({
               portfolioId={portfolioId}
               defaultSymbol={defaultSymbol}
               userId={userId}
+              holdingsBySymbol={holdingsBySymbol}
               onDone={() => setOpen(false)}
             />
           </TabsContent>
@@ -74,6 +77,7 @@ export function AddTradeDialog({
               portfolioId={portfolioId}
               defaultSymbol={defaultSymbol}
               userId={userId}
+              holdingsBySymbol={holdingsBySymbol}
               onDone={() => setOpen(false)}
             />
           </TabsContent>
@@ -88,12 +92,14 @@ function TradeForm({
   portfolioId,
   defaultSymbol,
   userId,
+  holdingsBySymbol,
   onDone,
 }: {
   kind: "buy" | "sell";
   portfolioId: string;
   defaultSymbol?: string;
   userId?: string | null;
+  holdingsBySymbol?: Record<string, number>;
   onDone: () => void;
 }) {
   const router = useRouter();
@@ -104,6 +110,7 @@ function TradeForm({
   );
   const [price, setPrice] = React.useState("");
   const [priceLoading, setPriceLoading] = React.useState(false);
+  const [selectedSymbol, setSelectedSymbol] = React.useState(defaultSymbol?.toUpperCase() ?? "");
   const priceTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
@@ -119,8 +126,9 @@ function TradeForm({
 
   // Auto-fill the latest price when a symbol is chosen (still editable).
   const onSymbol = React.useCallback((sym: string) => {
-    if (priceTimer.current) clearTimeout(priceTimer.current);
     const s = sym.trim().toUpperCase();
+    setSelectedSymbol(s);
+    if (priceTimer.current) clearTimeout(priceTimer.current);
     if (s.length < 1) return;
     setPriceLoading(true);
     priceTimer.current = setTimeout(async () => {
@@ -145,12 +153,22 @@ function TradeForm({
     };
   }, []);
 
+  const currentHolding =
+    kind === "sell" && selectedSymbol && holdingsBySymbol
+      ? (holdingsBySymbol[selectedSymbol] ?? null)
+      : null;
+
   return (
     <form action={action} className="space-y-4 pt-4">
       <input type="hidden" name="portfolioId" value={portfolioId} />
       <div className="space-y-1.5">
         <Label>Symbol</Label>
         <SymbolField defaultValue={defaultSymbol ?? ""} required onSymbolChange={onSymbol} />
+        {currentHolding != null && (
+          <p className="text-xs text-muted-foreground">
+            Currently holding: <span className="font-medium tabular-nums">{currentHolding}</span> shares
+          </p>
+        )}
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">

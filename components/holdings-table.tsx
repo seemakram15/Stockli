@@ -104,6 +104,7 @@ export function HoldingsTable({
                   portfolioId={h.portfolio_id}
                   holdingId={h.id}
                   symbol={h.symbol}
+                  quantity={h.quantity}
                   demo={rowActions.demo}
                   userId={userId}
                 />
@@ -171,6 +172,7 @@ export function HoldingsTable({
                     portfolioId={h.portfolio_id}
                     holdingId={h.id}
                     symbol={h.symbol}
+                    quantity={h.quantity}
                     demo={rowActions.demo}
                     userId={userId}
                   />

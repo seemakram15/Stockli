@@ -12,6 +12,7 @@ export interface ActionState {
   error?: string;
   message?: string;
   ok?: boolean;
+  portfolioId?: string;
 }
 
 const DEMO_BLOCK: ActionState = {
@@ -64,15 +65,19 @@ export async function createPortfolio(
 
   try {
     const { supabase, user } = await requireUser();
-    const { error } = await supabase.from("portfolios").insert({
-      user_id: user.id,
-      name: parsed.data.name,
-      description: parsed.data.description ?? null,
-    });
+    const { data: created, error } = await supabase
+      .from("portfolios")
+      .insert({
+        user_id: user.id,
+        name: parsed.data.name,
+        description: parsed.data.description ?? null,
+      })
+      .select("id")
+      .single();
     if (error) return { error: error.message };
     revalidatePath("/portfolios");
     revalidatePath("/dashboard");
-    return { ok: true, message: "Portfolio created." };
+    return { ok: true, portfolioId: created.id, message: "Portfolio created." };
   } catch (e) {
     return { error: String(e) };
   }
@@ -250,25 +255,20 @@ export async function sellHolding(
   }
 }
 
-export async function removeHolding(formData: FormData): Promise<void> {
-  if (isDemoMode) return;
+export async function removeHolding(formData: FormData): Promise<ActionState> {
+  if (isDemoMode) return DEMO_BLOCK;
   const holdingId = String(formData.get("holdingId") ?? "");
   const portfolioId = String(formData.get("portfolioId") ?? "");
-  const symbol = normalizeSymbol(formData.get("symbol"));
-  if (!holdingId || !portfolioId) return;
-  const { supabase, user } = await requireUser();
-  await requireOwnedPortfolio(supabase, user.id, portfolioId);
-  await supabase.from("holdings").delete().eq("id", holdingId);
-  if (symbol) {
-    await supabase.from("transactions").insert({
-      portfolio_id: portfolioId,
-      symbol,
-      type: "REMOVE",
-      quantity: 0,
-      price: 0,
-    });
+  if (!holdingId || !portfolioId) return { error: "Missing parameters." };
+  try {
+    const { supabase, user } = await requireUser();
+    await requireOwnedPortfolio(supabase, user.id, portfolioId);
+    await supabase.from("holdings").delete().eq("id", holdingId);
+    revalidatePath(`/portfolios/${portfolioId}`);
+    revalidatePath("/portfolios");
+    revalidatePath("/dashboard");
+    return { ok: true, portfolioId };
+  } catch (e) {
+    return { error: String(e) };
   }
-  revalidatePath(`/portfolios/${portfolioId}`);
-  revalidatePath("/portfolios");
-  revalidatePath("/dashboard");
 }

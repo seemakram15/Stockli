@@ -121,7 +121,7 @@ function DeleteButton({
   const { beginNavigation } = useRouteTransition();
 
   function afterDelete() {
-    markPortfolioMutated({ portfolioId: id, userId });
+    markPortfolioMutated({ portfolioId: id, userId, deleted: true });
     onDeleted();
     beginNavigation("/portfolios");
     React.startTransition(() => {

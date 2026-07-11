@@ -59,7 +59,9 @@ export function CachedPortfolioDetailPage({
 
   React.useEffect(() => {
     const onMutation = (event: Event) => {
-      const detail = (event as CustomEvent<{ portfolioId?: string }>).detail;
+      const detail = (event as CustomEvent<{ portfolioId?: string; deleted?: boolean }>).detail;
+      // Skip refetch when this portfolio was just deleted — we're navigating away anyway
+      if (detail?.deleted && detail.portfolioId === id) return;
       if (!detail?.portfolioId || detail.portfolioId === id) {
         void refreshNow();
       }
@@ -83,6 +85,11 @@ export function CachedPortfolioDetailPage({
     };
   }, [data]);
 
+  const holdings = data?.portfolio.holdings ?? [];
+  const holdingsBySymbol = Object.fromEntries(
+    holdings.map((h) => [h.symbol.toUpperCase(), h.quantity])
+  );
+
   if (!data) {
     return (
       <div className="mx-auto max-w-7xl">
@@ -103,7 +110,10 @@ export function CachedPortfolioDetailPage({
   }
 
   const pf = data.portfolio;
-  const { summary, holdings, transactions } = pf;
+  const { summary, transactions } = pf;
+
+  const hasHoldings = holdings.length > 0;
+  const hasHistory = transactions.length > 0;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -134,7 +144,7 @@ export function CachedPortfolioDetailPage({
                 demo={demo}
                 userId={userId}
               />
-              <AddTradeDialog portfolioId={pf.id} userId={userId} />
+              <AddTradeDialog portfolioId={pf.id} userId={userId} holdingsBySymbol={holdingsBySymbol} />
             </>
           }
         />
@@ -148,30 +158,32 @@ export function CachedPortfolioDetailPage({
 
       <LiveSummaryCards holdings={holdings} realizedPL={summary.realizedPL} valueLabel="Value" />
 
-      {holdings.length === 0 ? (
+      {!hasHoldings && !hasHistory ? (
         <EmptyState
           icon={<Wallet className="size-6" />}
           title="No holdings in this portfolio"
           description="Record your first buy to start tracking P/L."
-          action={<AddTradeDialog portfolioId={pf.id} userId={userId} />}
+          action={<AddTradeDialog portfolioId={pf.id} userId={userId} holdingsBySymbol={holdingsBySymbol} />}
         />
       ) : (
         <>
-          <div className="grid gap-4 lg:grid-cols-3">
-            <Card className="lg:col-span-2">
+          <div className={hasHoldings ? "grid gap-4 lg:grid-cols-3" : "grid gap-4"}>
+            <Card className={hasHoldings ? "lg:col-span-2" : ""}>
               <CardContent className="px-0 pt-0 sm:px-2">
-                <Tabs defaultValue="holdings">
+                <Tabs defaultValue={hasHoldings ? "holdings" : "transactions"}>
                   <div className="px-4 pt-4 sm:px-2">
                     <TabsList className="h-auto w-full flex-wrap justify-start">
-                      <TabsTrigger value="holdings">Holdings</TabsTrigger>
+                      {hasHoldings && <TabsTrigger value="holdings">Holdings</TabsTrigger>}
                       <TabsTrigger value="transactions">
                         Transactions ({transactions.length})
                       </TabsTrigger>
                     </TabsList>
                   </div>
-                  <TabsContent value="holdings" className="mt-2">
-                    <HoldingsTable holdings={holdings} rowActions={{ demo }} userId={userId} />
-                  </TabsContent>
+                  {hasHoldings && (
+                    <TabsContent value="holdings" className="mt-2">
+                      <HoldingsTable holdings={holdings} rowActions={{ demo }} userId={userId} />
+                    </TabsContent>
+                  )}
                   <TabsContent value="transactions" className="mt-2">
                     <TransactionsPanel
                       transactions={transactions}
@@ -182,15 +194,17 @@ export function CachedPortfolioDetailPage({
               </CardContent>
             </Card>
 
-            <AllocationExplorer
-              holdings={holdings}
-              portfolios={[pf]}
-              defaultPortfolioId={pf.id}
-              defaultMode="holding"
-              title="Allocation"
-              description={`Explore ${pf.name}'s holdings, invested amount and live P/L.`}
-              className="h-full"
-            />
+            {hasHoldings && (
+              <AllocationExplorer
+                holdings={holdings}
+                portfolios={[pf]}
+                defaultPortfolioId={pf.id}
+                defaultMode="holding"
+                title="Allocation"
+                description={`Explore ${pf.name}'s holdings, invested amount and live P/L.`}
+                className="h-full"
+              />
+            )}
           </div>
 
           <RealizedHistory positions={pf.realizedPositions ?? []} />
@@ -208,7 +222,7 @@ export function CachedPortfolioDetailPage({
             <CardContent>
               <PLCalendar
                 data={data.calendar?.days ?? []}
-                hasPosition
+                hasPosition={hasHoldings}
                 livePositions={holdings.map((h) => ({
                   symbol: h.symbol,
                   quantity: h.quantity,

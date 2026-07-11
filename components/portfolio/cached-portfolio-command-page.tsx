@@ -127,11 +127,30 @@ export function CachedPortfolioCommandPage({
     return () => window.removeEventListener(PORTFOLIO_MUTATION_EVENT, onMutation);
   }, [refreshNow]);
 
-  if (!data) {
+  // When returning to this page after a mutation (e.g. creating a portfolio from the detail
+  // page or any other flow), the SWR dedup window can prevent the automatic revalidation.
+  // Detect staleness on mount: if the mutation timestamp is newer than the cached data,
+  // force an immediate refresh regardless of SWR's dedup interval.
+  const [forceRefreshing, setForceRefreshing] = React.useState(false);
+  const staleRefreshTriggeredRef = React.useRef(false);
+  React.useEffect(() => {
+    if (staleRefreshTriggeredRef.current || !lastCachedAt) return;
+    const mutatedAt = window.localStorage.getItem(`stockli:portfolio-mutated-at:${userId}`);
+    if (!mutatedAt) return;
+    const cacheTime = Date.parse(lastCachedAt);
+    const mutationTime = Date.parse(mutatedAt);
+    if (Number.isFinite(cacheTime) && Number.isFinite(mutationTime) && cacheTime < mutationTime) {
+      staleRefreshTriggeredRef.current = true;
+      setForceRefreshing(true);
+      void refreshNow().finally(() => setForceRefreshing(false));
+    }
+  }, [lastCachedAt, userId, refreshNow]);
+
+  if (!data || forceRefreshing) {
     return (
       <div className="mx-auto max-w-7xl">
         <PageLoadingState
-          message={isLoading ? `Loading ${pageLabel.toLowerCase()}...` : `Preparing ${pageLabel.toLowerCase()}...`}
+          message={isLoading || forceRefreshing ? `Loading ${pageLabel.toLowerCase()}...` : `Preparing ${pageLabel.toLowerCase()}...`}
           variant="portfolio"
         />
       </div>
