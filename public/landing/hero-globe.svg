@@ -1,0 +1,312 @@
+<svg viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Globe glow -->
+    <radialGradient id="globeGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#5eead4" stop-opacity="0.08"/>
+      <stop offset="60%" stop-color="#34d399" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#34d399" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Node pulse -->
+    <radialGradient id="nodePulse" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#6ee7b7" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#34d399" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Arc gradient -->
+    <linearGradient id="arcGrad1" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.1"/>
+      <stop offset="50%" stop-color="#6ee7b7" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#5eead4" stop-opacity="0.1"/>
+    </linearGradient>
+    <linearGradient id="arcGrad2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.1"/>
+      <stop offset="50%" stop-color="#7dd3fc" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.1"/>
+    </linearGradient>
+    <linearGradient id="arcGrad3" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.1"/>
+      <stop offset="50%" stop-color="#c4b5fd" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#a78bfa" stop-opacity="0.1"/>
+    </linearGradient>
+    <!-- Orbit ring gradient -->
+    <linearGradient id="orbitGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0"/>
+      <stop offset="30%" stop-color="#34d399" stop-opacity="0.4"/>
+      <stop offset="70%" stop-color="#5eead4" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#5eead4" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="nodeGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="arcGlow" x="-5%" y="-30%" width="110%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="globeFilter" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="1.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <clipPath id="globeClip">
+      <circle cx="1200" cy="530" r="382"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background star field (sparse dots) -->
+  <g fill="rgba(255,255,255,0.35)" opacity="0.5">
+    <circle cx="120" cy="80" r="1.2"/><circle cx="280" cy="155" r="0.8"/><circle cx="450" cy="60" r="1.5"/>
+    <circle cx="80" cy="320" r="1"/><circle cx="200" cy="440" r="1.3"/><circle cx="350" cy="280" r="0.9"/>
+    <circle cx="520" cy="190" r="1.1"/><circle cx="640" cy="350" r="1.4"/><circle cx="160" cy="600" r="1"/>
+    <circle cx="420" cy="530" r="0.8"/><circle cx="580" cy="470" r="1.2"/><circle cx="700" cy="120" r="0.9"/>
+    <circle cx="760" cy="610" r="1.1"/><circle cx="850" cy="200" r="1.3"/><circle cx="920" cy="700" r="0.8"/>
+    <circle cx="100" cy="780" r="1.2"/><circle cx="340" cy="820" r="0.9"/><circle cx="600" cy="860" r="1.1"/>
+    <circle cx="750" cy="900" r="0.8"/><circle cx="180" cy="950" r="1.3"/><circle cx="480" cy="970" r="1"/>
+    <circle cx="1600" cy="100" r="1.1"/><circle cx="1720" cy="200" r="0.9"/><circle cx="1850" cy="80" r="1.3"/>
+    <circle cx="1680" cy="350" r="1"/><circle cx="1800" cy="450" r="0.8"/><circle cx="1760" cy="700" r="1.2"/>
+    <circle cx="1640" cy="820" r="1.1"/><circle cx="1820" cy="900" r="0.9"/>
+  </g>
+
+  <!-- Globe background glow -->
+  <circle cx="1200" cy="530" r="480" fill="url(#globeGlow)"/>
+
+  <!-- Globe body (dark fill, subtle) -->
+  <circle cx="1200" cy="530" r="382" fill="rgba(4,16,13,0.3)" stroke="rgba(94,234,212,0.18)" stroke-width="1.5"/>
+
+  <!-- Globe grid lines (latitude) clipped to globe -->
+  <g clip-path="url(#globeClip)" fill="none" stroke="rgba(94,234,212,0.12)" stroke-width="1">
+    <!-- Equator -->
+    <ellipse cx="1200" cy="530" rx="382" ry="55"/>
+    <!-- 30°N -->
+    <ellipse cx="1200" cy="339" rx="331" ry="48"/>
+    <!-- 60°N -->
+    <ellipse cx="1200" cy="200" rx="191" ry="28"/>
+    <!-- 30°S -->
+    <ellipse cx="1200" cy="721" rx="331" ry="48"/>
+    <!-- 60°S -->
+    <ellipse cx="1200" cy="860" rx="191" ry="28"/>
+  </g>
+
+  <!-- Globe grid lines (longitude) clipped to globe -->
+  <g clip-path="url(#globeClip)" fill="none" stroke="rgba(94,234,212,0.12)" stroke-width="1">
+    <!-- Center vertical (prime meridian) -->
+    <line x1="1200" y1="148" x2="1200" y2="912"/>
+    <!-- ±30° -->
+    <ellipse cx="1200" cy="530" rx="191" ry="382"/>
+    <!-- ±60° -->
+    <ellipse cx="1200" cy="530" rx="331" ry="382"/>
+    <!-- ±90° (globe edge) -->
+    <ellipse cx="1200" cy="530" rx="382" ry="382"/>
+  </g>
+
+  <!-- Globe outline (top layer) -->
+  <circle cx="1200" cy="530" r="382" fill="none" stroke="rgba(94,234,212,0.30)" stroke-width="1.5" filter="url(#globeFilter)"/>
+
+  <!-- Orbital rings (outside globe) -->
+  <ellipse cx="1200" cy="530" rx="470" ry="68" fill="none" stroke="url(#orbitGrad)" stroke-width="1.5" transform="rotate(-12,1200,530)"/>
+  <ellipse cx="1200" cy="530" rx="440" ry="50" fill="none" stroke="rgba(52,211,153,0.12)" stroke-width="1" transform="rotate(20,1200,530)"/>
+  <ellipse cx="1200" cy="530" rx="510" ry="90" fill="none" stroke="rgba(94,234,212,0.09)" stroke-width="1" transform="rotate(-30,1200,530)"/>
+
+  <!-- ===== EXCHANGE NODES + CONNECTION ARCS ===== -->
+
+  <!-- PSX — Karachi: ~(1240, 450) on globe -->
+  <!-- NYSE — New York: ~(820, 420) -->
+  <!-- LSE — London: ~(1155, 330) -->
+  <!-- TSE — Tokyo: ~(1500, 400) -->
+  <!-- HKEX — Hong Kong: ~(1460, 470) -->
+  <!-- BSE — Mumbai: ~(1320, 480) -->
+  <!-- SGX — Singapore: ~(1420, 520) -->
+
+  <!-- Connection arcs (drawn before nodes so nodes sit on top) -->
+
+  <!-- PSX ↔ NYSE -->
+  <path d="M 820,420 C 920,280 1060,290 1240,450" fill="none" stroke="url(#arcGrad2)" stroke-width="1.8" filter="url(#arcGlow)"/>
+  <!-- PSX ↔ LSE -->
+  <path d="M 1155,330 C 1175,370 1200,410 1240,450" fill="none" stroke="url(#arcGrad1)" stroke-width="1.5" filter="url(#arcGlow)"/>
+  <!-- PSX ↔ BSE -->
+  <path d="M 1320,480 C 1295,470 1270,460 1240,450" fill="none" stroke="url(#arcGrad1)" stroke-width="1.5" filter="url(#arcGlow)"/>
+  <!-- PSX ↔ HKEX -->
+  <path d="M 1460,470 C 1390,460 1320,455 1240,450" fill="none" stroke="url(#arcGrad3)" stroke-width="1.5" filter="url(#arcGlow)"/>
+  <!-- NYSE ↔ LSE -->
+  <path d="M 820,420 C 940,310 1060,310 1155,330" fill="none" stroke="rgba(125,211,252,0.35)" stroke-width="1.2"/>
+  <!-- TSE ↔ HKEX -->
+  <path d="M 1500,400 C 1490,430 1480,450 1460,470" fill="none" stroke="rgba(167,139,250,0.35)" stroke-width="1.2"/>
+  <!-- BSE ↔ SGX -->
+  <path d="M 1320,480 C 1360,498 1390,510 1420,520" fill="none" stroke="rgba(52,211,153,0.25)" stroke-width="1.2"/>
+  <!-- TSE ↔ PSX long arc -->
+  <path d="M 1500,400 C 1420,380 1330,410 1240,450" fill="none" stroke="rgba(167,139,250,0.3)" stroke-width="1.3"/>
+  <!-- NYSE ↔ BSE ultra-long -->
+  <path d="M 820,420 C 1000,350 1180,420 1320,480" fill="none" stroke="rgba(125,211,252,0.2)" stroke-width="1"/>
+
+  <!-- Data packets traveling on arcs (small bright dots) -->
+  <g filter="url(#nodeGlow)">
+    <circle cx="1000" cy="340" r="3" fill="#7dd3fc" opacity="0.9"/>
+    <circle cx="1160" cy="395" r="2.5" fill="#34d399" opacity="0.8"/>
+    <circle cx="1390" cy="455" r="3" fill="#c4b5fd" opacity="0.9"/>
+    <circle cx="950" cy="360" r="2" fill="#7dd3fc" opacity="0.6"/>
+  </g>
+
+  <!-- Exchange nodes -->
+
+  <!-- NYSE — New York -->
+  <g filter="url(#nodeGlow)">
+    <circle cx="820" cy="420" r="18" fill="rgba(125,211,252,0.08)" stroke="rgba(125,211,252,0.3)" stroke-width="1"/>
+    <circle cx="820" cy="420" r="6" fill="#38bdf8" opacity="0.9"/>
+    <circle cx="820" cy="420" r="3" fill="#fff"/>
+  </g>
+  <rect x="760" y="395" width="52" height="18" rx="4" fill="rgba(0,0,0,0.55)" stroke="rgba(125,211,252,0.3)" stroke-width="1"/>
+  <text x="786" y="408" fill="#7dd3fc" font-size="9.5" font-family="ui-sans-serif,sans-serif" font-weight="700" text-anchor="middle">NYSE</text>
+  <text x="820" y="448" fill="rgba(255,255,255,0.45)" font-size="8.5" font-family="ui-sans-serif,sans-serif" text-anchor="middle">New York</text>
+
+  <!-- LSE — London -->
+  <g filter="url(#nodeGlow)">
+    <circle cx="1155" cy="330" r="18" fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.3)" stroke-width="1"/>
+    <circle cx="1155" cy="330" r="6" fill="#a78bfa" opacity="0.9"/>
+    <circle cx="1155" cy="330" r="3" fill="#fff"/>
+  </g>
+  <rect x="1098" y="305" width="46" height="18" rx="4" fill="rgba(0,0,0,0.55)" stroke="rgba(167,139,250,0.3)" stroke-width="1"/>
+  <text x="1121" y="318" fill="#c4b5fd" font-size="9.5" font-family="ui-sans-serif,sans-serif" font-weight="700" text-anchor="middle">LSE</text>
+  <text x="1155" y="357" fill="rgba(255,255,255,0.45)" font-size="8.5" font-family="ui-sans-serif,sans-serif" text-anchor="middle">London</text>
+
+  <!-- PSX — Karachi (largest, primary) -->
+  <g filter="url(#nodeGlow)">
+    <circle cx="1240" cy="450" r="26" fill="rgba(52,211,153,0.10)" stroke="rgba(52,211,153,0.4)" stroke-width="1.5"/>
+    <circle cx="1240" cy="450" r="8" fill="#34d399" opacity="0.95"/>
+    <circle cx="1240" cy="450" r="4" fill="#fff"/>
+  </g>
+  <rect x="1178" y="420" width="50" height="20" rx="5" fill="rgba(0,0,0,0.6)" stroke="rgba(52,211,153,0.45)" stroke-width="1"/>
+  <text x="1203" y="433" fill="#6ee7b7" font-size="10" font-family="ui-sans-serif,sans-serif" font-weight="700" text-anchor="middle">PSX</text>
+  <text x="1240" y="488" fill="rgba(255,255,255,0.5)" font-size="8.5" font-family="ui-sans-serif,sans-serif" text-anchor="middle">Karachi</text>
+  <!-- PSX pulse ring -->
+  <circle cx="1240" cy="450" r="34" fill="none" stroke="rgba(52,211,153,0.2)" stroke-width="1.5"/>
+
+  <!-- BSE — Mumbai -->
+  <g filter="url(#nodeGlow)">
+    <circle cx="1320" cy="480" r="16" fill="rgba(251,191,36,0.08)" stroke="rgba(251,191,36,0.3)" stroke-width="1"/>
+    <circle cx="1320" cy="480" r="5" fill="#fbbf24" opacity="0.9"/>
+    <circle cx="1320" cy="480" r="2.5" fill="#fff"/>
+  </g>
+  <rect x="1265" y="456" width="48" height="18" rx="4" fill="rgba(0,0,0,0.55)" stroke="rgba(251,191,36,0.3)" stroke-width="1"/>
+  <text x="1289" y="469" fill="#fde68a" font-size="9.5" font-family="ui-sans-serif,sans-serif" font-weight="700" text-anchor="middle">BSE</text>
+  <text x="1320" y="504" fill="rgba(255,255,255,0.4)" font-size="8.5" font-family="ui-sans-serif,sans-serif" text-anchor="middle">Mumbai</text>
+
+  <!-- HKEX — Hong Kong -->
+  <g filter="url(#nodeGlow)">
+    <circle cx="1460" cy="470" r="16" fill="rgba(248,113,113,0.08)" stroke="rgba(248,113,113,0.3)" stroke-width="1"/>
+    <circle cx="1460" cy="470" r="5" fill="#f87171" opacity="0.9"/>
+    <circle cx="1460" cy="470" r="2.5" fill="#fff"/>
+  </g>
+  <rect x="1398" y="447" width="54" height="18" rx="4" fill="rgba(0,0,0,0.55)" stroke="rgba(248,113,113,0.3)" stroke-width="1"/>
+  <text x="1425" y="460" fill="#fca5a5" font-size="9.5" font-family="ui-sans-serif,sans-serif" font-weight="700" text-anchor="middle">HKEX</text>
+  <text x="1460" y="494" fill="rgba(255,255,255,0.4)" font-size="8.5" font-family="ui-sans-serif,sans-serif" text-anchor="middle">Hong Kong</text>
+
+  <!-- TSE — Tokyo -->
+  <g filter="url(#nodeGlow)">
+    <circle cx="1500" cy="400" r="16" fill="rgba(94,234,212,0.08)" stroke="rgba(94,234,212,0.3)" stroke-width="1"/>
+    <circle cx="1500" cy="400" r="5" fill="#5eead4" opacity="0.9"/>
+    <circle cx="1500" cy="400" r="2.5" fill="#fff"/>
+  </g>
+  <rect x="1446" y="376" width="46" height="18" rx="4" fill="rgba(0,0,0,0.55)" stroke="rgba(94,234,212,0.3)" stroke-width="1"/>
+  <text x="1469" y="389" fill="#99f6e4" font-size="9.5" font-family="ui-sans-serif,sans-serif" font-weight="700" text-anchor="middle">TSE</text>
+  <text x="1500" y="424" fill="rgba(255,255,255,0.4)" font-size="8.5" font-family="ui-sans-serif,sans-serif" text-anchor="middle">Tokyo</text>
+
+  <!-- SGX — Singapore -->
+  <g filter="url(#nodeGlow)">
+    <circle cx="1420" cy="520" r="14" fill="rgba(52,211,153,0.06)" stroke="rgba(52,211,153,0.25)" stroke-width="1"/>
+    <circle cx="1420" cy="520" r="4.5" fill="#34d399" opacity="0.75"/>
+    <circle cx="1420" cy="520" r="2" fill="#fff"/>
+  </g>
+  <text x="1420" y="544" fill="rgba(255,255,255,0.4)" font-size="8" font-family="ui-sans-serif,sans-serif" text-anchor="middle">SGX</text>
+
+  <!-- ===== LEFT SIDE INFO PANEL ===== -->
+
+  <!-- Panel background -->
+  <rect x="60" y="200" width="560" height="640" rx="16" fill="rgba(4,16,13,0.4)" stroke="rgba(94,234,212,0.08)" stroke-width="1"/>
+
+  <!-- Header -->
+  <text x="100" y="256" fill="rgba(255,255,255,0.85)" font-size="28" font-family="ui-sans-serif,sans-serif" font-weight="700">World Markets</text>
+  <text x="100" y="286" fill="rgba(255,255,255,0.35)" font-size="13" font-family="ui-sans-serif,sans-serif">51 exchanges · Live performance</text>
+
+  <!-- Divider -->
+  <line x1="100" y1="300" x2="560" y2="300" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+
+  <!-- Exchange performance rows -->
+  <!-- KSE-100 -->
+  <g>
+    <rect x="100" y="315" width="8" height="42" rx="2" fill="#34d399"/>
+    <text x="120" y="335" fill="rgba(255,255,255,0.8)" font-size="13" font-family="ui-sans-serif,sans-serif" font-weight="600">KSE-100</text>
+    <text x="120" y="352" fill="rgba(255,255,255,0.35)" font-size="11" font-family="ui-sans-serif,sans-serif">Pakistan · PSX</text>
+    <text x="550" y="335" fill="#34d399" font-size="13" font-family="ui-monospace,monospace" font-weight="600" text-anchor="end">+1.29%</text>
+    <text x="550" y="352" fill="rgba(255,255,255,0.35)" font-size="11" font-family="ui-monospace,monospace" text-anchor="end">118,321</text>
+  </g>
+  <line x1="100" y1="367" x2="560" y2="367" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+
+  <!-- S&P 500 -->
+  <g>
+    <rect x="100" y="377" width="8" height="42" rx="2" fill="#38bdf8"/>
+    <text x="120" y="397" fill="rgba(255,255,255,0.8)" font-size="13" font-family="ui-sans-serif,sans-serif" font-weight="600">S&amp;P 500</text>
+    <text x="120" y="414" fill="rgba(255,255,255,0.35)" font-size="11" font-family="ui-sans-serif,sans-serif">USA · NYSE / NASDAQ</text>
+    <text x="550" y="397" fill="#38bdf8" font-size="13" font-family="ui-monospace,monospace" font-weight="600" text-anchor="end">+0.83%</text>
+    <text x="550" y="414" fill="rgba(255,255,255,0.35)" font-size="11" font-family="ui-monospace,monospace" text-anchor="end">5,842.47</text>
+  </g>
+  <line x1="100" y1="429" x2="560" y2="429" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+
+  <!-- NIFTY 50 -->
+  <g>
+    <rect x="100" y="439" width="8" height="42" rx="2" fill="#fbbf24"/>
+    <text x="120" y="459" fill="rgba(255,255,255,0.8)" font-size="13" font-family="ui-sans-serif,sans-serif" font-weight="600">NIFTY 50</text>
+    <text x="120" y="476" fill="rgba(255,255,255,0.35)" font-size="11" font-family="ui-sans-serif,sans-serif">India · NSE/BSE</text>
+    <text x="550" y="459" fill="#fbbf24" font-size="13" font-family="ui-monospace,monospace" font-weight="600" text-anchor="end">+0.44%</text>
+    <text x="550" y="476" fill="rgba(255,255,255,0.35)" font-size="11" font-family="ui-monospace,monospace" text-anchor="end">24,118</text>
+  </g>
+  <line x1="100" y1="491" x2="560" y2="491" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+
+  <!-- FTSE 100 -->
+  <g>
+    <rect x="100" y="501" width="8" height="42" rx="2" fill="#a78bfa"/>
+    <text x="120" y="521" fill="rgba(255,255,255,0.8)" font-size="13" font-family="ui-sans-serif,sans-serif" font-weight="600">FTSE 100</text>
+    <text x="120" y="538" fill="rgba(255,255,255,0.35)" font-size="11" font-family="ui-sans-serif,sans-serif">UK · LSE</text>
+    <text x="550" y="521" fill="#a78bfa" font-size="13" font-family="ui-monospace,monospace" font-weight="600" text-anchor="end">+0.21%</text>
+    <text x="550" y="538" fill="rgba(255,255,255,0.35)" font-size="11" font-family="ui-monospace,monospace" text-anchor="end">8,371</text>
+  </g>
+  <line x1="100" y1="553" x2="560" y2="553" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+
+  <!-- Hang Seng -->
+  <g>
+    <rect x="100" y="563" width="8" height="42" rx="2" fill="#f87171"/>
+    <text x="120" y="583" fill="rgba(255,255,255,0.8)" font-size="13" font-family="ui-sans-serif,sans-serif" font-weight="600">Hang Seng</text>
+    <text x="120" y="600" fill="rgba(255,255,255,0.35)" font-size="11" font-family="ui-sans-serif,sans-serif">Hong Kong · HKEX</text>
+    <text x="550" y="583" fill="#f87171" font-size="13" font-family="ui-monospace,monospace" font-weight="600" text-anchor="end">-0.37%</text>
+    <text x="550" y="600" fill="rgba(255,255,255,0.35)" font-size="11" font-family="ui-monospace,monospace" text-anchor="end">20,414</text>
+  </g>
+  <line x1="100" y1="615" x2="560" y2="615" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+
+  <!-- Nikkei 225 -->
+  <g>
+    <rect x="100" y="625" width="8" height="42" rx="2" fill="#5eead4"/>
+    <text x="120" y="645" fill="rgba(255,255,255,0.8)" font-size="13" font-family="ui-sans-serif,sans-serif" font-weight="600">Nikkei 225</text>
+    <text x="120" y="662" fill="rgba(255,255,255,0.35)" font-size="11" font-family="ui-sans-serif,sans-serif">Japan · TSE</text>
+    <text x="550" y="645" fill="#5eead4" font-size="13" font-family="ui-monospace,monospace" font-weight="600" text-anchor="end">+0.56%</text>
+    <text x="550" y="662" fill="rgba(255,255,255,0.35)" font-size="11" font-family="ui-monospace,monospace" text-anchor="end">39,742</text>
+  </g>
+
+  <!-- Footer: region chips -->
+  <g>
+    <rect x="100" y="720" width="72" height="22" rx="11" fill="rgba(52,211,153,0.12)" stroke="rgba(52,211,153,0.25)" stroke-width="1"/>
+    <text x="136" y="735" fill="#34d399" font-size="10" font-family="ui-sans-serif,sans-serif" font-weight="600" text-anchor="middle">Asia Pacific</text>
+    <rect x="182" y="720" width="54" height="22" rx="11" fill="rgba(94,234,212,0.09)" stroke="rgba(94,234,212,0.2)" stroke-width="1"/>
+    <text x="209" y="735" fill="#5eead4" font-size="10" font-family="ui-sans-serif,sans-serif" font-weight="600" text-anchor="middle">Europe</text>
+    <rect x="246" y="720" width="68" height="22" rx="11" fill="rgba(125,211,252,0.09)" stroke="rgba(125,211,252,0.2)" stroke-width="1"/>
+    <text x="280" y="735" fill="#7dd3fc" font-size="10" font-family="ui-sans-serif,sans-serif" font-weight="600" text-anchor="middle">Americas</text>
+    <rect x="324" y="720" width="46" height="22" rx="11" fill="rgba(167,139,250,0.09)" stroke="rgba(167,139,250,0.2)" stroke-width="1"/>
+    <text x="347" y="735" fill="#c4b5fd" font-size="10" font-family="ui-sans-serif,sans-serif" font-weight="600" text-anchor="middle">MENA</text>
+  </g>
+
+  <!-- Live indicator -->
+  <circle cx="104" cy="248" r="4" fill="#34d399" opacity="0.9"/>
+  <circle cx="104" cy="248" r="7" fill="none" stroke="rgba(52,211,153,0.4)" stroke-width="1"/>
+  <text x="116" y="253" fill="#34d399" font-size="11" font-family="ui-sans-serif,sans-serif" font-weight="600">LIVE</text>
+
+  <!-- Bottom attribution -->
+  <text x="60" y="1050" fill="rgba(255,255,255,0.1)" font-size="11" font-family="ui-monospace,monospace">STOCKLI · WORLD MARKETS · 51 EXCHANGES · REAL-TIME</text>
+</svg>

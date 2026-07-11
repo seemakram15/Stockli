@@ -203,14 +203,19 @@ export async function enrichHoldings(
     getQuotes(symbols),
     getHistoricalPLBaseMap(costAdjustedHoldings),
   ]);
-  return costAdjustedHoldings.map((h) =>
-    computeHoldingMetrics(
+  return costAdjustedHoldings.map((h) => {
+    const costState = costStates?.get(holdingCostKey(h.portfolio_id, h.symbol));
+    const hasTransactionHistory = Boolean(
+      costState && costState.quantity > 0 && Number.isFinite(costState.avgBuyPrice)
+    );
+    return computeHoldingMetrics(
       h,
       tickerMap.get(h.symbol.toUpperCase()) ?? null,
       quoteMap.get(h.symbol.toUpperCase()) ?? null,
-      historicalPLMap.get(holdingPLKey(h.portfolio_id, h.symbol)) ?? null
-    )
-  );
+      historicalPLMap.get(holdingPLKey(h.portfolio_id, h.symbol)) ?? null,
+      hasTransactionHistory
+    );
+  });
 }
 
 async function getHistoricalPLBaseMap(holdings: Holding[]): Promise<Map<string, number>> {

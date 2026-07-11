@@ -35,7 +35,7 @@ export function ResetPasswordForm({ email }: { email?: string | null }) {
           asChild
           className="h-11 w-full gap-2 bg-gradient-to-r from-emerald-500 to-emerald-400 text-base font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:from-emerald-500 hover:to-emerald-300 hover:shadow-emerald-500/35"
         >
-          <Link href="/dashboard">Open dashboard</Link>
+          <Link href="/portfolios">Open portfolio</Link>
         </Button>
       </div>
     );
