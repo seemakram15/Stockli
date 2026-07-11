@@ -235,17 +235,7 @@ const ShuffleText: React.FC<ShuffleTextProps> = ({
         });
       };
 
-      const cleanupToStill = () => {
-        wrappersRef.current.forEach((w) => {
-          const strip = w.firstElementChild as HTMLElement;
-          if (!strip) return;
-          const real = strip.querySelector("[data-orig='1']") as HTMLElement | null;
-          if (!real) return;
-          strip.replaceChildren(real);
-          strip.style.transform = "none";
-          strip.style.willChange = "auto";
-        });
-      };
+
 
       const play = () => {
         const strips = inners();
