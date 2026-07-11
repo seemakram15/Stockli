@@ -20,19 +20,16 @@ export function computeHoldingMetrics(
   const price = effectiveQuotePrice(quote) ?? holding.avg_buy_price;
   const marketValue = price * holding.quantity;
   const costBasis = holding.avg_buy_price * holding.quantity;
-  const dayChange = (quote?.change ?? 0) * holding.quantity;
-  const dayChangePct = quote?.changePct ?? 0;
   const rawUnrealizedPL = marketValue - costBasis;
   const storedHistoricalBase =
     "historicalPLBase" in holding ? holding.historicalPLBase : null;
   const plBase = historicalPLBase ?? storedHistoricalBase ?? null;
-  const historicalTotalPL = plBase == null ? null : plBase + dayChange;
-  const unrealizedPL = adjustedUnrealizedPL(
-    rawUnrealizedPL,
-    dayChange,
-    historicalTotalPL,
-    hasTransactionHistory
-  );
+  // When avg cost = current price there is no gain or loss — zero out all P/L
+  // dimensions so Day's P/L and Total P/L are consistently Rs 0.
+  const atCost = Math.abs(rawUnrealizedPL) < 0.005;
+  const dayChange = atCost ? 0 : (quote?.change ?? 0) * holding.quantity;
+  const dayChangePct = atCost ? 0 : (quote?.changePct ?? 0);
+  const unrealizedPL = atCost ? 0 : rawUnrealizedPL;
   const unrealizedPLPct = costBasis !== 0 ? (unrealizedPL / costBasis) * 100 : 0;
 
   return {
@@ -83,19 +80,6 @@ export function computeSummary(
     holdingsCount: holdings.length,
     realizedPL,
   };
-}
-
-function adjustedUnrealizedPL(
-  rawUnrealizedPL: number,
-  _dayChange: number,
-  _historicalTotalPL: number | null,
-  _hasTransactionHistory = false
-): number {
-  // Total P/L is derived purely from avg_buy_price vs current price.
-  // When avg_cost = current_price the result is correctly 0.
-  // Historical daily_pl accumulation is intentionally NOT used here because it
-  // becomes stale when a holding is removed/re-added at a new price.
-  return rawUnrealizedPL;
 }
 
 /** Realized P/L from SELL transactions using moving-average cost basis. */
