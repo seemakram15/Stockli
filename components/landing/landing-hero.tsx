@@ -5,7 +5,6 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowRight, ArrowUpRight, Globe2, LockKeyhole, RefreshCw, Sparkles } from "lucide-react";
 import { AuroraField, CountUp } from "@/components/landing/landing-motion";
-import ShuffleText from "@/components/landing/shuffle-text";
 import { InstallAppButton } from "@/components/pwa/install-app-button";
 import { DataDelayBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
@@ -113,46 +112,9 @@ export function LandingHero({ demo }: { demo: boolean }) {
       <div className="relative z-10 min-h-[88svh] px-6 sm:px-10 lg:px-16 xl:px-24">
         <div className="flex min-h-[88svh] flex-col justify-center py-24 sm:py-32 lg:max-w-[52%] xl:max-w-[48%]">
 
-          {/* Heading — Shuffle animation, two lines */}
           <h1 className="text-5xl font-semibold leading-[1.08] tracking-tight sm:text-6xl lg:text-[5rem] xl:text-[5.5rem]">
-            <ShuffleText
-              tag="span"
-              text="Your entire market,"
-              shuffleDirection="right"
-              duration={0.4}
-              animationMode="evenodd"
-              shuffleTimes={1}
-              ease="power3.out"
-              stagger={0.025}
-              threshold={0.05}
-              rootMargin="0px"
-              triggerOnce={true}
-              triggerOnHover={false}
-              respectReducedMotion={true}
-              loop={true}
-              loopDelay={5}
-              textAlign="left"
-              className="block"
-            />
-            <ShuffleText
-              tag="span"
-              text={`on ${APP_NAME}.`}
-              shuffleDirection="right"
-              duration={0.4}
-              animationMode="evenodd"
-              shuffleTimes={1}
-              ease="power3.out"
-              stagger={0.025}
-              threshold={0.05}
-              rootMargin="0px"
-              triggerOnce={true}
-              triggerOnHover={false}
-              respectReducedMotion={true}
-              loop={true}
-              loopDelay={5}
-              textAlign="left"
-              className="block text-gradient-brand"
-            />
+            <span className="block">Your entire market,</span>
+            <span className="block text-gradient-brand">on {APP_NAME}.</span>
           </h1>
 
           {/* Subtitle */}
