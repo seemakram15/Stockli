@@ -1,0 +1,16 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "/Users/tk-lpt-1153/.nvm/versions/node/v22.23.1/bin/node",
+      "runtimeArgs": ["node_modules/.bin/next", "dev", "--turbopack", "--port", "3001"],
+      "port": 3001,
+      "autoPort": false,
+      "env": {
+        "PORT": "3001",
+        "PATH": "/Users/tk-lpt-1153/.nvm/versions/node/v22.23.1/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+      }
+    }
+  ]
+}

@@ -1,0 +1,459 @@
+<svg viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Area chart gradients -->
+    <linearGradient id="areaGreen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#34d399" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="areaSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="areaViolet" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="areaRed" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f87171" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#f87171" stop-opacity="0"/>
+    </linearGradient>
+    <!-- Donut segments: these are stroked circles, not gradients -->
+    <filter id="panelGlow" x="-5%" y="-5%" width="110%" height="110%">
+      <feGaussianBlur stdDeviation="2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="numGlow" x="-20%" y="-40%" width="140%" height="180%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="p1clip"><rect x="60" y="60" width="760" height="320" rx="14"/></clipPath>
+    <clipPath id="p2clip"><rect x="840" y="60" width="380" height="320" rx="14"/></clipPath>
+    <clipPath id="p3clip"><rect x="1240" y="60" width="630" height="320" rx="14"/></clipPath>
+    <clipPath id="p4clip"><rect x="60" y="400" width="460" height="280" rx="14"/></clipPath>
+    <clipPath id="p5clip"><rect x="540" y="400" width="460" height="280" rx="14"/></clipPath>
+    <clipPath id="p6clip"><rect x="1020" y="400" width="850" height="280" rx="14"/></clipPath>
+    <clipPath id="p7clip"><rect x="60" y="700" width="590" height="310" rx="14"/></clipPath>
+    <clipPath id="p8clip"><rect x="670" y="700" width="380" height="310" rx="14"/></clipPath>
+    <clipPath id="p9clip"><rect x="1070" y="700" width="800" height="310" rx="14"/></clipPath>
+  </defs>
+
+  <!-- ===== PANEL 1 — Portfolio area chart (large, top-left) ===== -->
+  <rect x="60" y="60" width="760" height="320" rx="14" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+  <!-- Panel header -->
+  <text x="90" y="96" fill="rgba(255,255,255,0.5)" font-size="11" font-family="ui-sans-serif,sans-serif" font-weight="600" letter-spacing="0.08em">PORTFOLIO VALUE</text>
+  <text x="90" y="128" fill="rgba(255,255,255,0.92)" font-size="30" font-family="ui-sans-serif,sans-serif" font-weight="700" filter="url(#numGlow)">Rs 11,08,247</text>
+  <rect x="244" y="110" width="72" height="22" rx="5" fill="rgba(52,211,153,0.15)"/>
+  <text x="280" y="125" fill="#34d399" font-size="11" font-family="ui-sans-serif,sans-serif" font-weight="600" text-anchor="middle">▲ +8.4%</text>
+  <!-- Grid lines -->
+  <g stroke="rgba(255,255,255,0.04)" stroke-width="1" fill="none" clip-path="url(#p1clip)">
+    <line x1="60" y1="175" x2="820" y2="175"/><line x1="60" y1="225" x2="820" y2="225"/>
+    <line x1="60" y1="275" x2="820" y2="275"/><line x1="60" y1="325" x2="820" y2="325"/>
+    <line x1="60" y1="375" x2="820" y2="375"/>
+  </g>
+  <!-- Area fill -->
+  <path clip-path="url(#p1clip)"
+    d="M 60,340 L 120,315 L 190,320 L 250,295 L 320,280 L 390,260 L 450,268 L 520,242 L 580,218 L 650,200 L 720,178 L 790,155 L 820,148 L 820,375 L 60,375 Z"
+    fill="url(#areaGreen)"/>
+  <!-- Line -->
+  <path clip-path="url(#p1clip)"
+    d="M 60,340 L 120,315 L 190,320 L 250,295 L 320,280 L 390,260 L 450,268 L 520,242 L 580,218 L 650,200 L 720,178 L 790,155 L 820,148"
+    fill="none" stroke="#34d399" stroke-width="2" filter="url(#panelGlow)"/>
+  <!-- KSE-100 comparison line -->
+  <path clip-path="url(#p1clip)"
+    d="M 60,340 L 120,332 L 190,335 L 250,325 L 320,315 L 390,308 L 450,312 L 520,298 L 580,285 L 650,272 L 720,260 L 790,248 L 820,242"
+    fill="none" stroke="rgba(125,211,252,0.5)" stroke-width="1.5" stroke-dasharray="5 3"/>
+  <!-- Legend -->
+  <circle cx="92" cy="365" r="4" fill="#34d399"/>
+  <text x="102" y="369" fill="rgba(255,255,255,0.4)" font-size="10" font-family="ui-sans-serif,sans-serif">Portfolio</text>
+  <circle cx="158" cy="365" r="4" fill="none" stroke="rgba(125,211,252,0.5)" stroke-width="1.5" stroke-dasharray="3 2"/>
+  <text x="168" y="369" fill="rgba(255,255,255,0.4)" font-size="10" font-family="ui-sans-serif,sans-serif">KSE-100</text>
+  <!-- Month labels -->
+  <g fill="rgba(255,255,255,0.2)" font-size="10" font-family="ui-monospace,monospace" text-anchor="middle">
+    <text x="120" y="373">Aug</text><text x="250" y="373">Sep</text><text x="390" y="373">Oct</text>
+    <text x="520" y="373">Nov</text><text x="650" y="373">Dec</text><text x="790" y="373">Jan</text>
+  </g>
+  <!-- Live dot -->
+  <circle cx="820" cy="148" r="4" fill="#34d399"/>
+  <circle cx="820" cy="148" r="8" fill="none" stroke="rgba(52,211,153,0.3)" stroke-width="1"/>
+
+  <!-- ===== PANEL 2 — Allocation donut (top-middle) ===== -->
+  <rect x="840" y="60" width="380" height="320" rx="14" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+  <text x="870" y="96" fill="rgba(255,255,255,0.5)" font-size="11" font-family="ui-sans-serif,sans-serif" font-weight="600" letter-spacing="0.08em">ALLOCATION</text>
+  <!-- Donut chart (stroked arcs) -->
+  <!-- Total circumference of r=80: 502.65 -->
+  <!-- MEBL: 32% = 160.8 -->
+  <!-- OGDC: 22% = 110.6 -->
+  <!-- LUCK: 18% = 90.5 -->
+  <!-- ENGRO: 15% = 75.4 -->
+  <!-- Other: 13% = 65.3 -->
+  <g transform="translate(1030,215) rotate(-90)">
+    <!-- MEBL 32% -->
+    <circle cx="0" cy="0" r="75" fill="none" stroke="#34d399" stroke-width="22"
+      stroke-dasharray="161 341" stroke-dashoffset="0" opacity="0.85"/>
+    <!-- OGDC 22% -->
+    <circle cx="0" cy="0" r="75" fill="none" stroke="#38bdf8" stroke-width="22"
+      stroke-dasharray="110 392" stroke-dashoffset="-161" opacity="0.85"/>
+    <!-- LUCK 18% -->
+    <circle cx="0" cy="0" r="75" fill="none" stroke="#a78bfa" stroke-width="22"
+      stroke-dasharray="91 411" stroke-dashoffset="-271" opacity="0.85"/>
+    <!-- ENGRO 15% -->
+    <circle cx="0" cy="0" r="75" fill="none" stroke="#fbbf24" stroke-width="22"
+      stroke-dasharray="75 427" stroke-dashoffset="-362" opacity="0.85"/>
+    <!-- Other 13% -->
+    <circle cx="0" cy="0" r="75" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="22"
+      stroke-dasharray="65 437" stroke-dashoffset="-437" opacity="0.7"/>
+  </g>
+  <!-- Center label -->
+  <text x="1030" y="210" fill="rgba(255,255,255,0.85)" font-size="20" font-family="ui-sans-serif,sans-serif" font-weight="700" text-anchor="middle">5</text>
+  <text x="1030" y="228" fill="rgba(255,255,255,0.35)" font-size="10" font-family="ui-sans-serif,sans-serif" text-anchor="middle">holdings</text>
+  <!-- Legend -->
+  <g font-size="10" font-family="ui-sans-serif,sans-serif">
+    <circle cx="858" cy="305" r="5" fill="#34d399"/>
+    <text x="869" y="309" fill="rgba(255,255,255,0.6)">MEBL 32%</text>
+    <circle cx="858" cy="322" r="5" fill="#38bdf8"/>
+    <text x="869" y="326" fill="rgba(255,255,255,0.6)">OGDC 22%</text>
+    <circle cx="940" cy="305" r="5" fill="#a78bfa"/>
+    <text x="951" y="309" fill="rgba(255,255,255,0.6)">LUCK 18%</text>
+    <circle cx="940" cy="322" r="5" fill="#fbbf24"/>
+    <text x="951" y="326" fill="rgba(255,255,255,0.6)">ENGRO 15%</text>
+    <circle cx="1022" cy="305" r="5" fill="rgba(255,255,255,0.25)"/>
+    <text x="1033" y="309" fill="rgba(255,255,255,0.6)">Others 13%</text>
+  </g>
+
+  <!-- ===== PANEL 3 — Sector bar chart (top-right) ===== -->
+  <rect x="1240" y="60" width="630" height="320" rx="14" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+  <text x="1270" y="96" fill="rgba(255,255,255,0.5)" font-size="11" font-family="ui-sans-serif,sans-serif" font-weight="600" letter-spacing="0.08em">SECTOR PERFORMANCE</text>
+  <!-- Bars -->
+  <g clip-path="url(#p3clip)">
+    <!-- Sector labels left, bars right -->
+    <g font-size="11" font-family="ui-sans-serif,sans-serif" fill="rgba(255,255,255,0.55)">
+      <text x="1270" y="140">Banking</text>
+      <text x="1270" y="178">Oil &amp; Gas</text>
+      <text x="1270" y="216">Cement</text>
+      <text x="1270" y="254">Fertilizer</text>
+      <text x="1270" y="292">Tech</text>
+      <text x="1270" y="330">Power</text>
+    </g>
+    <!-- Bar backgrounds -->
+    <g fill="rgba(255,255,255,0.04)" rx="3">
+      <rect x="1380" y="124" width="460" height="20" rx="3"/>
+      <rect x="1380" y="162" width="460" height="20" rx="3"/>
+      <rect x="1380" y="200" width="460" height="20" rx="3"/>
+      <rect x="1380" y="238" width="460" height="20" rx="3"/>
+      <rect x="1380" y="276" width="460" height="20" rx="3"/>
+      <rect x="1380" y="314" width="460" height="20" rx="3"/>
+    </g>
+    <!-- Actual bars (green for positive, red for negative) -->
+    <rect x="1380" y="124" width="322" height="20" rx="3" fill="#34d399" opacity="0.75"/>
+    <rect x="1380" y="162" width="276" height="20" rx="3" fill="#34d399" opacity="0.7"/>
+    <rect x="1380" y="200" width="184" height="20" rx="3" fill="#34d399" opacity="0.65"/>
+    <rect x="1380" y="238" width="138" height="20" rx="3" fill="#fbbf24" opacity="0.7"/>
+    <rect x="1380" y="276" width="92" height="20" rx="3" fill="#34d399" opacity="0.6"/>
+    <rect x="1380" y="314" width="230" height="20" rx="3" fill="#f87171" opacity="0.7"/>
+    <!-- Pct labels -->
+    <g font-size="11" font-family="ui-monospace,monospace">
+      <text x="1710" y="138" fill="#34d399" text-anchor="end">+3.21%</text>
+      <text x="1664" y="176" fill="#34d399" text-anchor="end">+2.19%</text>
+      <text x="1572" y="214" fill="#34d399" text-anchor="end">+1.42%</text>
+      <text x="1526" y="252" fill="#fbbf24" text-anchor="end">+0.87%</text>
+      <text x="1480" y="290" fill="#34d399" text-anchor="end">+0.44%</text>
+      <text x="1618" y="328" fill="#f87171" text-anchor="end">-1.08%</text>
+    </g>
+  </g>
+
+  <!-- ===== PANEL 4 — DAY P/L stat (middle-left) ===== -->
+  <rect x="60" y="400" width="460" height="280" rx="14" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+  <text x="90" y="436" fill="rgba(255,255,255,0.5)" font-size="11" font-family="ui-sans-serif,sans-serif" font-weight="600" letter-spacing="0.08em">DAY P/L</text>
+  <text x="90" y="490" fill="#34d399" font-size="42" font-family="ui-sans-serif,sans-serif" font-weight="700" filter="url(#numGlow)">+Rs 9,184</text>
+  <text x="90" y="518" fill="rgba(255,255,255,0.3)" font-size="13" font-family="ui-sans-serif,sans-serif">Today's gain across all portfolios</text>
+  <!-- Sparkline -->
+  <path clip-path="url(#p4clip)"
+    d="M 90,610 L 130,598 L 170,602 L 210,585 L 250,575 L 290,560 L 330,554 L 370,540 L 410,525 L 450,515 L 490,503 L 520,495"
+    fill="none" stroke="#34d399" stroke-width="1.5" opacity="0.6"/>
+  <path clip-path="url(#p4clip)"
+    d="M 90,610 L 130,598 L 170,602 L 210,585 L 250,575 L 290,560 L 330,554 L 370,540 L 410,525 L 450,515 L 490,503 L 520,495 L 520,660 L 90,660 Z"
+    fill="url(#areaGreen)" opacity="0.5"/>
+  <!-- Stats row -->
+  <line x1="90" y1="543" x2="500" y2="543" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  <g font-size="11" font-family="ui-sans-serif,sans-serif">
+    <text x="90" y="562" fill="rgba(255,255,255,0.3)">Invested</text>
+    <text x="90" y="577" fill="rgba(255,255,255,0.75)" font-weight="600" font-family="ui-monospace,monospace">Rs 8,24,000</text>
+    <text x="250" y="562" fill="rgba(255,255,255,0.3)">Total P/L</text>
+    <text x="250" y="577" fill="#34d399" font-weight="600" font-family="ui-monospace,monospace">+Rs 2,84,247</text>
+  </g>
+
+  <!-- ===== PANEL 5 — Holdings list (middle) ===== -->
+  <rect x="540" y="400" width="460" height="280" rx="14" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+  <text x="570" y="436" fill="rgba(255,255,255,0.5)" font-size="11" font-family="ui-sans-serif,sans-serif" font-weight="600" letter-spacing="0.08em">TOP HOLDINGS</text>
+  <!-- Column headers -->
+  <g fill="rgba(255,255,255,0.25)" font-size="10" font-family="ui-sans-serif,sans-serif">
+    <text x="570" y="460">Symbol</text>
+    <text x="720" y="460">Price</text>
+    <text x="820" y="460" text-anchor="end">Day %</text>
+    <text x="980" y="460" text-anchor="end">P/L</text>
+  </g>
+  <line x1="570" y1="465" x2="980" y2="465" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+  <!-- Holding rows -->
+  <g font-size="12" font-family="ui-sans-serif,sans-serif">
+    <!-- MEBL -->
+    <rect x="570" y="470" width="36" height="36" rx="8" fill="rgba(52,211,153,0.12)" stroke="rgba(52,211,153,0.2)" stroke-width="1"/>
+    <text x="588" y="492" fill="#34d399" font-size="9" font-weight="700" text-anchor="middle">MB</text>
+    <text x="616" y="486" fill="rgba(255,255,255,0.8)" font-weight="600">MEBL</text>
+    <text x="616" y="500" fill="rgba(255,255,255,0.3)" font-size="10">Meezan Bank</text>
+    <text x="720" y="488" fill="rgba(255,255,255,0.7)" font-family="ui-monospace,monospace">192.40</text>
+    <text x="820" y="488" fill="#34d399" font-family="ui-monospace,monospace" text-anchor="end">+1.82%</text>
+    <text x="980" y="488" fill="#34d399" font-family="ui-monospace,monospace" text-anchor="end">+3,412</text>
+    <line x1="570" y1="510" x2="980" y2="510" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+    <!-- OGDC -->
+    <rect x="570" y="515" width="36" height="36" rx="8" fill="rgba(56,189,248,0.12)" stroke="rgba(56,189,248,0.2)" stroke-width="1"/>
+    <text x="588" y="537" fill="#38bdf8" font-size="9" font-weight="700" text-anchor="middle">OG</text>
+    <text x="616" y="531" fill="rgba(255,255,255,0.8)" font-weight="600">OGDC</text>
+    <text x="616" y="545" fill="rgba(255,255,255,0.3)" font-size="10">Oil &amp; Gas Dev.</text>
+    <text x="720" y="533" fill="rgba(255,255,255,0.7)" font-family="ui-monospace,monospace">142.85</text>
+    <text x="820" y="533" fill="#34d399" font-family="ui-monospace,monospace" text-anchor="end">+1.29%</text>
+    <text x="980" y="533" fill="#34d399" font-family="ui-monospace,monospace" text-anchor="end">+2,841</text>
+    <line x1="570" y1="555" x2="980" y2="555" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+    <!-- LUCK -->
+    <rect x="570" y="560" width="36" height="36" rx="8" fill="rgba(167,139,250,0.12)" stroke="rgba(167,139,250,0.2)" stroke-width="1"/>
+    <text x="588" y="582" fill="#a78bfa" font-size="9" font-weight="700" text-anchor="middle">LK</text>
+    <text x="616" y="576" fill="rgba(255,255,255,0.8)" font-weight="600">LUCK</text>
+    <text x="616" y="590" fill="rgba(255,255,255,0.3)" font-size="10">Lucky Cement</text>
+    <text x="720" y="578" fill="rgba(255,255,255,0.7)" font-family="ui-monospace,monospace">1,048.60</text>
+    <text x="820" y="578" fill="#f87171" font-family="ui-monospace,monospace" text-anchor="end">-0.44%</text>
+    <text x="980" y="578" fill="#f87171" font-family="ui-monospace,monospace" text-anchor="end">-869</text>
+    <line x1="570" y1="600" x2="980" y2="600" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+    <!-- FFC -->
+    <rect x="570" y="605" width="36" height="36" rx="8" fill="rgba(251,191,36,0.12)" stroke="rgba(251,191,36,0.2)" stroke-width="1"/>
+    <text x="588" y="627" fill="#fbbf24" font-size="9" font-weight="700" text-anchor="middle">FF</text>
+    <text x="616" y="621" fill="rgba(255,255,255,0.8)" font-weight="600">FFC</text>
+    <text x="616" y="635" fill="rgba(255,255,255,0.3)" font-size="10">Fauji Fertilizer</text>
+    <text x="720" y="623" fill="rgba(255,255,255,0.7)" font-family="ui-monospace,monospace">88.15</text>
+    <text x="820" y="623" fill="#34d399" font-family="ui-monospace,monospace" text-anchor="end">+1.42%</text>
+    <text x="980" y="623" fill="#34d399" font-family="ui-monospace,monospace" text-anchor="end">+1,800</text>
+  </g>
+
+  <!-- ===== PANEL 6 — Sparklines grid (middle-right) ===== -->
+  <rect x="1020" y="400" width="850" height="280" rx="14" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+  <text x="1050" y="436" fill="rgba(255,255,255,0.5)" font-size="11" font-family="ui-sans-serif,sans-serif" font-weight="600" letter-spacing="0.08em">WATCHLIST</text>
+  <!-- 6 mini sparkline cards in a 3x2 grid -->
+  <!-- Row 1 -->
+  <!-- ENGRO -->
+  <rect x="1050" y="447" width="240" height="100" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  <text x="1070" y="468" fill="rgba(255,255,255,0.7)" font-size="11" font-weight="600" font-family="ui-sans-serif,sans-serif">ENGRO</text>
+  <text x="1070" y="482" fill="rgba(255,255,255,0.3)" font-size="9" font-family="ui-sans-serif,sans-serif">Engro Corp</text>
+  <text x="1280" y="468" fill="rgba(255,255,255,0.8)" font-size="13" font-weight="600" font-family="ui-monospace,monospace" text-anchor="end">284.60</text>
+  <text x="1280" y="482" fill="#34d399" font-size="10" font-family="ui-monospace,monospace" text-anchor="end">+0.75%</text>
+  <path d="M 1070,530 L 1090,522 L 1110,526 L 1130,515 L 1150,508 L 1170,512 L 1190,500 L 1210,492 L 1230,486 L 1250,478 L 1270,470 L 1280,466"
+    fill="none" stroke="#34d399" stroke-width="1.5" opacity="0.8"/>
+  <path d="M 1070,530 L 1090,522 L 1110,526 L 1130,515 L 1150,508 L 1170,512 L 1190,500 L 1210,492 L 1230,486 L 1250,478 L 1270,470 L 1280,466 L 1280,538 L 1070,538 Z"
+    fill="url(#areaGreen)" opacity="0.4"/>
+
+  <!-- PPL -->
+  <rect x="1305" y="447" width="240" height="100" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  <text x="1325" y="468" fill="rgba(255,255,255,0.7)" font-size="11" font-weight="600" font-family="ui-sans-serif,sans-serif">PPL</text>
+  <text x="1325" y="482" fill="rgba(255,255,255,0.3)" font-size="9" font-family="ui-sans-serif,sans-serif">Pakistan Petroleum</text>
+  <text x="1535" y="468" fill="rgba(255,255,255,0.8)" font-size="13" font-weight="600" font-family="ui-monospace,monospace" text-anchor="end">96.30</text>
+  <text x="1535" y="482" fill="#f87171" font-size="10" font-family="ui-monospace,monospace" text-anchor="end">-0.21%</text>
+  <path d="M 1325,495 L 1345,492 L 1365,488 L 1385,494 L 1405,501 L 1425,498 L 1445,505 L 1465,510 L 1485,508 L 1505,514 L 1525,518 L 1535,521"
+    fill="none" stroke="#f87171" stroke-width="1.5" opacity="0.8"/>
+  <path d="M 1325,495 L 1345,492 L 1365,488 L 1385,494 L 1405,501 L 1425,498 L 1445,505 L 1465,510 L 1485,508 L 1505,514 L 1525,518 L 1535,521 L 1535,538 L 1325,538 Z"
+    fill="url(#areaRed)" opacity="0.4"/>
+
+  <!-- HUBC -->
+  <rect x="1560" y="447" width="280" height="100" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  <text x="1580" y="468" fill="rgba(255,255,255,0.7)" font-size="11" font-weight="600" font-family="ui-sans-serif,sans-serif">HUBC</text>
+  <text x="1580" y="482" fill="rgba(255,255,255,0.3)" font-size="9" font-family="ui-sans-serif,sans-serif">Hub Power</text>
+  <text x="1820" y="468" fill="rgba(255,255,255,0.8)" font-size="13" font-weight="600" font-family="ui-monospace,monospace" text-anchor="end">68.90</text>
+  <text x="1820" y="482" fill="#38bdf8" font-size="10" font-family="ui-monospace,monospace" text-anchor="end">+0.29%</text>
+  <path d="M 1580,510 L 1600,508 L 1620,506 L 1640,502 L 1660,504 L 1680,498 L 1700,494 L 1720,490 L 1740,487 L 1760,483 L 1790,479 L 1820,476"
+    fill="none" stroke="#38bdf8" stroke-width="1.5" opacity="0.8"/>
+  <path d="M 1580,510 L 1600,508 L 1620,506 L 1640,502 L 1660,504 L 1680,498 L 1700,494 L 1720,490 L 1740,487 L 1760,483 L 1790,479 L 1820,476 L 1820,538 L 1580,538 Z"
+    fill="url(#areaSky)" opacity="0.4"/>
+
+  <!-- Row 2 -->
+  <!-- MCB -->
+  <rect x="1050" y="558" width="240" height="100" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  <text x="1070" y="579" fill="rgba(255,255,255,0.7)" font-size="11" font-weight="600" font-family="ui-sans-serif,sans-serif">MCB</text>
+  <text x="1070" y="593" fill="rgba(255,255,255,0.3)" font-size="9" font-family="ui-sans-serif,sans-serif">MCB Bank</text>
+  <text x="1280" y="579" fill="rgba(255,255,255,0.8)" font-size="13" font-weight="600" font-family="ui-monospace,monospace" text-anchor="end">248.00</text>
+  <text x="1280" y="593" fill="#34d399" font-size="10" font-family="ui-monospace,monospace" text-anchor="end">+2.14%</text>
+  <path d="M 1070,642 L 1100,634 L 1130,638 L 1155,622 L 1180,610 L 1200,604 L 1220,594 L 1240,585 L 1260,576 L 1280,565"
+    fill="none" stroke="#34d399" stroke-width="1.5" opacity="0.8"/>
+
+  <!-- UBL -->
+  <rect x="1305" y="558" width="240" height="100" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  <text x="1325" y="579" fill="rgba(255,255,255,0.7)" font-size="11" font-weight="600" font-family="ui-sans-serif,sans-serif">UBL</text>
+  <text x="1325" y="593" fill="rgba(255,255,255,0.3)" font-size="9" font-family="ui-sans-serif,sans-serif">United Bank</text>
+  <text x="1535" y="579" fill="rgba(255,255,255,0.8)" font-size="13" font-weight="600" font-family="ui-monospace,monospace" text-anchor="end">218.50</text>
+  <text x="1535" y="593" fill="#a78bfa" font-size="10" font-family="ui-monospace,monospace" text-anchor="end">+0.88%</text>
+  <path d="M 1325,638 L 1355,630 L 1385,635 L 1415,620 L 1445,612 L 1470,606 L 1495,596 L 1535,585"
+    fill="none" stroke="#a78bfa" stroke-width="1.5" opacity="0.8"/>
+
+  <!-- MARI -->
+  <rect x="1560" y="558" width="280" height="100" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  <text x="1580" y="579" fill="rgba(255,255,255,0.7)" font-size="11" font-weight="600" font-family="ui-sans-serif,sans-serif">MARI</text>
+  <text x="1580" y="593" fill="rgba(255,255,255,0.3)" font-size="9" font-family="ui-sans-serif,sans-serif">Mari Petroleum</text>
+  <text x="1820" y="579" fill="rgba(255,255,255,0.8)" font-size="13" font-weight="600" font-family="ui-monospace,monospace" text-anchor="end">1,826.00</text>
+  <text x="1820" y="593" fill="#fbbf24" font-size="10" font-family="ui-monospace,monospace" text-anchor="end">+0.54%</text>
+  <path d="M 1580,640 L 1610,632 L 1640,628 L 1660,618 L 1690,610 L 1720,605 L 1760,595 L 1820,586"
+    fill="none" stroke="#fbbf24" stroke-width="1.5" opacity="0.8"/>
+
+  <!-- ===== PANEL 7 — P/L Calendar (bottom-left) ===== -->
+  <rect x="60" y="700" width="590" height="310" rx="14" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+  <text x="90" y="736" fill="rgba(255,255,255,0.5)" font-size="11" font-family="ui-sans-serif,sans-serif" font-weight="600" letter-spacing="0.08em">P/L CALENDAR — JANUARY 2025</text>
+  <!-- Day headers -->
+  <g fill="rgba(255,255,255,0.25)" font-size="9" font-family="ui-sans-serif,sans-serif" text-anchor="middle">
+    <text x="110" y="756">Mon</text><text x="190" y="756">Tue</text><text x="270" y="756">Wed</text>
+    <text x="350" y="756">Thu</text><text x="430" y="756">Fri</text>
+  </g>
+  <!-- Calendar cells: 5 cols x 4 rows -->
+  <!-- Row 1 (Jan 6-10) -->
+  <g rx="5">
+    <rect x="90" y="762" width="60" height="44" rx="5" fill="rgba(52,211,153,0.18)" stroke="rgba(52,211,153,0.2)" stroke-width="1"/>
+    <text x="120" y="780" fill="rgba(255,255,255,0.5)" font-size="9" text-anchor="middle" font-family="ui-sans-serif,sans-serif">6</text>
+    <text x="120" y="798" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle" font-family="ui-monospace,monospace">+3,412</text>
+
+    <rect x="170" y="762" width="60" height="44" rx="5" fill="rgba(52,211,153,0.25)" stroke="rgba(52,211,153,0.25)" stroke-width="1"/>
+    <text x="200" y="780" fill="rgba(255,255,255,0.5)" font-size="9" text-anchor="middle" font-family="ui-sans-serif,sans-serif">7</text>
+    <text x="200" y="798" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle" font-family="ui-monospace,monospace">+6,841</text>
+
+    <rect x="250" y="762" width="60" height="44" rx="5" fill="rgba(248,113,113,0.18)" stroke="rgba(248,113,113,0.2)" stroke-width="1"/>
+    <text x="280" y="780" fill="rgba(255,255,255,0.5)" font-size="9" text-anchor="middle" font-family="ui-sans-serif,sans-serif">8</text>
+    <text x="280" y="798" fill="#f87171" font-size="10" font-weight="600" text-anchor="middle" font-family="ui-monospace,monospace">-2,119</text>
+
+    <rect x="330" y="762" width="60" height="44" rx="5" fill="rgba(52,211,153,0.15)" stroke="rgba(52,211,153,0.15)" stroke-width="1"/>
+    <text x="360" y="780" fill="rgba(255,255,255,0.5)" font-size="9" text-anchor="middle" font-family="ui-sans-serif,sans-serif">9</text>
+    <text x="360" y="798" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle" font-family="ui-monospace,monospace">+1,892</text>
+
+    <rect x="410" y="762" width="60" height="44" rx="5" fill="rgba(52,211,153,0.30)" stroke="rgba(52,211,153,0.3)" stroke-width="1"/>
+    <text x="440" y="780" fill="rgba(255,255,255,0.5)" font-size="9" text-anchor="middle" font-family="ui-sans-serif,sans-serif">10</text>
+    <text x="440" y="798" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle" font-family="ui-monospace,monospace">+9,104</text>
+  </g>
+  <!-- Row 2 -->
+  <g>
+    <rect x="90" y="814" width="60" height="44" rx="5" fill="rgba(52,211,153,0.20)" stroke="rgba(52,211,153,0.2)" stroke-width="1"/>
+    <text x="120" y="832" fill="rgba(255,255,255,0.5)" font-size="9" text-anchor="middle" font-family="ui-sans-serif,sans-serif">13</text>
+    <text x="120" y="850" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle" font-family="ui-monospace,monospace">+4,700</text>
+
+    <rect x="170" y="814" width="60" height="44" rx="5" fill="rgba(248,113,113,0.22)" stroke="rgba(248,113,113,0.2)" stroke-width="1"/>
+    <text x="200" y="832" fill="rgba(255,255,255,0.5)" font-size="9" text-anchor="middle" font-family="ui-sans-serif,sans-serif">14</text>
+    <text x="200" y="850" fill="#f87171" font-size="10" font-weight="600" text-anchor="middle" font-family="ui-monospace,monospace">-4,512</text>
+
+    <rect x="250" y="814" width="60" height="44" rx="5" fill="rgba(52,211,153,0.22)" stroke="rgba(52,211,153,0.2)" stroke-width="1"/>
+    <text x="280" y="832" fill="rgba(255,255,255,0.5)" font-size="9" text-anchor="middle" font-family="ui-sans-serif,sans-serif">15</text>
+    <text x="280" y="850" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle" font-family="ui-monospace,monospace">+5,231</text>
+
+    <rect x="330" y="814" width="60" height="44" rx="5" fill="rgba(52,211,153,0.28)" stroke="rgba(52,211,153,0.25)" stroke-width="1"/>
+    <text x="360" y="832" fill="rgba(255,255,255,0.5)" font-size="9" text-anchor="middle" font-family="ui-sans-serif,sans-serif">16</text>
+    <text x="360" y="850" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle" font-family="ui-monospace,monospace">+8,102</text>
+
+    <rect x="410" y="814" width="60" height="44" rx="5" fill="rgba(52,211,153,0.12)" stroke="rgba(52,211,153,0.12)" stroke-width="1"/>
+    <text x="440" y="832" fill="rgba(255,255,255,0.5)" font-size="9" text-anchor="middle" font-family="ui-sans-serif,sans-serif">17</text>
+    <text x="440" y="850" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle" font-family="ui-monospace,monospace">+2,140</text>
+  </g>
+  <!-- Row 3 -->
+  <g>
+    <rect x="90" y="866" width="60" height="44" rx="5" fill="rgba(52,211,153,0.35)" stroke="rgba(52,211,153,0.3)" stroke-width="1"/>
+    <text x="120" y="884" fill="rgba(255,255,255,0.5)" font-size="9" text-anchor="middle" font-family="ui-sans-serif,sans-serif">20</text>
+    <text x="120" y="902" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle" font-family="ui-monospace,monospace">+11,240</text>
+
+    <rect x="170" y="866" width="60" height="44" rx="5" fill="rgba(52,211,153,0.25)" stroke="rgba(52,211,153,0.22)" stroke-width="1"/>
+    <text x="200" y="884" fill="rgba(255,255,255,0.5)" font-size="9" text-anchor="middle" font-family="ui-sans-serif,sans-serif">21</text>
+    <text x="200" y="902" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle" font-family="ui-monospace,monospace">+6,908</text>
+
+    <rect x="250" y="866" width="60" height="44" rx="5" fill="rgba(248,113,113,0.15)" stroke="rgba(248,113,113,0.15)" stroke-width="1"/>
+    <text x="280" y="884" fill="rgba(255,255,255,0.5)" font-size="9" text-anchor="middle" font-family="ui-sans-serif,sans-serif">22</text>
+    <text x="280" y="902" fill="#f87171" font-size="10" font-weight="600" text-anchor="middle" font-family="ui-monospace,monospace">-1,440</text>
+
+    <!-- Today highlight -->
+    <rect x="330" y="866" width="60" height="44" rx="5" fill="rgba(52,211,153,0.22)" stroke="#34d399" stroke-width="1.5"/>
+    <text x="360" y="884" fill="#6ee7b7" font-size="9" font-weight="600" text-anchor="middle" font-family="ui-sans-serif,sans-serif">23</text>
+    <text x="360" y="902" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle" font-family="ui-monospace,monospace">+9,184</text>
+
+    <rect x="410" y="866" width="60" height="44" rx="5" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+    <text x="440" y="884" fill="rgba(255,255,255,0.2)" font-size="9" text-anchor="middle" font-family="ui-sans-serif,sans-serif">24</text>
+    <text x="440" y="902" fill="rgba(255,255,255,0.15)" font-size="10" font-family="ui-mono,monospace" text-anchor="middle">—</text>
+  </g>
+  <!-- Month total -->
+  <line x1="90" y1="920" x2="550" y2="920" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  <text x="90" y="940" fill="rgba(255,255,255,0.35)" font-size="11" font-family="ui-sans-serif,sans-serif">January total</text>
+  <text x="550" y="940" fill="#34d399" font-size="13" font-weight="600" font-family="ui-monospace,monospace" text-anchor="end">+Rs 60,783</text>
+  <text x="90" y="998" fill="rgba(255,255,255,0.18)" font-size="10" font-family="ui-sans-serif,sans-serif">Win rate: 78%</text>
+  <text x="200" y="998" fill="rgba(255,255,255,0.18)" font-size="10" font-family="ui-sans-serif,sans-serif">Best day: +11,240</text>
+  <text x="360" y="998" fill="rgba(255,255,255,0.18)" font-size="10" font-family="ui-sans-serif,sans-serif">Worst: -4,512</text>
+
+  <!-- ===== PANEL 8 — Alert feed (bottom-middle) ===== -->
+  <rect x="670" y="700" width="380" height="310" rx="14" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+  <text x="700" y="736" fill="rgba(255,255,255,0.5)" font-size="11" font-family="ui-sans-serif,sans-serif" font-weight="600" letter-spacing="0.08em">ALERTS</text>
+  <circle cx="755" cy="730" r="4" fill="#34d399" opacity="0.8"/>
+  <circle cx="755" cy="730" r="7" fill="none" stroke="rgba(52,211,153,0.3)" stroke-width="1"/>
+  <!-- Alert rows -->
+  <g font-size="11" font-family="ui-sans-serif,sans-serif">
+    <rect x="700" y="748" width="320" height="56" rx="8" fill="rgba(52,211,153,0.06)" stroke="rgba(52,211,153,0.12)" stroke-width="1"/>
+    <circle cx="720" cy="768" r="5" fill="#34d399" opacity="0.7"/>
+    <text x="734" y="764" fill="rgba(255,255,255,0.75)" font-weight="600">MEBL crossed 195</text>
+    <text x="734" y="779" fill="rgba(255,255,255,0.35)" font-size="10">Price alert · 09:42 AM</text>
+    <text x="1010" y="764" fill="#34d399" font-size="10" text-anchor="end">▲ Target</text>
+
+    <rect x="700" y="813" width="320" height="56" rx="8" fill="rgba(251,191,36,0.06)" stroke="rgba(251,191,36,0.12)" stroke-width="1"/>
+    <circle cx="720" cy="833" r="5" fill="#fbbf24" opacity="0.7"/>
+    <text x="734" y="829" fill="rgba(255,255,255,0.75)" font-weight="600">FFC earnings today</text>
+    <text x="734" y="844" fill="rgba(255,255,255,0.35)" font-size="10">Event alert · After close</text>
+    <text x="1010" y="829" fill="#fbbf24" font-size="10" text-anchor="end">📅 Event</text>
+
+    <rect x="700" y="878" width="320" height="56" rx="8" fill="rgba(248,113,113,0.06)" stroke="rgba(248,113,113,0.12)" stroke-width="1"/>
+    <circle cx="720" cy="898" r="5" fill="#f87171" opacity="0.7"/>
+    <text x="734" y="894" fill="rgba(255,255,255,0.75)" font-weight="600">LUCK below 1,000</text>
+    <text x="734" y="909" fill="rgba(255,255,255,0.35)" font-size="10">Stop-loss alert · 11:15 AM</text>
+    <text x="1010" y="894" fill="#f87171" font-size="10" text-anchor="end">▼ Stop</text>
+
+    <rect x="700" y="943" width="320" height="50" rx="8" fill="rgba(56,189,248,0.06)" stroke="rgba(56,189,248,0.12)" stroke-width="1"/>
+    <circle cx="720" cy="961" r="5" fill="#38bdf8" opacity="0.7"/>
+    <text x="734" y="957" fill="rgba(255,255,255,0.75)" font-weight="600">KSE-100 +1% session</text>
+    <text x="734" y="972" fill="rgba(255,255,255,0.35)" font-size="10">Market alert · 10:00 AM</text>
+  </g>
+
+  <!-- ===== PANEL 9 — Market stats (bottom-right) ===== -->
+  <rect x="1070" y="700" width="800" height="310" rx="14" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+  <text x="1100" y="736" fill="rgba(255,255,255,0.5)" font-size="11" font-family="ui-sans-serif,sans-serif" font-weight="600" letter-spacing="0.08em">MARKET SNAPSHOT</text>
+  <!-- 4 stat tiles in a 2x2 -->
+  <g font-family="ui-monospace,monospace">
+    <!-- KSE-100 -->
+    <rect x="1100" y="750" width="360" height="110" rx="10" fill="rgba(52,211,153,0.06)" stroke="rgba(52,211,153,0.12)" stroke-width="1"/>
+    <text x="1130" y="778" fill="rgba(255,255,255,0.45)" font-size="10" font-family="ui-sans-serif,sans-serif" font-weight="600" letter-spacing="0.06em">KSE-100</text>
+    <text x="1130" y="812" fill="rgba(255,255,255,0.92)" font-size="28" font-family="ui-sans-serif,sans-serif" font-weight="700">118,321</text>
+    <rect x="1250" y="760" width="62" height="20" rx="4" fill="rgba(52,211,153,0.15)"/>
+    <text x="1281" y="774" fill="#34d399" font-size="11" text-anchor="middle" font-family="ui-sans-serif,sans-serif" font-weight="600">+1.29%</text>
+    <text x="1130" y="840" fill="rgba(255,255,255,0.25)" font-size="10" font-family="ui-sans-serif,sans-serif">Volume: 412M shares</text>
+    <!-- Tiny spark -->
+    <path d="M 1310,820 L 1325,812 L 1340,814 L 1355,806 L 1370,800 L 1385,792 L 1400,785 L 1420,778 L 1440,772 L 1450,768"
+      fill="none" stroke="#34d399" stroke-width="1.5" opacity="0.7"/>
+
+    <!-- KSE-30 -->
+    <rect x="1480" y="750" width="360" height="110" rx="10" fill="rgba(56,189,248,0.06)" stroke="rgba(56,189,248,0.12)" stroke-width="1"/>
+    <text x="1510" y="778" fill="rgba(255,255,255,0.45)" font-size="10" font-family="ui-sans-serif,sans-serif" font-weight="600" letter-spacing="0.06em">KSE-30</text>
+    <text x="1510" y="812" fill="rgba(255,255,255,0.92)" font-size="28" font-family="ui-sans-serif,sans-serif" font-weight="700">41,482</text>
+    <rect x="1610" y="760" width="62" height="20" rx="4" fill="rgba(56,189,248,0.15)"/>
+    <text x="1641" y="774" fill="#38bdf8" font-size="11" text-anchor="middle" font-family="ui-sans-serif,sans-serif" font-weight="600">+0.94%</text>
+    <text x="1510" y="840" fill="rgba(255,255,255,0.25)" font-size="10" font-family="ui-sans-serif,sans-serif">Value traded: Rs 18.2B</text>
+
+    <!-- Gainers/Losers -->
+    <rect x="1100" y="872" width="360" height="110" rx="10" fill="rgba(167,139,250,0.05)" stroke="rgba(167,139,250,0.1)" stroke-width="1"/>
+    <text x="1130" y="900" fill="rgba(255,255,255,0.45)" font-size="10" font-family="ui-sans-serif,sans-serif" font-weight="600" letter-spacing="0.06em">GAINERS / LOSERS</text>
+    <text x="1130" y="936" fill="#34d399" font-size="28" font-family="ui-sans-serif,sans-serif" font-weight="700">182</text>
+    <text x="1180" y="936" fill="rgba(255,255,255,0.25)" font-size="18" font-family="ui-sans-serif,sans-serif">/</text>
+    <text x="1200" y="936" fill="#f87171" font-size="28" font-family="ui-sans-serif,sans-serif" font-weight="700">94</text>
+    <text x="1130" y="960" fill="rgba(255,255,255,0.25)" font-size="10" font-family="ui-sans-serif,sans-serif">66% of stocks advancing</text>
+
+    <!-- Session timing -->
+    <rect x="1480" y="872" width="360" height="110" rx="10" fill="rgba(251,191,36,0.05)" stroke="rgba(251,191,36,0.1)" stroke-width="1"/>
+    <text x="1510" y="900" fill="rgba(255,255,255,0.45)" font-size="10" font-family="ui-sans-serif,sans-serif" font-weight="600" letter-spacing="0.06em">PSX SESSION</text>
+    <circle cx="1510" cy="930" r="5" fill="#34d399" opacity="0.8"/>
+    <text x="1524" y="934" fill="#34d399" font-size="13" font-weight="600" font-family="ui-sans-serif,sans-serif">OPEN</text>
+    <text x="1510" y="958" fill="rgba(255,255,255,0.3)" font-size="10" font-family="ui-sans-serif,sans-serif">09:30 AM – 03:30 PM PKT</text>
+    <text x="1510" y="974" fill="rgba(255,255,255,0.2)" font-size="10" font-family="ui-sans-serif,sans-serif">Closes in 4h 22m</text>
+  </g>
+
+  <!-- Attribution -->
+  <text x="60" y="1062" fill="rgba(255,255,255,0.08)" font-size="11" font-family="ui-monospace,monospace">STOCKLI · LIVE PORTFOLIO COMMAND CENTER · PSX + GLOBAL MARKETS</text>
+</svg>

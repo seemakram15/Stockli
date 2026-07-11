@@ -1,14 +1,18 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowRight,
   Brain,
+  CalendarRange,
   FileText,
   Gauge,
+  Globe2,
   Layers,
+  LineChart,
   Lock,
   Quote,
   Radio,
@@ -17,8 +21,10 @@ import {
   Star,
   TrendingDown,
   TrendingUp,
+  type LucideIcon,
 } from "lucide-react";
 import { InstallAppButton } from "@/components/pwa/install-app-button";
+import { Sparkline } from "@/components/landing/landing-live";
 import { Reveal } from "@/components/landing/landing-motion";
 import { StockLogo } from "@/components/landing/stock-logo";
 import { Button } from "@/components/ui/button";
@@ -81,7 +87,7 @@ export function MarketLeaderboard({
           </p>
           <Button
             asChild
-            className="mt-6 gap-2 bg-gradient-to-r from-emerald-500 to-teal-400 text-white shadow-md shadow-emerald-500/25 hover:from-emerald-500 hover:to-emerald-300"
+            className="btn-shine mt-6 gap-2 bg-gradient-to-r from-emerald-500 to-teal-400 text-white shadow-md shadow-emerald-500/25 hover:from-emerald-500 hover:to-emerald-300"
           >
             <Link href={ctaHref}>
               {authed ? "Open live market" : "Sign in to open market"}
@@ -150,6 +156,11 @@ export function MarketLeaderboard({
                       <p className="truncate text-sm font-semibold">{row.symbol}</p>
                       <p className="truncate text-xs text-muted-foreground">{row.name}</p>
                     </div>
+                    <Sparkline
+                      seed={`${row.symbol}-${tab}`}
+                      up={up}
+                      className="hidden shrink-0 md:block"
+                    />
                     <p className="hidden text-sm font-medium tabular-nums text-muted-foreground sm:block">
                       Rs {row.price}
                     </p>
@@ -273,7 +284,7 @@ export function MobileSection() {
             <InstallAppButton
               label="Install app"
               size="lg"
-              className="gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/25 hover:from-violet-500 hover:to-fuchsia-400"
+              className="btn-shine gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/25 hover:from-violet-500 hover:to-fuchsia-400"
             />
             <Button asChild size="lg" variant="outline">
               <Link href="/signup">Create free account</Link>
@@ -491,7 +502,7 @@ export function FundamentalsShowcase({ authed }: { authed: boolean }) {
 
                 <Button
                   asChild
-                  className="mt-5 w-full gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/25 hover:from-violet-500 hover:to-fuchsia-400"
+                  className="btn-shine mt-5 w-full gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/25 hover:from-violet-500 hover:to-fuchsia-400"
                 >
                   <Link href={toolsHref}>
                     {authed ? "Open fundamentals & analyzer" : "Sign in to open tools"}
@@ -501,6 +512,291 @@ export function FundamentalsShowcase({ authed }: { authed: boolean }) {
               </div>
             </div>
           </Reveal>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- Screenshot showcase ---------------- */
+
+type ShowcaseFeature = {
+  id: string;
+  number: string;
+  icon: LucideIcon;
+  eyebrow: string;
+  title: string;
+  desc: string;
+  chips: string[];
+  image: string;
+  imgW: number;
+  imgH: number;
+  objPos: string;
+  accentCls: string;
+  dotCls: string;
+};
+
+const SHOWCASE_FEATURES: ShowcaseFeature[] = [
+  {
+    id: "world",
+    number: "01",
+    icon: Globe2,
+    eyebrow: "Global Markets",
+    title: "World market heat map",
+    desc: "See how 51 stock exchanges perform today — deeper green for stronger sessions, red for softer. Filter by Asia Pacific, Europe, Americas or MENA in one glance.",
+    chips: ["51 exchanges", "Live performance", "Region filters", "Colour-coded"],
+    image: "/landing/shot-world.png",
+    imgW: 3000,
+    imgH: 9144,
+    objPos: "50% 12%",
+    accentCls: "border-sky-500/25 bg-sky-500/10 text-sky-600 dark:text-sky-300",
+    dotCls: "bg-sky-400",
+  },
+  {
+    id: "analyzer",
+    number: "02",
+    icon: LineChart,
+    eyebrow: "Stock Research",
+    title: "Analyze & compare PSX stocks",
+    desc: "Search any KSE-100 or KSE-30 stock, compare two side-by-side, or browse sector leaders — powered by the PSX fundamentals decision engine.",
+    chips: ["Single analysis", "Side-by-side compare", "Sector leaders", "KSE-100 filter"],
+    image: "/landing/shot-analyzer.png",
+    imgW: 6000,
+    imgH: 5220,
+    objPos: "50% 18%",
+    accentCls: "border-violet-500/25 bg-violet-500/10 text-violet-600 dark:text-violet-300",
+    dotCls: "bg-violet-400",
+  },
+  {
+    id: "fundamentals",
+    number: "03",
+    icon: FileText,
+    eyebrow: "Financial Data",
+    title: "Full financial statements",
+    desc: "Income statements, balance sheets, cash flows and ratios — annual or quarterly, with trend sparklines and 20+ years of history for every PSX company.",
+    chips: ["Income statement", "Balance sheet", "Cash flow", "Ratios", "Trend lines"],
+    image: "/landing/shot-fundamentals.png",
+    imgW: 3000,
+    imgH: 5518,
+    objPos: "50% 22%",
+    accentCls: "border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-300",
+    dotCls: "bg-amber-400",
+  },
+  {
+    id: "charts",
+    number: "04",
+    icon: LineChart,
+    eyebrow: "Portfolio Analysis",
+    title: "Your portfolios vs KSE-100",
+    desc: "Compare monthly returns against the index, view allocation by holding and sector with an interactive donut, and see top holdings sorted by shares.",
+    chips: ["Returns chart", "Allocation donut", "Top holdings", "Sector breakdown"],
+    image: "/landing/shot-charts.png",
+    imgW: 3000,
+    imgH: 4890,
+    objPos: "50% 20%",
+    accentCls: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
+    dotCls: "bg-emerald-400",
+  },
+  {
+    id: "calendar",
+    number: "05",
+    icon: CalendarRange,
+    eyebrow: "Portfolio P/L",
+    title: "Daily gain / loss calendar",
+    desc: "Every PSX session's portfolio P/L visualised as a colour-coded calendar — deeper green for bigger gains, red for down sessions. Persistent across all months.",
+    chips: ["Daily P/L", "Session history", "All portfolios", "Live today"],
+    image: "/landing/shot-calendar.png",
+    imgW: 3000,
+    imgH: 4890,
+    objPos: "50% 20%",
+    accentCls: "border-rose-500/25 bg-rose-500/10 text-rose-600 dark:text-rose-300",
+    dotCls: "bg-rose-400",
+  },
+];
+
+const INTERVAL_MS = 5200;
+
+export function ScreenshotShowcase() {
+  const [active, setActive] = React.useState(0);
+  const [paused, setPaused] = React.useState(false);
+  const reduce = useReducedMotion();
+  const count = SHOWCASE_FEATURES.length;
+  const timerKey = React.useRef(0);
+
+  React.useEffect(() => {
+    if (paused || reduce) return;
+    const id = window.setInterval(
+      () => setActive((i) => (i + 1) % count),
+      INTERVAL_MS,
+    );
+    return () => window.clearInterval(id);
+  }, [paused, reduce, count]);
+
+  const pick = (i: number) => {
+    setActive(i);
+    timerKey.current += 1;
+    setPaused(false);
+  };
+
+  const feature = SHOWCASE_FEATURES[active];
+
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-24">
+      <Reveal className="mb-10 max-w-2xl">
+        <p className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+          <Sparkles className="size-4" />
+          See exactly what you&apos;re getting
+        </p>
+        <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+          Every screen moves the investor forward.
+        </h2>
+        <p className="mt-4 text-base leading-7 text-muted-foreground">
+          Real screenshots from {APP_NAME} — markets, portfolios, research and
+          P/L history each keep the next action close.
+        </p>
+      </Reveal>
+
+      <div
+        className="grid gap-6 lg:grid-cols-[1fr_1.75fr] lg:items-start"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
+        {/* ── Feature tab list (desktop: vertical | mobile: dot nav) ── */}
+        <div className="hidden space-y-2 lg:block">
+          {SHOWCASE_FEATURES.map((f, i) => {
+            const isActive = i === active;
+            const Icon = f.icon;
+            return (
+              <motion.button
+                key={f.id}
+                type="button"
+                onClick={() => pick(i)}
+                className={cn(
+                  "group w-full rounded-2xl border p-4 text-left transition-all duration-200",
+                  isActive
+                    ? "border-primary/30 bg-primary/[0.07] shadow-sm"
+                    : "border-border bg-card hover:border-primary/20 hover:bg-muted/50",
+                )}
+                whileTap={reduce ? undefined : { scale: 0.98 }}
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className={cn(
+                      "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold transition-colors",
+                      isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {f.number}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <Icon className={cn("size-3.5 shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
+                      <p className={cn("text-sm font-semibold transition-colors", isActive ? "text-foreground" : "text-muted-foreground")}>
+                        {f.title}
+                      </p>
+                    </div>
+
+                    <AnimatePresence initial={false}>
+                      {isActive && (
+                        <motion.p
+                          initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                          animate={{ opacity: 1, height: "auto", marginTop: 6 }}
+                          exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                          className="text-xs leading-5 text-muted-foreground"
+                        >
+                          {f.desc}
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
+
+                    {/* progress bar */}
+                    {isActive && !paused && !reduce && (
+                      <motion.div className="mt-2.5 h-0.5 overflow-hidden rounded-full bg-primary/15">
+                        <motion.div
+                          key={`prog-${active}-${timerKey.current}`}
+                          className="h-full rounded-full bg-primary"
+                          initial={{ width: "0%" }}
+                          animate={{ width: "100%" }}
+                          transition={{ duration: INTERVAL_MS / 1000, ease: "linear" }}
+                        />
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
+              </motion.button>
+            );
+          })}
+        </div>
+
+        {/* ── Screenshot panel ── */}
+        <div className="relative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={active}
+              initial={reduce ? false : { opacity: 0, y: 14, scale: 0.985 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={reduce ? false : { opacity: 0, y: -10, scale: 0.99 }}
+              transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+              className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl ring-1 ring-black/[0.06] dark:ring-white/[0.06]"
+            >
+              {/* Browser chrome bar */}
+              <div className="flex items-center gap-1.5 border-b border-border bg-muted/60 px-4 py-2.5">
+                <span className="size-2.5 rounded-full bg-rose-400/70" />
+                <span className="size-2.5 rounded-full bg-amber-400/70" />
+                <span className="size-2.5 rounded-full bg-emerald-400/70" />
+                <span className="ml-3 flex-1 truncate rounded-md border border-border/60 bg-background/70 px-3 py-0.5 text-[11px] text-muted-foreground/80">
+                  mystockli.qzz.io
+                </span>
+              </div>
+
+              {/* Screenshot — cropped to feature content */}
+              <div className="relative aspect-[16/10] overflow-hidden bg-muted">
+                <Image
+                  src={feature.image}
+                  alt={feature.title}
+                  fill
+                  className="object-cover"
+                  style={{ objectPosition: feature.objPos }}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1280px) 65vw, 900px"
+                  priority={active === 0}
+                />
+                {/* Subtle bottom fade so it doesn't hard-clip */}
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-card/60 to-transparent" />
+              </div>
+
+              {/* Feature eyebrow footer */}
+              <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5">
+                <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold", feature.accentCls)}>
+                  <span className={cn("size-1.5 rounded-full", feature.dotCls)} />
+                  {feature.eyebrow}
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {feature.chips.slice(0, 3).map((chip) => (
+                    <span key={chip} className="rounded-full border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                      {chip}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Mobile dot navigation */}
+          <div className="mt-4 flex items-center justify-center gap-2 lg:hidden">
+            {SHOWCASE_FEATURES.map((f, i) => (
+              <button
+                key={f.id}
+                type="button"
+                aria-label={`Show ${f.title}`}
+                onClick={() => pick(i)}
+                className={cn(
+                  "h-1.5 rounded-full transition-all",
+                  i === active ? "w-7 bg-primary" : "w-2.5 bg-muted-foreground/30 hover:bg-muted-foreground/50",
+                )}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </section>

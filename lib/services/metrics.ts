@@ -14,7 +14,8 @@ export function computeHoldingMetrics(
   holding: Holding | HoldingWithMetrics,
   ticker: Ticker | null,
   quote: Quote | null,
-  historicalPLBase?: number | null
+  historicalPLBase?: number | null,
+  hasTransactionHistory = false
 ): HoldingWithMetrics {
   const price = effectiveQuotePrice(quote) ?? holding.avg_buy_price;
   const marketValue = price * holding.quantity;
@@ -29,7 +30,8 @@ export function computeHoldingMetrics(
   const unrealizedPL = adjustedUnrealizedPL(
     rawUnrealizedPL,
     dayChange,
-    historicalTotalPL
+    historicalTotalPL,
+    hasTransactionHistory
   );
   const unrealizedPLPct = costBasis !== 0 ? (unrealizedPL / costBasis) * 100 : 0;
 
@@ -86,7 +88,8 @@ export function computeSummary(
 function adjustedUnrealizedPL(
   rawUnrealizedPL: number,
   dayChange: number,
-  historicalTotalPL: number | null
+  historicalTotalPL: number | null,
+  hasTransactionHistory = false
 ): number {
   if (
     historicalTotalPL != null &&
@@ -95,9 +98,11 @@ function adjustedUnrealizedPL(
   ) {
     return historicalTotalPL;
   }
-  // When a seeded/imported holding uses the current quote as its saved cost,
-  // the strict cost-basis result is flat even though the position moved today.
-  if (Math.abs(rawUnrealizedPL) < 0.005 && Math.abs(dayChange) >= 0.005) {
+  // When a seeded/imported holding has no real buy price and uses the current
+  // quote as its cost, show day's change as a proxy. Skip this for holdings
+  // with real transaction history — a purchase at today's price is correctly
+  // P/L = 0 and should not be inflated by the day's market move.
+  if (!hasTransactionHistory && Math.abs(rawUnrealizedPL) < 0.005 && Math.abs(dayChange) >= 0.005) {
     return dayChange;
   }
   return rawUnrealizedPL;

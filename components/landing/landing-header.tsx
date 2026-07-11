@@ -180,13 +180,13 @@ export function LandingHeader({ authed, displayName }: { authed: boolean; displa
           {authed ? (
             <>
               <Button asChild size="sm" className="hidden gap-1.5 bg-emerald-500 text-white hover:bg-emerald-400 sm:inline-flex">
-                <Link href="/dashboard">
-                  <LayoutDashboard className="size-4" /> Dashboard
+                <Link href="/portfolios">
+                  <LayoutDashboard className="size-4" /> Portfolio
                 </Link>
               </Button>
               <Link
-                href="/dashboard"
-                aria-label="Open dashboard"
+                href="/portfolios"
+                aria-label="Open portfolio"
                 className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-sky-500 text-xs font-semibold text-white shadow-sm"
               >
                 {initials}
@@ -260,7 +260,7 @@ export function LandingHeader({ authed, displayName }: { authed: boolean; displa
               <div className="mt-3 grid grid-cols-2 gap-2">
                 {authed ? (
                   <Button asChild className="col-span-2 bg-emerald-500 text-white hover:bg-emerald-400">
-                    <Link href="/dashboard" onClick={() => setMobileOpen(false)}>Open dashboard</Link>
+                    <Link href="/portfolios" onClick={() => setMobileOpen(false)}>Open portfolio</Link>
                   </Button>
                 ) : (
                   <>

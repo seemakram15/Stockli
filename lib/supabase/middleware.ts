@@ -82,10 +82,10 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Already signed in but visiting an auth screen → straight to the dashboard.
+  // Already signed in but visiting an auth screen → straight to portfolios.
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = "/portfolios";
     url.search = "";
     return NextResponse.redirect(url);
   }

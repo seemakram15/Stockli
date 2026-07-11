@@ -25,7 +25,7 @@ export function sanitizeSearchQuery(value: unknown, maxLength = 40): string {
     .slice(0, maxLength);
 }
 
-export function safeRedirectPath(value: unknown, fallback = "/dashboard"): string {
+export function safeRedirectPath(value: unknown, fallback = "/portfolios"): string {
   if (typeof value !== "string") return fallback;
   if (!value.startsWith("/") || value.startsWith("//")) return fallback;
   if (value.includes("\\") || /[\u0000-\u001f\u007f]/.test(value)) return fallback;

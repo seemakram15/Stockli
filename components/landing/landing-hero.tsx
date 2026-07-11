@@ -3,165 +3,208 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
-import { ArrowRight, ArrowUpRight, LockKeyhole, ShieldCheck, TrendingUp } from "lucide-react";
-import {
-  AuroraField,
-  CountUp,
-  FloatingBadge,
-  LandingCommandPanel,
-} from "@/components/landing/landing-motion";
+import { ArrowRight, ArrowUpRight, Globe2, LockKeyhole, RefreshCw, Sparkles } from "lucide-react";
+import { AuroraField, CountUp } from "@/components/landing/landing-motion";
+import ShuffleText from "@/components/landing/shuffle-text";
 import { InstallAppButton } from "@/components/pwa/install-app-button";
 import { DataDelayBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
 
-const HERO_STATS: Array<{ to: number; suffix?: string; prefix?: string; label: string; note: string }> = [
-  { to: 9, suffix: "+", label: "Markets & assets", note: "PSX, US, India, funds, crypto" },
-  { to: 30, suffix: "s", label: "Live refresh", note: "Server-cached price polling" },
-  { to: 100, suffix: "%", label: "Free to use", note: "Runs on free tiers, no card" },
-];
+/* ── Stat strip (rendered below hero) ─────────────────────────────── */
+
+const STATS = [
+  {
+    icon: Globe2,
+    value: 9,
+    suffix: "+",
+    label: "Markets & assets",
+    note: "PSX, US, India, funds, crypto",
+    color: "text-emerald-500 dark:text-emerald-400",
+    bg: "bg-emerald-500/10",
+  },
+  {
+    icon: RefreshCw,
+    value: 30,
+    suffix: "s",
+    label: "Live refresh",
+    note: "Server-cached price polling",
+    color: "text-sky-500 dark:text-sky-400",
+    bg: "bg-sky-500/10",
+  },
+  {
+    icon: Sparkles,
+    value: 100,
+    suffix: "%",
+    label: "Free to use",
+    note: "Runs on free tiers, no card",
+    color: "text-violet-500 dark:text-violet-400",
+    bg: "bg-violet-500/10",
+  },
+] as const;
+
+export function HeroStatStrip() {
+  return (
+    <section className="border-b border-border bg-background">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          {STATS.map((s) => {
+            const Icon = s.icon;
+            return (
+              <div key={s.label} className="flex items-center gap-4 px-6 py-7 sm:px-8">
+                <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${s.bg}`}>
+                  <Icon className={`size-5 ${s.color}`} />
+                </div>
+                <div className="min-w-0">
+                  <p className={`text-2xl font-bold tabular-nums ${s.color}`}>
+                    <CountUp to={s.value} suffix={s.suffix} />
+                  </p>
+                  <p className="text-sm font-semibold text-foreground">{s.label}</p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{s.note}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Hero ──────────────────────────────────────────────────────────── */
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 26 },
+  hidden: { opacity: 0, y: 20 },
   show: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.7, delay: 0.1 + i * 0.09, ease: [0.22, 1, 0.36, 1] as const },
+    transition: { duration: 0.65, delay: 0.55 + i * 0.1, ease: [0.22, 1, 0.36, 1] as const },
   }),
 };
 
 export function LandingHero({ demo }: { demo: boolean }) {
   const reduce = useReducedMotion();
   const primaryLabel = demo ? "Open demo" : "Start tracking free";
-  const primaryHref = demo ? "/dashboard" : "/signup";
+  const primaryHref = demo ? "/portfolios" : "/signup";
 
-  const animateProps = (i: number) =>
-    reduce
-      ? {}
-      : { custom: i, variants: fadeUp, initial: "hidden" as const, animate: "show" as const };
+  const ap = (i: number) =>
+    reduce ? {} : { custom: i, variants: fadeUp, initial: "hidden" as const, animate: "show" as const };
 
   return (
     <section className="relative overflow-hidden bg-[#04100d] text-white">
-      {/* Layered background: photo wash + aurora + grid */}
+      {/* Background SVG — right side vivid */}
       <Image
-        src="/landing/market-command-center.webp"
+        src="/landing/hero-dashboard.svg"
         alt=""
         fill
         priority
         sizes="100vw"
-        className="object-cover object-[58%_center] opacity-40"
+        className="object-cover object-[62%_center] opacity-60"
       />
-      <div className="absolute inset-0 bg-[linear-gradient(95deg,rgba(3,11,9,0.97)_0%,rgba(3,11,9,0.9)_44%,rgba(3,11,9,0.55)_100%)]" />
-      <AuroraField className="opacity-80" />
-      <div className="absolute inset-0 bg-grid-faint opacity-[0.5] [mask-image:radial-gradient(80%_80%_at_50%_0%,black,transparent)]" />
-      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/70 to-transparent" />
 
-      <div className="relative z-10 mx-auto grid min-h-[88svh] max-w-7xl items-center gap-10 px-4 pb-14 pt-24 sm:px-6 sm:pb-20 sm:pt-28 lg:grid-cols-[minmax(0,1fr)_minmax(23rem,0.78fr)] lg:px-8">
-        <div className="min-w-0">
-          <motion.div
-            className="mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-emerald-50 backdrop-blur-md"
-            {...animateProps(0)}
-          >
-            <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-emerald-300 shadow-[0_0_18px_rgba(110,231,183,0.9)]" />
-            <span className="truncate">One workspace for markets, funds, portfolios & alerts</span>
-          </motion.div>
+      {/* Gradient: opaque left → transparent right */}
+      <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(4,16,13,0.98)_0%,rgba(4,16,13,0.97)_28%,rgba(4,16,13,0.72)_52%,rgba(4,16,13,0.12)_100%)]" />
 
-          <motion.h1
-            className="text-balance text-5xl font-semibold leading-[0.95] tracking-tight sm:text-7xl lg:text-[5.5rem]"
-            {...animateProps(1)}
-          >
-            Your entire market,
-            <br className="hidden sm:block" /> on{" "}
-            <span className="text-gradient-brand">{APP_NAME}</span>.
-          </motion.h1>
+      <AuroraField className="opacity-50" />
+      <div className="absolute inset-0 bg-grid-faint opacity-[0.3] [mask-image:radial-gradient(60%_80%_at_20%_0%,black,transparent)]" />
+      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background via-background/60 to-transparent" />
 
+      {/* Content: flush left within page margins */}
+      <div className="relative z-10 min-h-[88svh] px-6 sm:px-10 lg:px-16 xl:px-24">
+        <div className="flex min-h-[88svh] flex-col justify-center py-24 sm:py-32 lg:max-w-[52%] xl:max-w-[48%]">
+
+          {/* Heading — Shuffle animation, two lines */}
+          <h1 className="text-5xl font-semibold leading-[1.08] tracking-tight sm:text-6xl lg:text-[5rem] xl:text-[5.5rem]">
+            <ShuffleText
+              tag="span"
+              text="Your entire market,"
+              shuffleDirection="right"
+              duration={0.4}
+              animationMode="evenodd"
+              shuffleTimes={1}
+              ease="power3.out"
+              stagger={0.025}
+              threshold={0.05}
+              rootMargin="0px"
+              triggerOnce={true}
+              triggerOnHover={false}
+              respectReducedMotion={true}
+              loop={true}
+              loopDelay={5}
+              textAlign="left"
+              className="block"
+            />
+            <ShuffleText
+              tag="span"
+              text={`on ${APP_NAME}.`}
+              shuffleDirection="right"
+              duration={0.4}
+              animationMode="evenodd"
+              shuffleTimes={1}
+              ease="power3.out"
+              stagger={0.025}
+              threshold={0.05}
+              rootMargin="0px"
+              triggerOnce={true}
+              triggerOnHover={false}
+              respectReducedMotion={true}
+              loop={true}
+              loopDelay={5}
+              textAlign="left"
+              className="block text-gradient-brand"
+            />
+          </h1>
+
+          {/* Subtitle */}
           <motion.p
-            className="mt-5 max-w-2xl text-pretty text-base leading-7 text-white/80 sm:text-lg"
-            {...animateProps(2)}
+            className="mt-6 max-w-[440px] text-pretty text-base leading-relaxed text-white/70 sm:text-lg sm:leading-8"
+            {...ap(0)}
           >
-            Track every market move, every holding, every daily return and every alert
-            from one fast, installable portfolio command center — PSX, US, India,
-            funds, crypto and more.
+            One command center for every market you care about. Track PSX stocks,
+            US indices, mutual funds, crypto and commodities — with live P&L,
+            alerts and instant portfolio insight.
           </motion.p>
 
-          <motion.div className="mt-7 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3" {...animateProps(3)}>
-            <div className="min-w-0">
-              <Button
-                asChild
-                size="lg"
-                className="group h-11 w-full min-w-0 gap-1 bg-emerald-400 px-2 text-xs font-semibold text-[#07130f] shadow-[0_8px_30px_rgba(16,185,129,0.35)] hover:bg-emerald-300 sm:w-auto sm:px-5 sm:text-sm"
-              >
-                <Link href={primaryHref}>
-                  <span className="sm:hidden">Start</span>
-                  <span className="hidden sm:inline">{primaryLabel}</span>
-                  <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
-                </Link>
-              </Button>
-            </div>
-            <div className="min-w-0">
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="h-11 w-full min-w-0 gap-1 border-white/20 bg-white/10 px-2 text-xs font-semibold text-white hover:bg-white/15 hover:text-white sm:w-auto sm:px-5 sm:text-sm"
-              >
-                <Link href="/market">
-                  <span className="sm:hidden">Market</span>
-                  <span className="hidden sm:inline">Browse market</span>
-                  <ArrowUpRight className="size-4 shrink-0" />
-                </Link>
-              </Button>
-            </div>
-            <div className="min-w-0">
-              <InstallAppButton
-                label="Install"
-                size="lg"
-                variant="secondary"
-                className="h-11 w-full min-w-0 justify-center bg-white/10 px-2 text-xs font-semibold text-white hover:bg-white/20 sm:w-auto sm:px-5 sm:text-sm"
-              />
-            </div>
+          {/* CTAs */}
+          <motion.div className="mt-8 flex flex-wrap gap-3" {...ap(1)}>
+            <Button
+              asChild
+              size="lg"
+              className="group btn-shine btn-shine-auto btn-glow-emerald gap-2 bg-emerald-400 px-6 font-semibold text-[#07130f] hover:bg-emerald-300"
+            >
+              <Link href={primaryHref}>
+                {primaryLabel}
+                <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="btn-shine gap-2 border-white/20 bg-white/10 font-semibold text-white hover:bg-white/15 hover:text-white"
+            >
+              <Link href="/market">
+                Browse market
+                <ArrowUpRight className="size-4 shrink-0" />
+              </Link>
+            </Button>
+            <InstallAppButton
+              label="Install"
+              size="lg"
+              variant="secondary"
+              className="gap-2 bg-white/10 font-semibold text-white hover:bg-white/20"
+            />
           </motion.div>
 
-          <motion.div className="mt-5 flex max-w-full flex-wrap items-center gap-2 sm:gap-3" {...animateProps(4)}>
-            <DataDelayBadge className="border-white/15 bg-white/10 text-white/70" />
-            <span className="inline-flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-white/65 sm:text-xs">
+          {/* Trust badges */}
+          <motion.div className="mt-5 flex flex-wrap items-center gap-3" {...ap(2)}>
+            <DataDelayBadge className="border-white/15 bg-white/10 text-white/65" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-white/50">
               <LockKeyhole className="size-3.5 shrink-0" />
-              <span className="truncate">Secure accounts with per-user portfolio access</span>
+              Secure accounts with per-user portfolio access
             </span>
           </motion.div>
 
-          <motion.div className="mt-7 grid grid-cols-3 gap-2 sm:mt-9 sm:gap-3" {...animateProps(5)}>
-            {HERO_STATS.map((stat) => (
-              <div
-                key={stat.label}
-                className="min-w-0 rounded-xl border border-white/15 bg-white/[0.07] p-3 backdrop-blur-md transition-colors hover:border-emerald-300/40 sm:p-4"
-              >
-                <p className="mt-0.5 truncate text-xl font-semibold text-white sm:text-3xl">
-                  <CountUp to={stat.to} prefix={stat.prefix} suffix={stat.suffix} />
-                </p>
-                <p className="mt-1 text-[10px] font-semibold uppercase leading-tight tracking-wide text-emerald-100/70 sm:text-xs">
-                  {stat.label}
-                </p>
-                <p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-white/55 sm:text-xs sm:leading-5">
-                  {stat.note}
-                </p>
-              </div>
-            ))}
-          </motion.div>
-        </div>
-
-        <div className="relative min-w-0">
-          <div className="pointer-events-none absolute -left-4 -top-2 z-20 hidden lg:block">
-            <FloatingBadge icon={TrendingUp} delay={0.4}>
-              KSE100 +1.06%
-            </FloatingBadge>
-          </div>
-          <div className="pointer-events-none absolute -bottom-3 -right-2 z-20 hidden lg:block">
-            <FloatingBadge icon={ShieldCheck} delay={1.1}>
-              RLS secured
-            </FloatingBadge>
-          </div>
-          <LandingCommandPanel />
         </div>
       </div>
     </section>

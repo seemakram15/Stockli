@@ -1,20 +1,23 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import Script from "next/script";
 import type { Metadata } from "next";
-import { BarChart3, Bell, Globe2, Search, Sparkles, Target, Wallet, Zap } from "lucide-react";
+import { BarChart3, Bell, Globe2, Search, Target, Wallet, Zap } from "lucide-react";
 import { LandingHeader } from "@/components/landing/landing-header";
-import { LandingHero } from "@/components/landing/landing-hero";
-import { FeatureCarousel, Reveal, ServiceMarquee, Stagger, StaggerItem } from "@/components/landing/landing-motion";
+import { HeroStatStrip, LandingHero } from "@/components/landing/landing-hero";
+import { Reveal, ServiceMarquee, Stagger, StaggerItem } from "@/components/landing/landing-motion";
 import {
   FundamentalsShowcase,
   type LeaderRow,
   MarketLeaderboard,
   MobileSection,
+  ScreenshotShowcase,
   Testimonials,
 } from "@/components/landing/landing-sections";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { LOGO_SYMBOLS } from "@/components/landing/stock-logo";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getSessionContext } from "@/lib/auth/roles";
 import { config, isDemoMode } from "@/lib/config";
 import { APP_NAME } from "@/lib/constants";
@@ -52,6 +55,44 @@ async function getTopMovers(): Promise<{ gainers?: LeaderRow[]; losers?: LeaderR
     /* fall through to sample data in the component */
   }
   return { live: false };
+}
+
+/* Streams in after first paint so a cold market cache never blocks the page. */
+async function LeaderboardStream({ authed }: { authed: boolean }) {
+  const movers = await getTopMovers();
+  return <MarketLeaderboard authed={authed} gainers={movers.gainers} losers={movers.losers} live={movers.live} />;
+}
+
+function LeaderboardFallback() {
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
+      <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+        <div className="space-y-4">
+          <Skeleton className="h-6 w-40 rounded-full" />
+          <Skeleton className="h-10 w-full max-w-md" />
+          <Skeleton className="h-20 w-full max-w-lg" />
+          <Skeleton className="h-9 w-48" />
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
+          <div className="border-b border-border p-4">
+            <Skeleton className="h-9 w-56" />
+          </div>
+          <div className="divide-y divide-border">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-3">
+                <Skeleton className="size-9 rounded-full" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3.5 w-16" />
+                  <Skeleton className="h-3 w-28" />
+                </div>
+                <Skeleton className="h-7 w-20 rounded-lg" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export const metadata: Metadata = {
@@ -131,8 +172,7 @@ const WORKFLOW = [
 export default async function Home() {
   const { user } = await getSessionContext();
   const authed = Boolean(user);
-  const movers = await getTopMovers();
-  const primaryHref = isDemoMode ? "/dashboard" : "/signup";
+  const primaryHref = isDemoMode ? "/portfolios" : "/signup";
   const primaryLabel = isDemoMode ? "Open demo" : "Start tracking free";
 
   const structuredData = {
@@ -171,12 +211,16 @@ export default async function Home() {
       <LandingHero demo={isDemoMode} />
 
       <main>
-        <section className="border-y border-border bg-card/70 py-4">
+        <HeroStatStrip />
+
+        <section className="border-b border-border bg-card/70 py-4">
           <ServiceMarquee className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8" />
         </section>
 
-        {/* Reference flow: market leaderboard */}
-        <MarketLeaderboard authed={authed} gainers={movers.gainers} losers={movers.losers} live={movers.live} />
+        {/* Reference flow: market leaderboard (streamed) */}
+        <Suspense fallback={<LeaderboardFallback />}>
+          <LeaderboardStream authed={authed} />
+        </Suspense>
 
         {/* Fundamentals & AI analyzer */}
         <FundamentalsShowcase authed={authed} />
@@ -230,26 +274,8 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* See exactly what you're getting — swipeable workspace */}
-        <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
-          <Reveal className="mb-8 max-w-2xl">
-            <p className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
-              <Sparkles className="size-4" />
-              See exactly what you&apos;re getting
-            </p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Every screen moves the investor forward.
-            </h2>
-            <p className="mt-4 text-base leading-7 text-muted-foreground">
-              Swipe through the workspace — markets, portfolios, funds, analysis and
-              alerts each keep the next action close: refresh, trade, watch, compare.
-            </p>
-          </Reveal>
-
-          <Reveal delay={0.05}>
-            <FeatureCarousel />
-          </Reveal>
-        </section>
+        {/* Screenshot showcase — real app screens */}
+        <ScreenshotShowcase />
 
         {/* Reviews */}
         <Testimonials />
@@ -306,7 +332,7 @@ export default async function Home() {
                 </p>
               </div>
               <div className="relative grid grid-cols-2 gap-2 sm:flex sm:flex-row lg:flex-col">
-                <Button asChild size="lg" className="bg-gradient-to-r from-emerald-400 to-teal-300 text-[#07130f] hover:from-emerald-300 hover:to-teal-200">
+                <Button asChild size="lg" className="btn-shine btn-glow-emerald bg-gradient-to-r from-emerald-400 to-teal-300 text-[#07130f] hover:from-emerald-300 hover:to-teal-200">
                   <Link href={primaryHref}>{primaryLabel}</Link>
                 </Button>
                 <Button
@@ -315,8 +341,8 @@ export default async function Home() {
                   variant="outline"
                   className="border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white"
                 >
-                  <Link href={isDemoMode ? "/dashboard" : authed ? "/dashboard" : "/login"}>
-                    {authed || isDemoMode ? "Open dashboard" : "Sign in"}
+                  <Link href={isDemoMode ? "/portfolios" : authed ? "/portfolios" : "/login"}>
+                    {authed || isDemoMode ? "Open portfolio" : "Sign in"}
                   </Link>
                 </Button>
               </div>

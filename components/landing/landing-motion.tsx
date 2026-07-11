@@ -16,9 +16,11 @@ import {
   PieChart,
   ShieldCheck,
   Smartphone,
+  TrendingUp,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
+import { LiveAreaChart, LiveTickerValue } from "@/components/landing/landing-live";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
@@ -248,13 +250,6 @@ export function ServiceMarquee({ className }: { className?: string }) {
 /*  Hero command panel (animated live flow)                            */
 /* ------------------------------------------------------------------ */
 
-const FLOW = [
-  { label: "Market signal", value: "KSE100 +1.06%", note: "Live index movement" },
-  { label: "Portfolio math", value: "+Rs 8,906", note: "Day P/L preserved" },
-  { label: "Allocation", value: "15 positions", note: "Holdings & sectors" },
-  { label: "Action layer", value: "Alerts ready", note: "Watchlists & triggers" },
-];
-
 const TICKS = [
   ["FFC", "+1.42%", "gain"],
   ["MEBL", "+0.74%", "gain"],
@@ -265,15 +260,7 @@ const TICKS = [
 ] as const;
 
 export function LandingCommandPanel() {
-  const [activeIndex, setActiveIndex] = React.useState(0);
   const reduce = useReducedMotion();
-
-  React.useEffect(() => {
-    const id = window.setInterval(() => {
-      setActiveIndex((index) => (index + 1) % FLOW.length);
-    }, 1900);
-    return () => window.clearInterval(id);
-  }, []);
 
   return (
     <motion.div
@@ -302,42 +289,44 @@ export function LandingCommandPanel() {
             <h2 className="mt-1 text-xl font-semibold text-white">One screen, every market move</h2>
           </div>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-xs font-semibold text-emerald-100">
-            <span className="size-1.5 animate-pulse rounded-full bg-emerald-300" />
+            <span className="live-dot size-1.5 rounded-full bg-emerald-300 text-emerald-300" />
             Live
           </span>
         </div>
 
-        <div className="grid gap-2">
-          {FLOW.map((item, index) => {
-            const active = activeIndex === index;
-            return (
-              <div key={item.label} className="flex items-center gap-2">
-                <motion.div
-                  layout
-                  className={cn(
-                    "min-w-0 flex-1 rounded-xl border p-3 transition-colors duration-500",
-                    active
-                      ? "border-emerald-300/40 bg-emerald-300/15 text-white shadow-[0_0_28px_rgba(16,185,129,0.25)]"
-                      : "border-white/10 bg-white/[0.06] text-white/75"
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs font-medium uppercase tracking-wide text-white/45">
-                      {item.label}
-                    </span>
-                    <span className="text-sm font-semibold tabular-nums">{item.value}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-white/55">{item.note}</p>
-                </motion.div>
-                <ArrowRight
-                  className={cn(
-                    "size-4 shrink-0 transition sm:size-5",
-                    active ? "translate-x-1 text-emerald-200" : "text-white/25"
-                  )}
-                />
-              </div>
-            );
-          })}
+        {/* Live index chart */}
+        <div className="relative overflow-hidden rounded-xl border border-white/10 bg-black/25 p-3.5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-white/45">
+                KSE-100 index
+              </p>
+              <p className="mt-0.5 text-2xl font-semibold text-white">
+                <LiveTickerValue base={118432.51} spread={120} seed="kse100" />
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-400/15 px-2 py-1 text-sm font-semibold text-emerald-300">
+              <TrendingUp className="size-3.5" />
+              <LiveTickerValue base={1.06} spread={0.08} prefix="+" suffix="%" seed="kse100pct" />
+            </span>
+          </div>
+          <LiveAreaChart className="mt-2" />
+        </div>
+
+        {/* Live portfolio stats */}
+        <div className="mt-2.5 grid grid-cols-2 gap-2">
+          <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-white/45">Day P/L</p>
+            <p className="mt-1 text-base font-semibold text-emerald-300">
+              <LiveTickerValue base={8906} spread={260} decimals={0} prefix="+Rs " seed="daypl" />
+            </p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-white/45">Total value</p>
+            <p className="mt-1 text-base font-semibold text-white">
+              <LiveTickerValue base={1107249} spread={900} decimals={0} prefix="Rs " seed="total" />
+            </p>
+          </div>
         </div>
 
         <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/20">

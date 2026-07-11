@@ -19,7 +19,7 @@ export default function AppError({
       title="This screen could not be loaded"
       description="Something interrupted this page while loading your market or portfolio data. Try again once, and if it repeats contact support with the error reference below."
       reset={reset}
-      homeHref="/dashboard"
+      homeHref="/portfolios"
       digest={error.digest}
     />
   );

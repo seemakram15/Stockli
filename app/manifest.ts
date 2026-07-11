@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: APP_NAME,
     description:
       "Track portfolios, live P/L, watchlists, alerts, market performance, funds, crypto, commodities, and global market movement in one installable app.",
-    start_url: "/dashboard?source=pwa",
+    start_url: "/portfolios?source=pwa",
     scope: "/",
     display: "standalone",
     orientation: "portrait",

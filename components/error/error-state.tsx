@@ -21,7 +21,7 @@ export function ErrorState({
   title = "Something went wrong",
   description = "We could not load this screen correctly. Please try again, and if it keeps happening contact support so we can fix it quickly.",
   reset,
-  homeHref = "/dashboard",
+  homeHref = "/portfolios",
   className,
   digest,
 }: ErrorStateProps) {

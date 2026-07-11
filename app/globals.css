@@ -9,7 +9,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-geist-sans);
+  --font-heading: var(--font-space-grotesk), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 
   /* Semantic finance colors */
   --color-gain: var(--gain);
@@ -160,6 +160,11 @@
   html {
     @apply font-sans;
   }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+  }
 }
 
 @layer utilities {
@@ -307,6 +312,141 @@
     background-size: 200% auto;
     animation: stockli-shimmer 4s linear infinite;
   }
+  /* ----- Buttons: uiverse-style sheen + glow ----- */
+
+  /* Moving light sweep across a button on hover (and once on load for CTAs). */
+  .btn-shine {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .btn-shine::after {
+    content: "";
+    position: absolute;
+    inset: -40% auto -40% -60%;
+    width: 36%;
+    transform: skewX(-24deg) translateX(-120%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(255 255 255 / 0.45),
+      transparent
+    );
+    z-index: 1;
+    pointer-events: none;
+    transition: none;
+  }
+  .btn-shine:hover::after,
+  .btn-shine:focus-visible::after {
+    animation: stockli-btn-shine 0.9s ease forwards;
+  }
+  .btn-shine-auto::after {
+    animation: stockli-btn-shine 1.1s ease 1.2s 1 both;
+  }
+  .btn-shine-auto:hover::after {
+    animation: stockli-btn-shine 0.9s ease forwards;
+  }
+  @keyframes stockli-btn-shine {
+    from {
+      transform: skewX(-24deg) translateX(-140%);
+    }
+    to {
+      transform: skewX(-24deg) translateX(620%);
+    }
+  }
+
+  /* Soft breathing emerald glow for hero-level CTAs. */
+  .btn-glow-emerald {
+    box-shadow:
+      0 4px 14px rgb(16 185 129 / 0.35),
+      0 0 0 0 rgb(16 185 129 / 0.35);
+    animation: stockli-btn-glow 3.2s ease-in-out infinite;
+  }
+  @keyframes stockli-btn-glow {
+    0%,
+    100% {
+      box-shadow:
+        0 4px 14px rgb(16 185 129 / 0.3),
+        0 0 22px -4px rgb(16 185 129 / 0.35);
+    }
+    50% {
+      box-shadow:
+        0 6px 22px rgb(16 185 129 / 0.45),
+        0 0 34px -2px rgb(16 185 129 / 0.55);
+    }
+  }
+
+  /* ----- Loaders & live-data feedback ----- */
+
+  /* Gradient shimmer for skeletons (nicer than plain pulse). */
+  .skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--muted);
+  }
+  .skeleton-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--foreground) 7%, transparent),
+      transparent
+    );
+    animation: stockli-skeleton 1.6s ease-in-out infinite;
+  }
+  @keyframes stockli-skeleton {
+    to {
+      transform: translateX(100%);
+    }
+  }
+
+  /* Brief background flash when a live number updates. */
+  @keyframes stockli-tick-gain {
+    0% {
+      background-color: color-mix(in oklch, var(--gain) 26%, transparent);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+  @keyframes stockli-tick-loss {
+    0% {
+      background-color: color-mix(in oklch, var(--loss) 26%, transparent);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+  .animate-tick-gain {
+    animation: stockli-tick-gain 0.9s ease-out;
+  }
+  .animate-tick-loss {
+    animation: stockli-tick-loss 0.9s ease-out;
+  }
+
+  /* Radar-style ping for "live" dots. */
+  .live-dot {
+    position: relative;
+  }
+  .live-dot::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: currentColor;
+    animation: stockli-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+  @keyframes stockli-ping {
+    75%,
+    100% {
+      transform: scale(2.6);
+      opacity: 0;
+    }
+  }
+
   /* Thin, theme-aware scrollbars */
   .scrollbar-thin {
     scrollbar-width: thin;
@@ -521,7 +661,14 @@
   .animate-stockli-marquee,
   .animate-stockli-aurora,
   .animate-stockli-float,
-  .animate-stockli-shimmer {
+  .animate-stockli-shimmer,
+  .btn-glow-emerald,
+  .btn-shine::after,
+  .btn-shine-auto::after,
+  .skeleton-shimmer::after,
+  .live-dot::before,
+  .animate-tick-gain,
+  .animate-tick-loss {
     animation: none;
   }
 }
