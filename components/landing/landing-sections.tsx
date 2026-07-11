@@ -736,7 +736,7 @@ export function ScreenshotShowcase() {
               key={active}
               initial={reduce ? false : { opacity: 0, y: 14, scale: 0.985 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={reduce ? false : { opacity: 0, y: -10, scale: 0.99 }}
+              exit={reduce ? undefined : { opacity: 0, y: -10, scale: 0.99 }}
               transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
               className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl ring-1 ring-black/[0.06] dark:ring-white/[0.06]"
             >
