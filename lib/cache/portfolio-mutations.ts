@@ -17,7 +17,7 @@ function portfolioMutationStorageKey(userId?: string | null) {
     : PORTFOLIO_MUTATION_STORAGE_KEY;
 }
 
-export function markPortfolioMutated(detail?: { portfolioId?: string; userId?: string | null }) {
+export function markPortfolioMutated(detail?: { portfolioId?: string; userId?: string | null; deleted?: boolean }) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(
     portfolioMutationStorageKey(detail?.userId ?? null),

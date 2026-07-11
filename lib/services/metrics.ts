@@ -27,8 +27,20 @@ export function computeHoldingMetrics(
   // When avg cost = current price there is no gain or loss — zero out all P/L
   // dimensions so Day's P/L and Total P/L are consistently Rs 0.
   const atCost = Math.abs(rawUnrealizedPL) < 0.005;
-  const dayChange = atCost ? 0 : (quote?.change ?? 0) * holding.quantity;
-  const dayChangePct = atCost ? 0 : (quote?.changePct ?? 0);
+  const rawDayChange = (quote?.change ?? 0) * holding.quantity;
+  // When a holding was bought partway through today's session, the stock's
+  // full-day move (rawDayChange) can exceed what the user actually captured
+  // (rawUnrealizedPL). Cap Day's P/L so it never exceeds Total P/L in magnitude
+  // when both have the same sign.
+  const dayCapped =
+    rawDayChange * rawUnrealizedPL > 0 &&
+    Math.abs(rawDayChange) > Math.abs(rawUnrealizedPL);
+  const dayChange = atCost ? 0 : dayCapped ? rawUnrealizedPL : rawDayChange;
+  const dayChangePct = atCost
+    ? 0
+    : dayCapped
+      ? (costBasis !== 0 ? (rawUnrealizedPL / costBasis) * 100 : 0)
+      : (quote?.changePct ?? 0);
   const unrealizedPL = atCost ? 0 : rawUnrealizedPL;
   const unrealizedPLPct = costBasis !== 0 ? (unrealizedPL / costBasis) * 100 : 0;
 

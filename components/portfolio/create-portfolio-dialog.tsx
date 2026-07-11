@@ -38,8 +38,12 @@ export function CreatePortfolioDialog({
     if (state.ok) {
       toast.success(state.message ?? "Created");
       markPortfolioMutated({ userId });
-      router.refresh();
       setOpen(false);
+      if (state.portfolioId) {
+        router.push(`/portfolios/${state.portfolioId}`);
+      } else {
+        router.refresh();
+      }
     } else if (state.error) {
       toast.error(state.error);
     }

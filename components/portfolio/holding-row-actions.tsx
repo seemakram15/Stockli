@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { MoreHorizontal, Trash2, ArrowLeftRight, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -24,17 +25,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { AddTradeDialog } from "./add-trade-dialog";
 import { removeHolding } from "@/lib/actions/portfolio";
+import { markPortfolioMutated } from "@/lib/cache/portfolio-mutations";
 
 export function HoldingRowActions({
   portfolioId,
   holdingId,
   symbol,
+  quantity,
   demo,
   userId,
 }: {
   portfolioId: string;
   holdingId: string;
   symbol: string;
+  quantity?: number;
   demo?: boolean;
   userId?: string | null;
 }) {
@@ -44,6 +48,7 @@ export function HoldingRowActions({
         portfolioId={portfolioId}
         defaultSymbol={symbol}
         userId={userId}
+        holdingsBySymbol={quantity != null ? { [symbol]: quantity } : undefined}
         trigger={
           <Button variant="ghost" size="icon" className="size-8" aria-label="Trade">
             <ArrowLeftRight className="size-4" />
@@ -68,6 +73,7 @@ export function HoldingRowActions({
             holdingId={holdingId}
             symbol={symbol}
             demo={demo}
+            userId={userId}
           />
         </DropdownMenuContent>
       </DropdownMenu>
@@ -80,12 +86,27 @@ function RemoveItem({
   holdingId,
   symbol,
   demo,
+  userId,
 }: {
   portfolioId: string;
   holdingId: string;
   symbol: string;
   demo?: boolean;
+  userId?: string | null;
 }) {
+  const router = useRouter();
+
+  async function handleRemove(formData: FormData) {
+    const result = await removeHolding(formData);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success(`${symbol} position removed.`);
+      markPortfolioMutated({ portfolioId, userId });
+      router.refresh();
+    }
+  }
+
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
@@ -100,8 +121,7 @@ function RemoveItem({
         <AlertDialogHeader>
           <AlertDialogTitle>Remove {symbol}?</AlertDialogTitle>
           <AlertDialogDescription>
-            This deletes the position from this portfolio. Your transaction
-            history is kept for the audit log.
+            This deletes the position from this portfolio. Transaction history is kept.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -115,7 +135,7 @@ function RemoveItem({
               Remove
             </AlertDialogAction>
           ) : (
-            <form action={removeHolding}>
+            <form action={handleRemove}>
               <input type="hidden" name="holdingId" value={holdingId} />
               <input type="hidden" name="portfolioId" value={portfolioId} />
               <input type="hidden" name="symbol" value={symbol} />

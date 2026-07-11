@@ -137,7 +137,9 @@ export function usePersistentResource<T>({
     return value;
   }, [cacheKey, swr, url]);
 
-  const data = swr.data ?? cachedValue ?? rawCachedValue;
+  const cacheIsKnownStale =
+    activeCached !== null && acceptCacheWhen !== undefined && !acceptCacheWhen(activeCached);
+  const data = swr.data ?? cachedValue ?? (cacheIsKnownStale ? null : rawCachedValue);
 
   return {
     data,
