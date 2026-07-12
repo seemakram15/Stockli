@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { BarChart3, ChevronDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { BarChart3 } from "lucide-react";
 import { loadPublishedPeriods, loadPublishedFundHoldings } from "@/lib/actions/fund-holdings";
 import type { FundHolding } from "@/lib/types/fund-holdings";
 import { IconChip } from "@/components/ui/accent";

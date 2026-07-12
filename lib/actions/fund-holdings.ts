@@ -72,7 +72,7 @@ export async function loadAllPublished(opts: {
   try {
     const groups = await getAllPublishedHoldings(opts);
     return { groups };
-  } catch (e) {
+  } catch {
     return { groups: [] };
   }
 }

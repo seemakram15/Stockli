@@ -33,7 +33,6 @@ import type { FundPeriodStatus, FundHolding } from "@/lib/types/fund-holdings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -87,10 +86,6 @@ const OTHER_HOLDINGS_NAME = "Other Holdings";
 
 function totalPct(rows: HoldingRow[]): number {
   return rows.reduce((sum, r) => sum + (parseFloat(r.percentage) || 0), 0);
-}
-
-function prevMonth(year: number, month: number): { year: number; month: number } {
-  return month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
 }
 
 function monthLabel(month: number, year: number): string {
@@ -437,9 +432,7 @@ function StockPicker({
                   )}
                 >
                   {selectedSet.has(t.symbol) && (
-                    <svg viewBox="0 0 10 8" className="size-2.5 fill-current">
-                      <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <CheckCircle2 className="size-3 text-primary-foreground" />
                   )}
                 </span>
                 <span className="w-14 shrink-0 font-mono text-xs font-medium text-primary">
@@ -603,7 +596,8 @@ function PublishedHoldingsViewer() {
 
   React.useEffect(() => {
     reload();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function toggleExpand(key: string) {
     setExpanded((prev) => {
@@ -859,8 +853,6 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
   const [inputMode, setInputMode] = React.useState<"manual" | "paste">("manual");
   const [pasteText, setPasteText] = React.useState("");
 
-  const amcList = getAmcList();
-
   // ── Derived ──
   const total = totalPct(holdings);
   const otherPct = parseFloat(otherHoldings) || 0;
@@ -897,7 +889,8 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
       return;
     }
     getFundPeriods(fundName);
-  }, [fundName]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fundName]);
 
   async function getFundPeriods(name: string) {
     const { periods: p } = await loadFundPeriods(name);
@@ -913,7 +906,8 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
       return;
     }
     loadPeriod(fundName, year, month);
-  }, [fundName, year, month]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fundName, year, month]);
 
   async function loadPeriod(name: string, y: number, m: number) {
     setIsLoadingPeriod(true);

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import useSWR from "swr";
 import Link from "next/link";
 import { Bell, BellRing, Activity, Info, CircleAlert, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,8 +15,6 @@ interface Feed {
   unread: number;
 }
 
-const fetcher = (url: string): Promise<Feed> => fetch(url).then((r) => r.json());
-
 const ICONS: Record<NotificationType, typeof Bell> = {
   ALERT: CircleAlert,
   MARKET: Activity,
@@ -25,28 +22,42 @@ const ICONS: Record<NotificationType, typeof Bell> = {
   PORTFOLIO: WalletCards,
 };
 
-export function NotificationBell({ userId }: { userId: string }) {
-  const { data, mutate } = useSWR<Feed>(["/api/notifications", userId], ([url]) => fetcher(url), {
-    refreshInterval: 60_000,
-    revalidateOnFocus: true,
-    keepPreviousData: false,
-  });
+export function NotificationBell({ userId: _userId }: { userId: string }) {
   const [open, setOpen] = React.useState(false);
-  const items = data?.items ?? [];
-  const unread = data?.unread ?? 0;
+  const [items, setItems] = React.useState<AppNotification[]>([]);
+  const [unread, setUnread] = React.useState(0);
+  const [fetched, setFetched] = React.useState(false);
+
+  async function fetchFeed() {
+    try {
+      const res = await fetch("/api/notifications");
+      if (!res.ok) return;
+      const data: Feed = await res.json();
+      setItems(data.items);
+      setUnread(data.unread);
+      setFetched(true);
+    } catch {
+      // silently ignore
+    }
+  }
 
   async function onOpenChange(next: boolean) {
     setOpen(next);
-    if (next && unread > 0) {
-      // Optimistically clear the badge, then persist.
-      mutate({ items, unread: 0 }, { revalidate: false });
-      try {
-        await markNotificationsSeen();
-      } catch {
-        /* will resync on next poll */
+    if (next) {
+      await fetchFeed();
+      if (unread > 0) {
+        setUnread(0);
+        try {
+          await markNotificationsSeen();
+        } catch {
+          // will resync on next open
+        }
       }
     }
   }
+
+  // Suppress unused-variable warning: userId is kept in props for API compatibility
+  void _userId;
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>

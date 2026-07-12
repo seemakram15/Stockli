@@ -22,7 +22,23 @@ import type {
 } from "@/lib/types/stock-fundamentals";
 
 const FUNDAMENTALS_BASE = config.fundamentals.baseUrl.replace(/\/+$/, "");
-const REQUEST_TIMEOUT_MS = 25_000;
+const REQUEST_TIMEOUT_MS = 10_000;
+
+// Circuit breaker: after a connection failure, skip all API calls for this window
+let _circuitOpenUntil = 0;
+function circuitIsOpen() { return Date.now() < _circuitOpenUntil; }
+function tripCircuit() { _circuitOpenUntil = Date.now() + 5 * 60 * 1000; }
+function isConnectionError(err: unknown) {
+  if (!(err instanceof Error)) return false;
+  const cause = (err as NodeJS.ErrnoException & { cause?: unknown }).cause;
+  const causeCode = cause instanceof Error ? (cause as NodeJS.ErrnoException).code : null;
+  return (
+    causeCode === "UND_ERR_CONNECT_TIMEOUT" ||
+    causeCode === "ECONNREFUSED" ||
+    causeCode === "ENOTFOUND" ||
+    err.name === "AbortError"
+  );
+}
 const FINANCIALS_CACHE_TTL_SECONDS = 6 * 60 * 60;
 const FINANCIALS_CACHE_STALE_SECONDS = 5 * 365 * 24 * 60 * 60;
 const COMPANY_LIST_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -1595,6 +1611,10 @@ function metric(label: string, value: string, signedValue?: number): FinancialMe
 }
 
 async function fundamentalsFetch<T>(path: string, init: FetchInit = {}): Promise<T> {
+  if (circuitIsOpen()) {
+    throw new Error("Fundamentals API circuit open — skipping request");
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const { headers: initHeaders, ...rest } = init;
@@ -1617,6 +1637,12 @@ async function fundamentalsFetch<T>(path: string, init: FetchInit = {}): Promise
       throw new Error(`Fundamentals ${path} failed with ${response.status}`);
     }
     return (await response.json()) as T;
+  } catch (err) {
+    if (isConnectionError(err)) {
+      tripCircuit();
+      console.warn(`[fundamentals] API unreachable — circuit open for 5 min (${(err as Error).message})`);
+    }
+    throw err;
   } finally {
     clearTimeout(timeout);
   }
