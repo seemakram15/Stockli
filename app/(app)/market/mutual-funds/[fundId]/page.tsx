@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { IconChip } from "@/components/ui/accent";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AmcBrandMark } from "@/components/market/amc-brand-mark";
+import { FundHoldingsSection } from "@/components/market/fund-holdings-section";
 import {
   formatNumber,
   formatPercent,
@@ -104,6 +105,9 @@ export default async function MutualFundDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* Stock holdings from admin-managed data */}
+      <FundHoldingsSection fundName={fund.name} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

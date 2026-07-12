@@ -24,6 +24,7 @@ import {
   Bell,
   FileText,
   History,
+  PieChart,
   ShieldCheck,
   Loader2,
   Link2,
@@ -54,6 +55,7 @@ const ICONS: Record<string, LucideIcon> = {
   Bell,
   FileText,
   History,
+  PieChart,
   ShieldCheck,
   Link2,
   PlaySquare,
@@ -96,7 +98,11 @@ export function NavLinks({
     pathname.startsWith("/youtubers") ||
     pathname.startsWith("/admin");
   const exploreItems = showAdmin
-    ? [...EXPLORE_NAV_ITEMS, { href: "/admin", label: "Admin", icon: "ShieldCheck" } as const]
+    ? [
+        ...EXPLORE_NAV_ITEMS,
+        { href: "/admin", label: "Admin", icon: "ShieldCheck" } as const,
+        { href: "/admin/fund-holdings", label: "Fund Holdings", icon: "PieChart" } as const,
+      ]
     : EXPLORE_NAV_ITEMS;
 
   return (

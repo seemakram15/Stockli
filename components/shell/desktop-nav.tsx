@@ -22,6 +22,7 @@ import {
   LineChart,
   Link2,
   Loader2,
+  PieChart,
   PlaySquare,
   ShieldCheck,
   Star,
@@ -52,6 +53,7 @@ const ICONS: Record<string, LucideIcon> = {
   LayoutDashboard,
   LineChart,
   Link2,
+  PieChart,
   PlaySquare,
   ShieldCheck,
   Star,
@@ -78,7 +80,12 @@ export function DesktopNav({ showAdmin = false }: { showAdmin?: boolean }) {
   const exploreLinks = React.useMemo<DropdownLink[]>(
     () => [
       ...EXPLORE_NAV_ITEMS,
-      ...(showAdmin ? [{ href: "/admin", label: "Admin", icon: "ShieldCheck" }] : []),
+      ...(showAdmin
+        ? [
+            { href: "/admin", label: "Admin", icon: "ShieldCheck" },
+            { href: "/admin/fund-holdings", label: "Fund Holdings", icon: "PieChart" },
+          ]
+        : []),
     ],
     [showAdmin]
   );
