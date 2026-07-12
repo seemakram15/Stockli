@@ -56,8 +56,11 @@ export function FundHoldingsSection({ fundName }: Props) {
 
   if (!loading && periods.length === 0) return null;
 
-  const total = holdings.reduce((s, h) => s + h.percentage, 0);
-  const others = Math.max(0, 100 - total);
+  const OTHER_NAME = "Other Holdings";
+  const regularHoldings = holdings.filter((h) => h.stockName !== OTHER_NAME);
+  const otherRow = holdings.find((h) => h.stockName === OTHER_NAME);
+  const total = regularHoldings.reduce((s, h) => s + h.percentage, 0);
+  const grandTotal = total + (otherRow?.percentage ?? 0);
 
   return (
     <Card>
@@ -107,7 +110,7 @@ export function FundHoldingsSection({ fundName }: Props) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {holdings.map((h, i) => (
+                {regularHoldings.map((h, i) => (
                   <tr key={h.id} className="hover:bg-muted/20 transition-colors">
                     <td className="px-3 py-2 text-xs text-muted-foreground">{i + 1}</td>
                     <td className="px-3 py-2">
@@ -123,7 +126,7 @@ export function FundHoldingsSection({ fundName }: Props) {
                         <div className="h-1.5 w-16 rounded-full bg-muted overflow-hidden">
                           <div
                             className="h-full rounded-full bg-primary/60"
-                            style={{ width: `${Math.min(100, (h.percentage / Math.max(total, 1)) * 100)}%` }}
+                            style={{ width: `${Math.min(100, (h.percentage / Math.max(grandTotal, 1)) * 100)}%` }}
                           />
                         </div>
                         <span className="font-mono text-sm tabular-nums w-14 text-right">
@@ -133,26 +136,38 @@ export function FundHoldingsSection({ fundName }: Props) {
                     </td>
                   </tr>
                 ))}
+                {otherRow && (
+                  <tr className="bg-muted/10 hover:bg-muted/20 transition-colors">
+                    <td className="px-3 py-2 text-xs text-muted-foreground">—</td>
+                    <td className="px-3 py-2">
+                      <span className="text-xs text-muted-foreground/50">—</span>
+                    </td>
+                    <td className="px-3 py-2 text-sm italic text-muted-foreground">Other Holdings</td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="h-1.5 w-16 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-muted-foreground/40"
+                            style={{ width: `${Math.min(100, (otherRow.percentage / Math.max(grandTotal, 1)) * 100)}%` }}
+                          />
+                        </div>
+                        <span className="font-mono text-sm tabular-nums w-14 text-right text-muted-foreground">
+                          {otherRow.percentage.toFixed(2)}%
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
               <tfoot>
                 <tr className="border-t border-border bg-muted/30">
                   <td colSpan={3} className="px-3 py-2 text-xs text-muted-foreground">
-                    {holdings.length} stocks disclosed
+                    {regularHoldings.length} stocks{otherRow ? " + other holdings" : ""}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-sm font-semibold tabular-nums">
-                    {total.toFixed(2)}%
+                    {grandTotal.toFixed(2)}%
                   </td>
                 </tr>
-                {others > 0.5 && (
-                  <tr className="border-t border-border/50">
-                    <td colSpan={3} className="px-3 py-1.5 text-xs text-muted-foreground/70">
-                      Others (not disclosed)
-                    </td>
-                    <td className="px-3 py-1.5 text-right font-mono text-xs text-muted-foreground/70 tabular-nums">
-                      {others.toFixed(2)}%
-                    </td>
-                  </tr>
-                )}
               </tfoot>
             </table>
           </div>

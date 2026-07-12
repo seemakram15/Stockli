@@ -81,6 +81,8 @@ const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - i);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+const OTHER_HOLDINGS_NAME = "Other Holdings";
+
 function totalPct(rows: HoldingRow[]): number {
   return rows.reduce((sum, r) => sum + (parseFloat(r.percentage) || 0), 0);
 }
@@ -392,6 +394,19 @@ function StockPicker({
   );
 }
 
+// ─── AMC accent palette ───────────────────────────────────────────────────────
+
+const AMC_ACCENTS = [
+  { bg: "bg-violet-500/10", border: "border-violet-500/30", text: "text-violet-600 dark:text-violet-400", dot: "bg-violet-500", header: "from-violet-500/8 to-transparent" },
+  { bg: "bg-sky-500/10",    border: "border-sky-500/30",    text: "text-sky-600 dark:text-sky-400",       dot: "bg-sky-500",    header: "from-sky-500/8 to-transparent" },
+  { bg: "bg-emerald-500/10",border: "border-emerald-500/30",text: "text-emerald-600 dark:text-emerald-400",dot: "bg-emerald-500",header: "from-emerald-500/8 to-transparent" },
+  { bg: "bg-amber-500/10",  border: "border-amber-500/30",  text: "text-amber-600 dark:text-amber-400",   dot: "bg-amber-500",  header: "from-amber-500/8 to-transparent" },
+  { bg: "bg-rose-500/10",   border: "border-rose-500/30",   text: "text-rose-600 dark:text-rose-400",     dot: "bg-rose-500",   header: "from-rose-500/8 to-transparent" },
+  { bg: "bg-teal-500/10",   border: "border-teal-500/30",   text: "text-teal-600 dark:text-teal-400",     dot: "bg-teal-500",   header: "from-teal-500/8 to-transparent" },
+  { bg: "bg-orange-500/10", border: "border-orange-500/30", text: "text-orange-600 dark:text-orange-400", dot: "bg-orange-500", header: "from-orange-500/8 to-transparent" },
+  { bg: "bg-indigo-500/10", border: "border-indigo-500/30", text: "text-indigo-600 dark:text-indigo-400", dot: "bg-indigo-500", header: "from-indigo-500/8 to-transparent" },
+] as const;
+
 // ─── Published Holdings Viewer ────────────────────────────────────────────────
 
 function PublishedHoldingsViewer() {
@@ -402,7 +417,7 @@ function PublishedHoldingsViewer() {
   const [groups, setGroups] = React.useState<
     { amc: string; fundName: string; year: number; month: number; holdings: FundHolding[] }[]
   >([]);
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
 
   async function reload(amc?: string, year?: number, month?: number) {
@@ -443,167 +458,212 @@ function PublishedHoldingsViewer() {
     return map;
   }, [groups]);
 
+  const amcKeys = [...byAmc.keys()];
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Filters */}
-      <Card>
-        <CardContent className="flex flex-wrap items-end gap-3 pt-5">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">AMC</label>
+      <Card className="border-border/60">
+        <CardContent className="flex flex-wrap items-end gap-3 pt-5 pb-4">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">AMC</label>
             <Select
               value={amcFilter}
-              onValueChange={(v) => {
-                setAmcFilter(v);
-                applyFilters(v, yearFilter, monthFilter);
-              }}
+              onValueChange={(v) => { setAmcFilter(v); applyFilters(v, yearFilter, monthFilter); }}
             >
               <SelectTrigger className="h-9 w-52">
                 <SelectValue placeholder="All AMCs" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">All AMCs</SelectItem>
-                {amcList.map((a) => (
-                  <SelectItem key={a} value={a}>{a}</SelectItem>
-                ))}
+                {amcList.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Year</label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Year</label>
             <Select
               value={String(yearFilter)}
-              onValueChange={(v) => {
-                const y = Number(v);
-                setYearFilter(y);
-                applyFilters(amcFilter, y, monthFilter);
-              }}
+              onValueChange={(v) => { const y = Number(v); setYearFilter(y); applyFilters(amcFilter, y, monthFilter); }}
             >
               <SelectTrigger className="h-9 w-28">
                 <SelectValue placeholder="All years" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="0">All years</SelectItem>
-                {YEAR_OPTIONS.map((y) => (
-                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                ))}
+                {YEAR_OPTIONS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Month</label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Month</label>
             <Select
               value={String(monthFilter)}
-              onValueChange={(v) => {
-                const m = Number(v);
-                setMonthFilter(m);
-                applyFilters(amcFilter, yearFilter, m);
-              }}
+              onValueChange={(v) => { const m = Number(v); setMonthFilter(m); applyFilters(amcFilter, yearFilter, m); }}
             >
               <SelectTrigger className="h-9 w-28">
                 <SelectValue placeholder="All months" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="0">All months</SelectItem>
-                {MONTHS.map((label, i) => (
-                  <SelectItem key={i + 1} value={String(i + 1)}>{label}</SelectItem>
-                ))}
+                {MONTHS.map((label, i) => <SelectItem key={i + 1} value={String(i + 1)}>{label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            className="h-9 text-muted-foreground"
-            onClick={() => {
-              setAmcFilter("");
-              setYearFilter(0);
-              setMonthFilter(0);
-              reload();
-            }}
+            className="h-9 text-muted-foreground hover:text-foreground"
+            onClick={() => { setAmcFilter(""); setYearFilter(0); setMonthFilter(0); reload(); }}
           >
+            <X className="size-3.5 mr-1.5" />
             Clear
           </Button>
+          <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="font-medium tabular-nums text-foreground">{groups.length}</span> fund periods
+          </div>
         </CardContent>
       </Card>
 
       {loading ? (
-        <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">Loading…</div>
+        <div className="flex h-28 items-center justify-center gap-2 text-sm text-muted-foreground">
+          <div className="size-4 animate-spin rounded-full border-2 border-border border-t-primary" />
+          Loading holdings…
+        </div>
       ) : groups.length === 0 ? (
-        <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
-          No published holdings found.
+        <div className="flex h-28 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border text-center">
+          <p className="text-sm font-medium text-muted-foreground">No published holdings found.</p>
+          <p className="text-xs text-muted-foreground/60">Publish a fund period in the Edit Holdings tab.</p>
         </div>
       ) : (
-        [...byAmc.entries()].map(([amc, fundGroups]) => (
-          <div key={amc} className="space-y-2">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">
-              {amc}
-            </h3>
-            {fundGroups.map((fg) => {
-              const key = `${fg.fundName}||${fg.year}||${fg.month}`;
-              const open = expanded.has(key);
-              return (
-                <Card key={key} className="overflow-hidden">
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
-                    onClick={() => toggleExpand(key)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium text-sm">{fg.fundName}</span>
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                        {MONTHS[fg.month - 1]} {fg.year}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{fg.holdings.length} stocks</span>
+        amcKeys.map((amc, amcIdx) => {
+          const fundGroups = byAmc.get(amc)!;
+          const accent = AMC_ACCENTS[amcIdx % AMC_ACCENTS.length];
+          return (
+            <div key={amc} className="space-y-2.5">
+              {/* AMC header */}
+              <div className="flex items-center gap-2.5 px-1">
+                <div className={cn("size-2.5 rounded-full shrink-0", accent.dot)} />
+                <h3 className={cn("text-xs font-bold uppercase tracking-widest", accent.text)}>
+                  {amc}
+                </h3>
+                <div className="h-px flex-1 bg-border/50" />
+                <span className="text-[10px] text-muted-foreground/60">
+                  {fundGroups.length} fund{fundGroups.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+
+              {/* Fund accordions */}
+              <div className="space-y-2">
+                {fundGroups.map((fg) => {
+                  const key = `${fg.fundName}||${fg.year}||${fg.month}`;
+                  const open = expanded.has(key);
+                  const total = fg.holdings.reduce((s, h) => s + h.percentage, 0);
+                  return (
+                    <div
+                      key={key}
+                      className={cn(
+                        "overflow-hidden rounded-xl border transition-shadow duration-200",
+                        open ? cn("shadow-md", accent.border) : "border-border/60 hover:border-border"
+                      )}
+                    >
+                      {/* Accordion header */}
+                      <button
+                        type="button"
+                        className={cn(
+                          "flex w-full items-center justify-between px-4 py-3.5 text-left transition-colors duration-150",
+                          open
+                            ? cn("bg-gradient-to-r", accent.header, "bg-background")
+                            : "bg-card hover:bg-muted/30"
+                        )}
+                        onClick={() => toggleExpand(key)}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {/* Colored left marker */}
+                          <div className={cn("w-1 h-8 rounded-full shrink-0", accent.dot)} />
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm leading-tight truncate">{fg.fundName}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full", accent.bg, accent.text)}>
+                                {MONTHS[fg.month - 1]} {fg.year}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {fg.holdings.length} stocks · {total.toFixed(1)}% disclosed
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <ChevronDown
+                          className={cn(
+                            "size-4 shrink-0 transition-transform duration-200",
+                            open ? cn(accent.text) : "text-muted-foreground",
+                            open && "rotate-180"
+                          )}
+                        />
+                      </button>
+
+                      {/* Expanded table */}
+                      {open && (
+                        <div className="border-t border-border/60">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className={cn("bg-gradient-to-r", accent.header, "bg-muted/10")}>
+                                <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 w-10">#</th>
+                                <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 w-20">Ticker</th>
+                                <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">Company</th>
+                                <th className="px-4 py-2 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">% NAV</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/40">
+                              {fg.holdings.map((h, i) => (
+                                <tr key={h.id} className="group hover:bg-muted/20 transition-colors">
+                                  <td className="px-4 py-2 text-xs tabular-nums text-muted-foreground/60 font-mono">{i + 1}</td>
+                                  <td className="px-4 py-2">
+                                    {h.symbol ? (
+                                      <span className={cn("font-mono text-xs font-bold px-1.5 py-0.5 rounded", accent.bg, accent.text)}>
+                                        {h.symbol}
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground/40">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2 text-sm text-foreground/80 font-medium">{h.stockName}</td>
+                                  <td className="px-4 py-2">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <div className="h-1 w-16 rounded-full bg-muted overflow-hidden hidden sm:block">
+                                        <div
+                                          className={cn("h-full rounded-full", accent.dot)}
+                                          style={{ width: `${Math.min(100, (h.percentage / Math.max(total, 1)) * 100)}%`, opacity: 0.6 }}
+                                        />
+                                      </div>
+                                      <span className="font-mono text-sm tabular-nums font-semibold w-14 text-right">
+                                        {h.percentage.toFixed(2)}%
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr className="border-t border-border/60 bg-muted/20">
+                                <td colSpan={3} className="px-4 py-2.5 text-xs font-medium text-muted-foreground">
+                                  {fg.holdings.length} stocks disclosed
+                                </td>
+                                <td className="px-4 py-2.5 text-right font-mono text-sm font-bold tabular-nums">
+                                  {total.toFixed(2)}%
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      )}
                     </div>
-                    <ChevronDown
-                      className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")}
-                    />
-                  </button>
-                  {open && (
-                    <div className="border-t border-border">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="bg-muted/30">
-                            <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground w-8">#</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Ticker</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Company</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">% NAV</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                          {fg.holdings.map((h, i) => (
-                            <tr key={h.id} className="hover:bg-muted/20">
-                              <td className="px-4 py-1.5 text-xs text-muted-foreground">{i + 1}</td>
-                              <td className="px-4 py-1.5">
-                                {h.symbol ? (
-                                  <span className="font-mono text-xs font-semibold text-primary">{h.symbol}</span>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">—</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-1.5 text-sm text-foreground/80">{h.stockName}</td>
-                              <td className="px-4 py-1.5 text-right font-mono text-sm tabular-nums">{h.percentage.toFixed(2)}%</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className="border-t border-border bg-muted/30">
-                            <td colSpan={3} className="px-4 py-2 text-xs text-muted-foreground">
-                              {fg.holdings.length} stocks
-                            </td>
-                            <td className="px-4 py-2 text-right font-mono text-xs font-semibold tabular-nums">
-                              {fg.holdings.reduce((s, h) => s + h.percentage, 0).toFixed(2)}%
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-                  )}
-                </Card>
-              );
-            })}
-          </div>
-        ))
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })
       )}
     </div>
   );
@@ -622,6 +682,7 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
   // ── Data state ──
   const [periods, setPeriods] = React.useState<FundPeriodStatus[]>([]);
   const [holdings, setHoldings] = React.useState<HoldingRow[]>([]);
+  const [otherHoldings, setOtherHoldings] = React.useState<string>("");
   const [isDirty, setIsDirty] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isLoadingPeriod, setIsLoadingPeriod] = React.useState(false);
@@ -630,16 +691,23 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
 
   // ── Derived ──
   const total = totalPct(holdings);
-  const others = Math.max(0, 100 - total);
-  const isOverAllocated = total > 100.005;
+  const otherPct = parseFloat(otherHoldings) || 0;
+  const grandTotal = total + otherPct;
+  const isOverAllocated = grandTotal > 100.005;
   const currentStatus = month
     ? periods.find((p) => p.year === year && p.month === month)?.status ?? null
     : null;
-  const prev = month ? prevMonth(year, month) : null;
-  const prevPeriodStatus = prev
-    ? periods.find((p) => p.year === prev.year && p.month === prev.month)?.status ?? null
-    : null;
-  const canImport = prevPeriodStatus === "published" && holdings.length === 0 && !isDirty;
+
+  // Find the most recent published period strictly before the selected one
+  const latestPrevPublished = React.useMemo(() => {
+    if (!month) return null;
+    const curOrd = year * 12 + month;
+    return periods
+      .filter((p) => p.status === "published" && p.year * 12 + p.month < curOrd)
+      .sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month))[0] ?? null;
+  }, [periods, year, month]);
+
+  const canImport = latestPrevPublished !== null && holdings.length === 0 && !isDirty;
 
   const existingSymbols = React.useMemo(
     () => new Set(holdings.map((h) => h.symbol)),
@@ -652,6 +720,7 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
       setPeriods([]);
       setMonth(null);
       setHoldings([]);
+      setOtherHoldings("");
       setIsDirty(false);
       return;
     }
@@ -667,6 +736,7 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
   React.useEffect(() => {
     if (!fundName || !month) {
       setHoldings([]);
+      setOtherHoldings("");
       setIsDirty(false);
       return;
     }
@@ -676,7 +746,9 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
   async function loadPeriod(name: string, y: number, m: number) {
     setIsLoadingPeriod(true);
     const { holdings: h } = await loadPeriodHoldings(name, y, m);
-    setHoldings(h.map(holdingFromDB));
+    const otherRow = h.find((r) => r.stockName === OTHER_HOLDINGS_NAME);
+    setOtherHoldings(otherRow ? String(otherRow.percentage) : "");
+    setHoldings(h.filter((r) => r.stockName !== OTHER_HOLDINGS_NAME).map(holdingFromDB));
     setIsDirty(false);
     setIsLoadingPeriod(false);
   }
@@ -709,15 +781,17 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
     setIsDirty(true);
   }
 
-  // ── Import from previous month ──
+  // ── Import from most recent published period ──
   async function handleImport() {
-    if (!fundName || !prev) return;
+    if (!fundName || !latestPrevPublished) return;
     setIsLoadingPeriod(true);
-    const { holdings: h } = await loadPeriodHoldings(fundName, prev.year, prev.month);
-    setHoldings(h.map(holdingFromDB));
+    const { holdings: h } = await loadPeriodHoldings(fundName, latestPrevPublished.year, latestPrevPublished.month);
+    const otherRow = h.find((r) => r.stockName === OTHER_HOLDINGS_NAME);
+    setOtherHoldings(otherRow ? String(otherRow.percentage) : "");
+    setHoldings(h.filter((r) => r.stockName !== OTHER_HOLDINGS_NAME).map(holdingFromDB));
     setIsDirty(true);
     setIsLoadingPeriod(false);
-    toast.success(`Imported ${h.length} holdings from ${monthLabel(prev.month, prev.year)}`);
+    toast.success(`Imported ${h.filter(r => r.stockName !== OTHER_HOLDINGS_NAME).length} holdings from ${monthLabel(latestPrevPublished.month, latestPrevPublished.year)}`);
   }
 
   // ── Save / Publish ──
@@ -735,6 +809,9 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
         stockName: h.stockName.trim(),
         percentage: parseFloat(h.percentage) || 0,
       }));
+    if (otherPct > 0) {
+      payload.push({ symbol: null, stockName: OTHER_HOLDINGS_NAME, percentage: otherPct });
+    }
 
     const result = await saveHoldings(fundName, year, month, payload, status);
     if (result.ok) {
@@ -774,17 +851,19 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
   return (
     <div className="space-y-5">
       {/* ── Tabs ── */}
-      <div className="flex gap-1 rounded-lg border border-border bg-muted/30 p-1 w-fit">
+      <div className="flex gap-1 rounded-xl border border-border bg-muted/40 p-1 w-fit shadow-sm">
         {(["edit", "published"] as const).map((tab) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
             className={cn(
-              "flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+              "flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-medium transition-all duration-200",
               activeTab === tab
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                ? tab === "edit"
+                  ? "bg-violet-500 text-white shadow-sm shadow-violet-500/30"
+                  : "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/60"
             )}
           >
             {tab === "edit" ? <PieChart className="size-3.5" /> : <Eye className="size-3.5" />}
@@ -898,25 +977,31 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
       </Card>
 
       {/* ── Import Banner ── */}
-      {periodSelected && canImport && prev && (
-        <div className="flex items-center justify-between rounded-lg border border-sky-500/20 bg-sky-500/5 px-4 py-3">
-          <div className="flex items-center gap-2 text-sm">
-            <Download className="size-4 text-sky-500" />
-            <span className="text-foreground">
-              Previous month (
-              <span className="font-medium">{monthLabel(prev.month, prev.year)}</span>
-              ) has published data.
-            </span>
+      {periodSelected && canImport && latestPrevPublished && (
+        <div className="flex items-center justify-between rounded-lg border border-sky-500/30 bg-gradient-to-r from-sky-500/8 to-violet-500/5 px-4 py-3.5">
+          <div className="flex items-center gap-3 text-sm">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/15">
+              <Download className="size-4 text-sky-500" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Import from previous period</p>
+              <p className="text-xs text-muted-foreground">
+                <span className="font-semibold text-sky-600 dark:text-sky-400">
+                  {monthLabel(latestPrevPublished.month, latestPrevPublished.year)}
+                </span>
+                {" "}has published holdings — import and adjust for this month.
+              </p>
+            </div>
           </div>
           <Button
             variant="outline"
             size="sm"
-            className="h-7 gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/10 dark:text-sky-400"
+            className="h-8 gap-1.5 border-sky-500/30 bg-sky-500/10 text-sky-600 hover:bg-sky-500/20 dark:text-sky-400"
             onClick={handleImport}
             disabled={isLoadingPeriod}
           >
             <Download className="size-3.5" />
-            Import
+            Import holdings
           </Button>
         </div>
       )}
@@ -1072,9 +1157,36 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
 
                   {/* Summary footer */}
                   <tfoot>
+                    {/* Other Holdings — manually entered */}
+                    <tr className="border-t border-border/60 bg-muted/10">
+                      <td className="px-3 py-2">
+                        {/* no remove button for this row */}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="text-xs text-muted-foreground/60 italic">—</span>
+                      </td>
+                      <td className="px-3 py-2 text-xs font-medium text-muted-foreground">
+                        Other Holdings
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center justify-end gap-1">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={0.01}
+                            value={otherHoldings}
+                            onChange={(e) => { setOtherHoldings(e.target.value); setIsDirty(true); }}
+                            className="h-7 w-24 text-right font-mono text-sm tabular-nums"
+                            placeholder="0.00"
+                          />
+                          <span className="text-xs text-muted-foreground">%</span>
+                        </div>
+                      </td>
+                    </tr>
                     <tr className="border-t border-border bg-muted/30">
                       <td colSpan={3} className="px-3 py-2 text-xs font-medium text-muted-foreground">
-                        Total ({holdings.length} stocks)
+                        Grand Total ({holdings.length} stocks + other)
                       </td>
                       <td className="px-3 py-2 text-right">
                         <span
@@ -1082,25 +1194,15 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
                             "font-mono text-sm font-semibold tabular-nums",
                             isOverAllocated
                               ? "text-destructive"
-                              : total >= 99.9
+                              : grandTotal >= 99.9
                               ? "text-emerald-600 dark:text-emerald-400"
                               : "text-foreground"
                           )}
                         >
-                          {total.toFixed(2)}%
+                          {grandTotal.toFixed(2)}%
                         </span>
                       </td>
                     </tr>
-                    {!isOverAllocated && others > 0.005 && (
-                      <tr className="border-t border-border/50">
-                        <td colSpan={3} className="px-3 py-1.5 text-xs text-muted-foreground/70">
-                          Others (not disclosed)
-                        </td>
-                        <td className="px-3 py-1.5 text-right font-mono text-xs text-muted-foreground/70 tabular-nums">
-                          {others.toFixed(2)}%
-                        </td>
-                      </tr>
-                    )}
                   </tfoot>
                 </table>
               </div>
@@ -1110,7 +1212,7 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
             {isOverAllocated && (
               <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                 <AlertTriangle className="size-4 shrink-0" />
-                Total allocation is {total.toFixed(2)}% — exceeds 100%. Fix percentages before publishing.
+                Total allocation is {grandTotal.toFixed(2)}% — exceeds 100%. Fix percentages before publishing.
               </div>
             )}
 
