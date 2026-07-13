@@ -8,7 +8,6 @@ import { FundsBreakdownBoard } from "@/components/market/funds-breakdown-board";
 import { PageHeader } from "@/components/page-header";
 import { DataDelayBadge } from "@/components/status-badges";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
-import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { FundsBreakdownData } from "@/lib/services/funds-breakdown";
 
 export function CachedFundsBreakdownPage() {
@@ -17,8 +16,6 @@ export function CachedFundsBreakdownPage() {
       cacheKey: "public:funds-breakdown",
       url: "/api/public/funds-breakdown",
       refreshInterval: 5 * 60_000,
-      pauseWhen: () => !shouldRefreshPsxData(),
-      acceptCacheWhen: () => !shouldRefreshPsxData(),
     });
 
   return (

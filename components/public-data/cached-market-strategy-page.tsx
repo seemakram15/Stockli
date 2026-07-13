@@ -16,7 +16,6 @@ import { StatCard } from "@/components/stat-card";
 import { DataDelayBadge } from "@/components/status-badges";
 import { formatPKR } from "@/lib/format";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
-import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { HoldingsStrategyData } from "@/lib/services/market-strategy-holdings";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -27,8 +26,6 @@ export function CachedMarketStrategyPage() {
       cacheKey: "public:market-strategy-holdings",
       url: "/api/public/market-strategy-holdings",
       refreshInterval: 5 * 60_000,
-      pauseWhen: () => !shouldRefreshPsxData(),
-      acceptCacheWhen: () => !shouldRefreshPsxData(),
     });
 
   const periodLabel =

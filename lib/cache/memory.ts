@@ -33,6 +33,10 @@ export function setMemoryCache<T>(key: string, value: T, ttlSeconds: number): T 
   return value;
 }
 
+export function deleteMemoryCache(key: string): void {
+  store().delete(key);
+}
+
 export async function getOrSetMemoryCache<T>(
   key: string,
   ttlSeconds: number,
