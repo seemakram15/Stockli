@@ -25,6 +25,11 @@ export interface MufapFundHolding {
   readableName: boolean;
 }
 
+export interface MufapNavPoint {
+  date: string;
+  nav: number;
+}
+
 export interface MufapFund {
   fundId: string | null;
   name: string;
@@ -58,6 +63,28 @@ export interface MufapFund {
   holdingsNote: string | null;
   detailDate: string | null;
   amcLogoUrl: string | null;
+  navHistory: MufapNavPoint[];
+  fundCode: string | null;
+  inceptionDate: string | null;
+  frontLoad: number | null;
+  backLoad: number | null;
+  contingentLoad: number | null;
+  dealingDays: string | null;
+  cutOffTime: string | null;
+  priceMechanism: string | null;
+  trusteeName: string | null;
+  ratingDate: string | null;
+  leverage: string | null;
+  amcEmail: string | null;
+  amcPhone: string | null;
+  amcUrl: string | null;
+  netAssets: number | null;
+  netAssetsExFof: number | null;
+  terYtd: number | null;
+  terMtd: number | null;
+  govLeviesYtd: number | null;
+  govLeviesMtd: number | null;
+  sellingMarketingPct: number | null;
 }
 
 export interface MufapFundsData {
@@ -142,6 +169,21 @@ export async function getMufapFundById(fundId: string): Promise<MufapFund | null
       riskProfile: detail.riskProfile ?? fund.riskProfile,
       offerPrice: detail.offerPrice ?? fund.offerPrice,
       amcLogoUrl: detail.amcLogoUrl ?? fund.amcLogoUrl,
+      benchmark: detail.benchmark ?? fund.benchmark,
+      nav: detail.nav ?? fund.nav,
+      ytd: detail.ytd ?? fund.ytd,
+      mtd: detail.mtd ?? fund.mtd,
+      d1: detail.d1 ?? fund.d1,
+      d15: detail.d15 ?? fund.d15,
+      d30: detail.d30 ?? fund.d30,
+      d90: detail.d90 ?? fund.d90,
+      d180: detail.d180 ?? fund.d180,
+      d270: detail.d270 ?? fund.d270,
+      d365: detail.d365 ?? fund.d365,
+      y2: detail.y2 ?? fund.y2,
+      y3: detail.y3 ?? fund.y3,
+      profitOn100k:
+        detail.d1 != null ? (INVESTMENT_AMOUNT * detail.d1) / 100 : fund.profitOn100k,
     };
   } catch {
     return fund;
@@ -233,6 +275,28 @@ function parsePerformance(html: string, directory: FundDirectory) {
         holdingsNote: null,
         detailDate: null,
         amcLogoUrl: directoryEntry?.logoUrl ?? null,
+        navHistory: [],
+        fundCode: null,
+        inceptionDate: null,
+        frontLoad: null,
+        backLoad: null,
+        contingentLoad: null,
+        dealingDays: null,
+        cutOffTime: null,
+        priceMechanism: null,
+        trusteeName: null,
+        ratingDate: null,
+        leverage: null,
+        amcEmail: null,
+        amcPhone: null,
+        amcUrl: null,
+        netAssets: null,
+        netAssetsExFof: null,
+        terYtd: null,
+        terMtd: null,
+        govLeviesYtd: null,
+        govLeviesMtd: null,
+        sellingMarketingPct: null,
       };
     })
     .filter(Boolean) as MufapFund[];
@@ -304,28 +368,81 @@ async function fetchMufapFundDetail(fundId: string): Promise<Partial<MufapFund>>
   const payload = typeof outer.data === "string" ? JSON.parse(outer.data) : outer.data;
   const tables = payload as {
     Table?: Array<Record<string, unknown>>;
+    Table1?: Array<Record<string, unknown>>;
     Table2?: Array<Record<string, unknown>>;
     Table3?: Array<Record<string, unknown>>;
+    Table4?: Array<Record<string, unknown>>;
+    Table5?: Array<Record<string, unknown>>;
   };
   const summary = tables.Table?.[0] ?? {};
+  const navRows = tables.Table1 ?? [];
   const allocationRow = tables.Table2?.[0] ?? {};
   const holdingRows = tables.Table3 ?? [];
+  const returnsRow = tables.Table4?.[0] ?? {};
+  const expenseRow = tables.Table5?.[0] ?? {};
   const topHoldings = holdingRows
     .map((row, index) => parseHolding(row, index))
     .filter(Boolean) as MufapFundHolding[];
   const readableCount = topHoldings.filter((holding) => holding.readableName).length;
+  const netAssets = toNumUnknown(allocationRow.Total);
+  const fofAmount = toNumUnknown(allocationRow.OtherInvestAmountFundOfFund);
 
   return {
     offerPrice: toNumUnknown(summary.OfferPrice ?? summary.Offer ?? summary["Offer Price"]),
-    riskProfile: nullableUnknown(summary.RiskProfile ?? summary.Risk ?? summary["Risk Profile"]),
+    riskProfile: nullableUnknown(summary.ProfileRiskOfFund ?? summary.RiskProfile ?? summary.Risk),
     amcLogoUrl: logoUrl(summary.AMCLogo ?? summary.Logo ?? summary.logo),
+    benchmark: nullableUnknown(summary.BenchMark),
     assetAllocation: parseAssetAllocation(allocationRow),
     topHoldings,
     holdingsNote: topHoldings.length && readableCount === 0
       ? "MUFAP has published holding weights for this period, but not readable stock names. Stockli is showing the official allocation data without guessing names."
       : null,
     detailDate: nullableUnknown(allocationRow.Date ?? summary.Date ?? summary.ReportDate),
+    nav: toNumUnknown(returnsRow.CurrentNav),
+    ytd: toNumUnknown(returnsRow.YTD),
+    mtd: toNumUnknown(returnsRow.MTD),
+    d1: toNumUnknown(returnsRow.Day1),
+    d15: toNumUnknown(returnsRow.Day15),
+    d30: toNumUnknown(returnsRow.Day30),
+    d90: toNumUnknown(returnsRow.Day90),
+    d180: toNumUnknown(returnsRow.Day180),
+    d270: toNumUnknown(returnsRow.Day270),
+    d365: toNumUnknown(returnsRow.Year1),
+    y2: toNumUnknown(returnsRow.Year2),
+    y3: toNumUnknown(returnsRow.Year3),
+    navHistory: parseNavHistory(navRows),
+    fundCode: nullableUnknown(summary.Fund_Code),
+    inceptionDate: nullableUnknown(summary.inception),
+    frontLoad: toNumUnknown(summary.FrontLoad),
+    backLoad: toNumUnknown(summary.BackLoad),
+    contingentLoad: toNumUnknown(summary.ContingentLoad),
+    dealingDays: nullableUnknown(summary.DealingDays),
+    cutOffTime: nullableUnknown(summary.CutOffTime),
+    trusteeName: nullableUnknown(summary.TrusteeNAME),
+    ratingDate: nullableUnknown(summary.FundStabilityRatingDate),
+    leverage: nullableUnknown(summary.Leverage),
+    amcEmail: nullableUnknown(summary.email_addr),
+    amcPhone: nullableUnknown(summary.phone_no),
+    amcUrl: nullableUnknown(summary.url ?? summary.externalurl),
+    netAssets,
+    netAssetsExFof: netAssets != null ? netAssets - (fofAmount ?? 0) : null,
+    terYtd: toNumUnknown(expenseRow.TotalExpenseRatioYTD),
+    terMtd: toNumUnknown(expenseRow.TotalExpenseRatioMTD),
+    govLeviesYtd: toNumUnknown(expenseRow.GovernmentLeviesYTD),
+    govLeviesMtd: toNumUnknown(expenseRow.GovernmentLeviesMTD),
+    sellingMarketingPct: toNumUnknown(expenseRow.selmarkexpense),
   };
+}
+
+function parseNavHistory(rows: Array<Record<string, unknown>>): MufapNavPoint[] {
+  return rows
+    .map((row): MufapNavPoint | null => {
+      const date = nullableUnknown(row.entryDate ?? row.CalDate);
+      const nav = toNumUnknown(row.netval);
+      if (!date || nav == null) return null;
+      return { date, nav };
+    })
+    .filter(Boolean) as MufapNavPoint[];
 }
 
 function emptyMufapFundsData(includeEtfs: boolean, error: unknown): MufapFundsData {
@@ -351,11 +468,20 @@ function parseAssetAllocation(row: Record<string, unknown>): MufapAssetAllocatio
     ["Cash", "Cash", "Cashpercent"],
     ["T-Bills", "TBills", "TBillsPercent"],
     ["PIBs", "PIBs", "PIBsPercent"],
-    ["TFC / Sukuk", "TFCsSukuks", "TFCsSukuksPercent"],
-    ["Commercial Paper", "CommercialPaper", "CommercialPaperPercent"],
-    ["Placements", "Placements", "PlacementsPercent"],
-    ["Term deposits", "TermDeposit", "TermDepositPercent"],
-    ["Other assets", "OtherAssets", "OtherAssetsPercent"],
+    ["TFCs", "TFCs", "TFCsPercent"],
+    ["Ijarah Sukuks", "IjarahSukuks", "IjarahSukuksPercent"],
+    ["Commercial Papers", "Commercialpapers", "CommercialpapersPercent"],
+    ["Govt. Backed / Guaranteed", "GovernmentBackedORGuaranteedSecurities", "GovernmentBackedORGuaranteedSecuritiesPercent"],
+    ["Placements with Banks / DFIs", "PlacementsWithBanksandDFIs", "PlacementsWithBanksandDFIsPercent"],
+    ["Placements with NBFCs", "PlacementsWithNBFCs", "PlacementsWithNBFCsPercent"],
+    ["Reverse Repo (Govt.)", "ReverseReposAgainstGovernmentSecurities", "ReverseReposAgainstGovernmentSecuritiesPercent"],
+    ["Reverse Repo (Other)", "ReverseReposAgainstAllOtherSecurities", "ReverseReposAgainstAllOtherSecuritiesPercent"],
+    ["CFS / MTS", "CFS", "CFSPercent"],
+    ["Spread Transactions", "SpreadTransactions", "SpreadTransactionPercent"],
+    ["Commodity", "Commodity", "CommodityPercent"],
+    ["Fund of Funds", "OtherInvestAmountFundOfFund", "OtherInvestAmountFundOfFundPercent"],
+    ["Other Incl. Receivables", "OtherIncludingReceivable", "OtherIncludingReceivablePercent"],
+    ["Liabilities", "Laibilities", "LaibilitiesPercent"],
   ];
 
   return definitions
@@ -364,7 +490,11 @@ function parseAssetAllocation(row: Record<string, unknown>): MufapAssetAllocatio
       amount: toNumUnknown(row[amountKey]),
       percent: toNumUnknown(row[percentKey]),
     }))
-    .filter((item) => item.amount != null || item.percent != null);
+    .filter(
+      (item) =>
+        (item.amount != null && Math.abs(item.amount) > 0.0001) ||
+        (item.percent != null && Math.abs(item.percent) > 0.0001)
+    );
 }
 
 function parseHolding(row: Record<string, unknown>, index: number): MufapFundHolding | null {

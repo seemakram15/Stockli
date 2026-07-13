@@ -16,6 +16,7 @@ import { PLCalendar } from "@/components/charts/pl-calendar";
 import { PriceChart } from "@/components/charts/price-chart";
 import { SmartBackLink } from "@/components/smart-back-link";
 import { StockFinancialsPanel } from "@/components/stock/stock-financials-panel";
+import { StockFundHolders } from "@/components/stock/stock-fund-holders";
 import { StockLogo } from "@/components/stock/stock-logo";
 import { WatchButton } from "@/components/watch-button";
 import { useLiveHoldings } from "@/lib/hooks/use-live-holdings";
@@ -226,6 +227,8 @@ function StockPageView({
       </div>
 
       <StockFinancialsPanel symbol={symbol} companyName={ticker?.company_name} />
+
+      <StockFundHolders symbol={symbol} />
 
       <Card>
         <CardHeader className="flex-col items-start gap-2 sm:flex-row sm:justify-between">
