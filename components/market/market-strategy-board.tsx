@@ -2,328 +2,171 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowDownUp, Search, Target } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { FilterPanel } from "@/components/ui/filter-panel";
-import { IconChip } from "@/components/ui/accent";
-import { AmcBrandMark } from "@/components/market/amc-brand-mark";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { amcIconUrl, identifyAmcBrand } from "@/lib/amc-brands";
 import { formatPercent, formatPKR, plColorClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { MarketStrategyData, StrategyFundRow } from "@/lib/services/market-strategy";
+import type { HoldingsStrategyData, HoldingsStrategyFund } from "@/lib/services/market-strategy-holdings";
 
-type ClassFilter = "all" | "islamic" | "conventional";
-type ToneFilter = "all" | "gain" | "loss";
-type SortKey = "name" | "amc" | "class" | "type" | "returnPct" | "estimatedReturn";
-type StrategyRowWithClass = StrategyFundRow & {
-  strategyClass: "Islamic" | "Conventional";
-};
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-export function MarketStrategyBoard({ data }: { data: MarketStrategyData }) {
-  const [query, setQuery] = React.useState("");
-  const [classFilter, setClassFilter] = React.useState<ClassFilter>("all");
-  const [toneFilter, setToneFilter] = React.useState<ToneFilter>("all");
-  const [sortKey, setSortKey] = React.useState<SortKey>("amc");
-  const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc");
+// Priority AMCs shown first (by brand key), then alphabetical
+const PRIORITY_KEYS = ["al-meezan", "ubl", "nbp", "hbl"];
 
-  const allRows = React.useMemo(
-    () => [
-      ...data.islamic.map((row) => ({ ...row, strategyClass: "Islamic" as const })),
-      ...data.conventional.map((row) => ({ ...row, strategyClass: "Conventional" as const })),
-    ],
-    [data.conventional, data.islamic]
-  );
+function priorityIndex(key: string) {
+  const i = PRIORITY_KEYS.indexOf(key);
+  return i === -1 ? Infinity : i;
+}
 
-  const rows = React.useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return allRows
-      .filter((row) => {
-        const matchesQuery =
-          !q ||
-          row.name.toLowerCase().includes(q) ||
-          row.amc.toLowerCase().includes(q) ||
-          row.amcShort.toLowerCase().includes(q) ||
-          row.type.toLowerCase().includes(q);
-        const matchesClass =
-          classFilter === "all" ||
-          (classFilter === "islamic" && row.strategyClass === "Islamic") ||
-          (classFilter === "conventional" && row.strategyClass === "Conventional");
-        const matchesTone =
-          toneFilter === "all" ||
-          (toneFilter === "gain" && (row.estimatedReturn ?? 0) >= 0) ||
-          (toneFilter === "loss" && (row.estimatedReturn ?? 0) < 0);
-        return matchesQuery && matchesClass && matchesTone;
-      })
-      .sort((a, b) => compareRows(a, b, sortKey, sortDir));
-  }, [allRows, classFilter, query, sortDir, sortKey, toneFilter]);
+// Strip only the bare legal entity suffix, keep the descriptive name intact
+function displayAmcName(fullName: string) {
+  return fullName.replace(/\s+(Company\s+)?Limited$/i, "").trim();
+}
 
+export function MarketStrategyBoard({ data }: { data: HoldingsStrategyData }) {
+  const periodLabel =
+    data.periodYear && data.periodMonth
+      ? `${MONTHS[data.periodMonth - 1]} ${data.periodYear}`
+      : "";
+
+  // Group by canonical AMC name (f.amc) to guarantee uniqueness
   const groups = React.useMemo(() => {
-    const map = new Map<string, StrategyRowWithClass[]>();
-    for (const row of rows) {
-      const key = row.amcShort || row.amc;
-      map.set(key, [...(map.get(key) ?? []), row]);
+    const map = new Map<string, HoldingsStrategyFund[]>();
+    for (const f of data.funds) {
+      map.set(f.amc, [...(map.get(f.amc) ?? []), f]);
     }
     return Array.from(map.entries())
-      .map(([label, groupRows]) => {
-        const total = groupRows.reduce((sum, row) => sum + (row.estimatedReturn ?? 0), 0);
-        return {
-          label,
-          amc: groupRows[0]?.amc ?? label,
-          logoUrl: groupRows.find((row) => row.amcLogoUrl)?.amcLogoUrl ?? null,
-          rows: groupRows,
-          total,
-          gains: groupRows.filter((row) => (row.estimatedReturn ?? 0) >= 0).length,
-          losses: groupRows.filter((row) => (row.estimatedReturn ?? 0) < 0).length,
-        };
+      .map(([amc, funds]) => {
+        const brand = identifyAmcBrand(amc);
+        const logoUrl = funds.find((f) => f.amcLogoUrl)?.amcLogoUrl ?? null;
+        return { amc, brand, logoUrl, funds };
       })
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [rows]);
-  const filterSummary = `${rows.length} fund${rows.length === 1 ? "" : "s"} · ${
-    classFilter === "all" ? "All classes" : classFilter
-  } · ${toneFilter === "all" ? "All returns" : toneFilter}`;
+      .sort((a, b) => {
+        const pa = priorityIndex(a.brand.key);
+        const pb = priorityIndex(b.brand.key);
+        if (pa !== pb) return pa - pb;
+        return a.brand.fullName.localeCompare(b.brand.fullName);
+      });
+  }, [data.funds]);
 
-  function toggleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir(key === "returnPct" || key === "estimatedReturn" ? "desc" : "asc");
-    }
-  }
+  // Distribute: priority AMCs alternate left/right at the top,
+  // then fill remaining AMCs into each column in order.
+  const { left, right } = React.useMemo(() => {
+    const priority = groups.filter((g) => priorityIndex(g.brand.key) < Infinity);
+    const others = groups.filter((g) => priorityIndex(g.brand.key) === Infinity);
+    const l: typeof groups = [];
+    const r: typeof groups = [];
+    priority.forEach((g, i) => (i % 2 === 0 ? l : r).push(g));
+    const mid = Math.ceil(others.length / 2);
+    others.slice(0, mid).forEach((g) => l.push(g));
+    others.slice(mid).forEach((g) => r.push(g));
+    return { left: l, right: r };
+  }, [groups]);
 
   return (
-    <div className="overflow-hidden rounded-2xl border-gradient-brand bg-card shadow-soft-lg">
-      <div className="border-b border-border bg-gradient-to-br from-card via-card to-violet-500/5 p-4 sm:p-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div className="flex items-center gap-3">
-            <IconChip accent="violet" variant="gradient" size="lg"><Target /></IconChip>
-            <div>
-              <h2 className="text-xl font-semibold tracking-normal">Estimated fund returns</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Color rows by estimated return per {formatPKR(data.investmentAmount)}. Green is gain, red is loss.
-              </p>
-            </div>
-          </div>
+    <div className="space-y-3">
+      {periodLabel && (
+        <p className="text-xs text-muted-foreground/60">
+          Based on <span className="font-medium text-muted-foreground">{periodLabel}</span> published holdings × today&apos;s PSX prices
+        </p>
+      )}
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="space-y-3">
+          {left.map((g) => (
+            <AmcCard key={g.amc} brand={g.brand} logoUrl={g.logoUrl} funds={g.funds} />
+          ))}
         </div>
-
-        <FilterPanel title="Strategy filters" summary={filterSummary} className="mt-4">
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-2">
-              {[
-                ["all", "All funds"],
-                ["islamic", "Islamic"],
-                ["conventional", "Conventional"],
-              ].map(([value, label]) => (
-                <Button
-                  key={value}
-                  type="button"
-                  variant={classFilter === value ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setClassFilter(value as ClassFilter)}
-                >
-                  {label}
-                </Button>
-              ))}
-              {[
-                ["all", "All returns"],
-                ["gain", "Gainers"],
-                ["loss", "Losses"],
-              ].map(([value, label]) => (
-                <Button
-                  key={value}
-                  type="button"
-                  variant={toneFilter === value ? "secondary" : "outline"}
-                  size="sm"
-                  onClick={() => setToneFilter(value as ToneFilter)}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-
-            <label className="relative block max-w-2xl">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search fund, AMC, strategy..."
-                className="pl-9"
-              />
-            </label>
-          </div>
-        </FilterPanel>
-      </div>
-
-      <div className="space-y-4 p-3 sm:p-4">
-        {groups.map((group) => (
-          <section
-            key={group.label}
-            className="overflow-hidden rounded-2xl border border-border bg-background shadow-soft transition-shadow hover:shadow-soft-lg"
-          >
-            <div className="flex flex-col gap-3 border-b border-border bg-muted/25 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 items-center gap-3">
-                <AmcBrandMark label={group.amc} size="md" logoUrl={group.logoUrl} />
-                <div className="min-w-0">
-                  <h3 className="truncate text-base font-semibold">{group.label}</h3>
-                  <p className="truncate text-xs text-muted-foreground">{group.amc}</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-3 text-sm">
-                <span className="text-muted-foreground">{group.rows.length} stock funds</span>
-                <span>
-                  <span className="text-gain">{group.gains}</span> gain ·{" "}
-                  <span className="text-loss">{group.losses}</span> loss
-                </span>
-                <span className={cn("font-semibold tabular-nums", plColorClass(group.total))}>
-                  {formatPKR(group.total, { sign: true })}
-                </span>
-              </div>
-            </div>
-            <div className="space-y-3 p-3 sm:hidden">
-              {group.rows.map((row) => (
-                <StrategyMobileCard
-                  key={`${row.fundId ?? row.name}-${row.strategyClass}-mobile`}
-                  row={row}
-                />
-              ))}
-            </div>
-            <div className="hidden overflow-x-auto scrollbar-thin sm:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <SortableHead label="Fund" active={sortKey === "name"} onClick={() => toggleSort("name")} />
-                    <SortableHead label="Class" active={sortKey === "class"} onClick={() => toggleSort("class")} />
-                    <SortableHead label="Type" active={sortKey === "type"} onClick={() => toggleSort("type")} />
-                    <SortableHead label="Return" active={sortKey === "returnPct"} onClick={() => toggleSort("returnPct")} align="right" />
-                    <SortableHead label="Rs 100k estimate" active={sortKey === "estimatedReturn"} onClick={() => toggleSort("estimatedReturn")} align="right" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {group.rows.map((row) => (
-                    <TableRow key={`${row.fundId ?? row.name}-${row.strategyClass}`} className={rowTint(row.estimatedReturn)}>
-                      <TableCell>
-                        <div className="min-w-[280px]">
-                          {row.fundId ? (
-                            <Link href={`/market/mutual-funds/${row.fundId}`} className="font-semibold hover:underline">
-                              {row.name}
-                            </Link>
-                          ) : (
-                            <p className="font-semibold">{row.name}</p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{row.strategyClass}</TableCell>
-                      <TableCell className="max-w-64 truncate">{row.type}</TableCell>
-                      <TableCell className={cn("text-right font-semibold tabular-nums", plColorClass(row.returnPct))}>
-                        {formatPercent(row.returnPct)}
-                      </TableCell>
-                      <TableCell className={cn("text-right text-base font-bold tabular-nums", plColorClass(row.estimatedReturn))}>
-                        {formatPKR(row.estimatedReturn, { sign: true })}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </section>
-        ))}
-        {rows.length === 0 ? (
-          <div className="flex h-28 items-center justify-center rounded-2xl border border-dashed border-border text-sm text-muted-foreground">
-            No funds match the current strategy filters.
-          </div>
-        ) : null}
+        <div className="space-y-3">
+          {right.map((g) => (
+            <AmcCard key={g.amc} brand={g.brand} logoUrl={g.logoUrl} funds={g.funds} />
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-function StrategyMobileCard({ row }: { row: StrategyRowWithClass }) {
+function AmcCard({
+  brand,
+  logoUrl,
+  funds,
+}: {
+  brand: ReturnType<typeof identifyAmcBrand>;
+  logoUrl: string | null;
+  funds: HoldingsStrategyFund[];
+}) {
+  const iconUrl = logoUrl ?? amcIconUrl(brand);
+  const [imgFailed, setImgFailed] = React.useState(false);
+
   return (
-    <div className={cn("rounded-xl border border-border p-3", rowTint(row.estimatedReturn))}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          {row.fundId ? (
-            <Link
-              href={`/market/mutual-funds/${row.fundId}`}
-              className="block truncate font-semibold hover:underline"
-            >
-              {row.name}
-            </Link>
+    <div
+      className="overflow-hidden rounded-xl border-2 bg-card"
+      style={{ borderColor: `${brand.color}30` }}
+    >
+      {/* AMC header */}
+      <div
+        className="flex items-center gap-2.5 px-3 py-2"
+        style={{
+          background: `linear-gradient(135deg, ${brand.color}12 0%, ${brand.color}04 100%)`,
+          borderBottom: `1px solid ${brand.color}20`,
+        }}
+      >
+        <div
+          className="relative flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md border"
+          style={{ borderColor: `${brand.color}40`, backgroundColor: `${brand.color}18` }}
+        >
+          {iconUrl && !imgFailed ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={iconUrl} alt={brand.shortName} className="h-full w-full object-contain p-0.5" onError={() => setImgFailed(true)} />
           ) : (
-            <p className="truncate font-semibold">{row.name}</p>
+            <span className="text-[8px] font-bold leading-none" style={{ color: brand.color }}>
+              {brand.initials}
+            </span>
           )}
-          <p className="mt-1 line-clamp-2 text-xs opacity-75">{row.type}</p>
         </div>
-        <div className="shrink-0 text-right">
-          <p className="text-xs opacity-75">{row.strategyClass}</p>
-          <p className={cn("font-bold tabular-nums", plColorClass(row.estimatedReturn))}>
-            {formatPKR(row.estimatedReturn, { sign: true })}
-          </p>
-        </div>
-      </div>
-      <div className="mt-3 flex items-center justify-between gap-3 text-sm">
-        <span className="text-muted-foreground">Return</span>
-        <span className={cn("font-semibold tabular-nums", plColorClass(row.returnPct))}>
-          {formatPercent(row.returnPct)}
+        <span className="text-sm font-bold" style={{ color: brand.color }}>
+          {displayAmcName(brand.fullName)}
         </span>
       </div>
+
+      {/* Fund rows — no column headers */}
+      <div className="divide-y divide-border/30">
+        {funds.map((f) => (
+          <FundRow key={f.fundId ?? f.fundName} fund={f} />
+        ))}
+      </div>
     </div>
   );
 }
 
-function SortableHead({
-  label,
-  active,
-  align = "left",
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  align?: "left" | "right";
-  onClick: () => void;
-}) {
-  return (
-    <TableHead className={align === "right" ? "text-right" : ""}>
-      <button
-        type="button"
-        onClick={onClick}
-        className={cn(
-          "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide hover:text-foreground",
-          align === "right" && "justify-end"
-        )}
-      >
-        {label}
-        <ArrowDownUp className={cn("size-3", active ? "text-primary" : "text-muted-foreground")} />
-      </button>
-    </TableHead>
+function FundRow({ fund: f }: { fund: HoldingsStrategyFund }) {
+  const name = f.fundId ? (
+    <Link href={`/market/mutual-funds/${f.fundId}`} className="hover:underline">
+      {f.fundName}
+    </Link>
+  ) : (
+    <span>{f.fundName}</span>
   );
-}
 
-function compareRows(
-  a: StrategyRowWithClass,
-  b: StrategyRowWithClass,
-  key: SortKey,
-  dir: "asc" | "desc"
-) {
-  const factor = dir === "asc" ? 1 : -1;
-  if (key === "name") return a.name.localeCompare(b.name) * factor;
-  if (key === "amc") return (a.amcShort || a.amc).localeCompare(b.amcShort || b.amc) * factor;
-  if (key === "class") return a.strategyClass.localeCompare(b.strategyClass) * factor;
-  if (key === "type") return a.type.localeCompare(b.type) * factor;
-  if (key === "returnPct") return ((a.returnPct ?? -Infinity) - (b.returnPct ?? -Infinity)) * factor;
-  return ((a.estimatedReturn ?? -Infinity) - (b.estimatedReturn ?? -Infinity)) * factor;
+  return (
+    <div
+      className={cn("grid items-center px-3 py-1.5 text-xs", rowTint(f.estimatedReturn))}
+      style={{ gridTemplateColumns: "1fr 4.5rem 5.75rem", gap: "0.75rem" }}
+    >
+      <span className="min-w-0 truncate text-foreground/80">{name}</span>
+      <span className={cn("text-right font-semibold tabular-nums", plColorClass(f.holdingsReturnPct))}>
+        {f.holdingsReturnPct != null ? formatPercent(f.holdingsReturnPct) : "—"}
+      </span>
+      <span className={cn("text-right font-bold tabular-nums", plColorClass(f.estimatedReturn))}>
+        {f.estimatedReturn != null ? formatPKR(f.estimatedReturn, { sign: true }) : "—"}
+      </span>
+    </div>
+  );
 }
 
 function rowTint(value: number | null) {
-  if (value == null) return "bg-muted/20";
-  if (value >= 0) return "bg-emerald-50/85 dark:bg-emerald-950/30";
-  return "bg-red-50/90 dark:bg-red-950/30";
+  if (value == null) return "";
+  if (value > 0) return "bg-emerald-50/60 dark:bg-emerald-950/20";
+  if (value < 0) return "bg-red-50/60 dark:bg-red-950/20";
+  return "";
 }

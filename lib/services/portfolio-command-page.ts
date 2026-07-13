@@ -3,7 +3,7 @@ import type { DashboardTickerItem } from "@/components/dashboard/index-ticker-st
 import { getGlobalMarketData, type GlobalMarketQuote } from "@/lib/services/global-markets";
 import { getMarketDisplaySymbol } from "@/lib/market-symbols";
 import { getPortfolioCalendar, type StockCalendar } from "@/lib/services/daily-pl";
-import { getPortfolioPerformance, type PerformanceResult } from "@/lib/services/performance";
+import type { PerformanceResult } from "@/lib/services/performance";
 import { getDashboard, type DashboardData } from "@/lib/services/portfolio";
 import { getIndexSummariesCached } from "@/lib/services/history";
 import { marketStatus } from "@/lib/psx/market-hours";
@@ -14,7 +14,7 @@ export interface PortfolioCommandPageData {
   calendar: StockCalendar | null;
   headlineTicker: DashboardTickerItem | null;
   tickerItems: DashboardTickerItem[];
-  performance: PerformanceResult;
+  performance: PerformanceResult | null;
   market: ReturnType<typeof marketStatus>;
   updatedAt: string;
 }
@@ -27,21 +27,11 @@ export async function getPortfolioCommandPageData(): Promise<PortfolioCommandPag
     getGlobalMarketData("commodities").catch(() => null),
   ]);
 
-  const { holdings, portfolios } = dashboard;
-  const performancePortfolios = portfolios
-    .map((portfolio) => ({
-      id: portfolio.id,
-      name: portfolio.name,
-      positions: holdings
-        .filter((holding) => holding.portfolio_id === portfolio.id)
-        .map((holding) => ({ symbol: holding.symbol, quantity: holding.quantity })),
-    }))
-    .filter((portfolio) => portfolio.positions.length > 0);
+  const { holdings } = dashboard;
 
-  const [calendar, performance] = await Promise.all([
-    holdings.length ? getPortfolioCalendar(holdings, dashboard.transactions) : null,
-    getPortfolioPerformance(performancePortfolios),
-  ]);
+  const calendar = holdings.length
+    ? await getPortfolioCalendar(holdings, dashboard.transactions)
+    : null;
 
   const { headlineTicker, tickerItems } = buildTickerStripItems(
     indexSummaries,
@@ -54,7 +44,7 @@ export async function getPortfolioCommandPageData(): Promise<PortfolioCommandPag
     calendar,
     headlineTicker,
     tickerItems,
-    performance,
+    performance: null,
     market: marketStatus(),
     updatedAt: new Date().toISOString(),
   };

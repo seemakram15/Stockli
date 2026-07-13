@@ -6,8 +6,10 @@ export interface PakistanFund {
 export const PAKISTAN_FUNDS: PakistanFund[] = [
   // Al Meezan Investment Management
   { amc: "Al Meezan Investment Management", name: "Meezan Islamic Fund" },
+  { amc: "Al Meezan Investment Management", name: "Meezan Energy Fund" },
   { amc: "Al Meezan Investment Management", name: "Al Meezan Mutual Fund" },
   { amc: "Al Meezan Investment Management", name: "Meezan Balanced Fund" },
+  { amc: "Al Meezan Investment Management", name: "Meezan Dividend Yield Plan" },
   { amc: "Al Meezan Investment Management", name: "Meezan Asset Allocation Fund" },
   { amc: "Al Meezan Investment Management", name: "Meezan Dedicated Equity Fund" },
   { amc: "Al Meezan Investment Management", name: "KSE Meezan Index Fund" },
@@ -16,8 +18,6 @@ export const PAKISTAN_FUNDS: PakistanFund[] = [
   { amc: "ABL Asset Management", name: "ABL Stock Fund" },
   { amc: "ABL Asset Management", name: "ABL Islamic Stock Fund" },
   { amc: "ABL Asset Management", name: "ABL Islamic Dedicated Stock Fund" },
-  { amc: "ABL Asset Management", name: "ABL Optimal Asset Allocation Fund" },
-  { amc: "ABL Asset Management", name: "ABL Islamic Asset Allocation Fund" },
   { amc: "ABL Asset Management", name: "Allied Finergy Fund" },
   // HBL Asset Management
   { amc: "HBL Asset Management", name: "HBL Stock Fund" },
@@ -37,11 +37,9 @@ export const PAKISTAN_FUNDS: PakistanFund[] = [
   { amc: "Atlas Asset Management", name: "Atlas Islamic Dedicated Stock Fund" },
   // MCB Funds
   { amc: "MCB Funds", name: "MCB Pakistan Stock Market Fund" },
-  { amc: "MCB Funds", name: "MCB Financial Sector Fund" },
   { amc: "MCB Funds", name: "MCB Pakistan Asset Allocation Fund" },
   { amc: "MCB Funds", name: "Pakistan Capital Market Fund" },
   { amc: "MCB Funds", name: "Alhamra Islamic Stock Fund" },
-  { amc: "MCB Funds", name: "Alhamra Islamic Energy Fund" },
   { amc: "MCB Funds", name: "Alhamra Opportunity Fund" },
   { amc: "MCB Funds", name: "Alhamra Islamic Asset Allocation Fund" },
   // NBP Funds
@@ -52,20 +50,16 @@ export const PAKISTAN_FUNDS: PakistanFund[] = [
   { amc: "NBP Funds", name: "NBP Pakistan Growth Exchange Traded Fund" },
   { amc: "NBP Funds", name: "NBP Islamic Stock Fund" },
   { amc: "NBP Funds", name: "NBP Islamic Energy Fund" },
-  { amc: "NBP Funds", name: "NBP Islamic Active Allocation Equity Fund" },
   { amc: "NBP Funds", name: "NBP Islamic Sarmaya Izafa Fund" },
   // Alfalah Asset Management
   { amc: "Alfalah Asset Management", name: "Alfalah GHP Stock Fund" },
   { amc: "Alfalah Asset Management", name: "Alfalah GHP Alpha Fund" },
   { amc: "Alfalah Asset Management", name: "Alfalah GHP Value Fund" },
   { amc: "Alfalah Asset Management", name: "Alfalah Asset Allocation Fund" },
-  { amc: "Alfalah Asset Management", name: "Alfalah Financial Value Fund" },
   { amc: "Alfalah Asset Management", name: "Alfalah Consumer Index Exchange Traded Fund" },
   { amc: "Alfalah Asset Management", name: "Alfalah GHP Islamic Stock Fund" },
-  { amc: "Alfalah Asset Management", name: "Alfalah GHP Islamic Value Fund" },
   { amc: "Alfalah Asset Management", name: "Alfalah GHP Dedicated Equity Fund" },
   { amc: "Alfalah Asset Management", name: "Alfalah GHP Islamic Dedicated Equity Fund" },
-  { amc: "Alfalah Asset Management", name: "Alfalah Islamic Asset Allocation Fund" },
   // Faysal Asset Management
   { amc: "Faysal Asset Management", name: "Faysal Islamic Stock Fund" },
   { amc: "Faysal Asset Management", name: "Faysal Islamic Stock Fund II" },
@@ -81,7 +75,6 @@ export const PAKISTAN_FUNDS: PakistanFund[] = [
   { amc: "Lakson Investments", name: "Lakson Equity Fund" },
   { amc: "Lakson Investments", name: "Lakson Tactical Fund" },
   { amc: "Lakson Investments", name: "Lakson Islamic Tactical Fund" },
-  { amc: "Lakson Investments", name: "Lakson Asset Allocation Developed Markets Fund" },
   // UBL Fund Managers
   { amc: "UBL Fund Managers", name: "UBL Stock Advantage Fund" },
   { amc: "UBL Fund Managers", name: "UBL Financial Sector Fund" },

@@ -41,6 +41,8 @@ import type { PerfPoint, PerformanceResult } from "@/lib/services/performance";
 import type { HoldingWithMetrics } from "@/lib/types";
 
 const PORTFOLIO_COMMAND_URL = "/api/private/portfolio-command";
+const PORTFOLIO_PERFORMANCE_URL = "/api/private/portfolio-performance";
+const EMPTY_PERF: PerformanceResult = { points: [], series: [] };
 type PerformanceGranularity = "1D" | "DAY" | "MONTH" | "YEAR";
 type PerformanceWindow = "1M" | "3M" | "1Y" | "3Y" | "5Y" | "10Y" | "ALL";
 
@@ -127,6 +129,22 @@ export function CachedPortfolioCommandPage({
     return () => window.removeEventListener(PORTFOLIO_MUTATION_EVENT, onMutation);
   }, [refreshNow]);
 
+  const [perfData, setPerfData] = React.useState<import("@/lib/services/performance").PerformanceResult | null>(null);
+  const fetchingPerfRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!data || fetchingPerfRef.current) return;
+    fetchingPerfRef.current = true;
+    fetch(PORTFOLIO_PERFORMANCE_URL)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json: { data: import("@/lib/services/performance").PerformanceResult } | null) => {
+        if (json?.data) setPerfData(json.data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        fetchingPerfRef.current = false;
+      });
+  }, [data?.updatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // When returning to this page after a mutation (e.g. creating a portfolio from the detail
   // page or any other flow), the SWR dedup window can prevent the automatic revalidation.
   // Detect staleness on mount: if the mutation timestamp is newer than the cached data,
@@ -157,7 +175,7 @@ export function CachedPortfolioCommandPage({
     );
   }
 
-  const { dashboard, headlineTicker, tickerItems, calendar, performance, market } = data;
+  const { dashboard, headlineTicker, tickerItems, calendar, market } = data;
   const { summary, holdings, portfolios } = dashboard;
   const hasHoldings = holdings.length > 0;
   const hasPortfolios = portfolios.length > 0;
@@ -255,7 +273,7 @@ export function CachedPortfolioCommandPage({
           <PortfolioJumpCards portfolios={portfolios} holdings={holdings} userId={userId} />
 
           <div className="grid gap-4 lg:grid-cols-3">
-            <PerformanceCard data={performance} holdings={holdings} />
+            <PerformanceCard data={perfData} holdings={holdings} />
             <AllocationExplorer holdings={holdings} portfolios={portfolios} title="Allocation overview" />
           </div>
 
@@ -435,7 +453,7 @@ function PerformanceCard({
   }, [granularity, window]);
 
   const filteredData = React.useMemo(
-    () => buildPerformanceView(data, granularity, window),
+    () => buildPerformanceView(data ?? EMPTY_PERF, granularity, window),
     [data, granularity, window]
   );
   const rangeOptions = granularity === "1D" ? [] : PERFORMANCE_WINDOWS[granularity];

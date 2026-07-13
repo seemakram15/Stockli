@@ -235,6 +235,65 @@ export async function getPublishedFundHoldings(
   }));
 }
 
+/** Public: load all published holdings for all funds in a given period (no auth required). */
+export async function getPublishedHoldingsForPeriod(
+  year: number,
+  month: number
+): Promise<{ fundName: string; amc: string; holdings: FundHolding[] }[]> {
+  const db = createAdminClient();
+  const { data, error } = await db
+    .from("mutual_fund_holdings")
+    .select("amc, fund_name, symbol, stock_name, percentage, rank")
+    .eq("status", "published")
+    .eq("report_year", year)
+    .eq("report_month", month)
+    .order("amc")
+    .order("fund_name")
+    .order("rank", { ascending: true, nullsFirst: false });
+  if (error) throw error;
+
+  const map = new Map<string, { fundName: string; amc: string; holdings: FundHolding[] }>();
+  for (const r of data ?? []) {
+    const key = `${r.amc}||${r.fund_name}`;
+    if (!map.has(key)) map.set(key, { fundName: r.fund_name, amc: r.amc, holdings: [] });
+    map.get(key)!.holdings.push({
+      id: 0,
+      symbol: r.symbol,
+      stockName: r.stock_name,
+      percentage: Number(r.percentage),
+      rank: r.rank,
+      status: "published",
+    });
+  }
+  return Array.from(map.values());
+}
+
+/** Public: find the most recent published period across all funds (no auth required). */
+export async function getLatestPublishedPeriod(): Promise<{ year: number; month: number } | null> {
+  const db = createAdminClient();
+  const { data } = await db
+    .from("mutual_fund_holdings")
+    .select("report_year, report_month")
+    .eq("status", "published")
+    .order("report_year", { ascending: false })
+    .order("report_month", { ascending: false })
+    .limit(1);
+  if (!data || data.length === 0) return null;
+  return { year: data[0].report_year, month: data[0].report_month };
+}
+
+/** Public: load the most recent published holdings for all funds (no auth required). */
+export async function getLatestPublishedHoldingsAll(): Promise<{
+  year: number;
+  month: number;
+  funds: { fundName: string; amc: string; holdings: FundHolding[] }[];
+}> {
+  const period = await getLatestPublishedPeriod();
+  if (!period) return { year: 0, month: 0, funds: [] };
+  const funds = await getPublishedHoldingsForPeriod(period.year, period.month);
+  return { ...period, funds };
+}
+
 /** Load PSX tickers for the stock picker. */
 export async function getActiveTickers(): Promise<{ symbol: string; companyName: string }[]> {
   const db = createAdminClient();

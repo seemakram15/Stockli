@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { IconChip } from "@/components/ui/accent";
-import { StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FilterPanel } from "@/components/ui/filter-panel";
@@ -32,10 +31,9 @@ import {
   formatDateTime,
   formatNumber,
   formatPercent,
-  formatPKR,
   plColorClass,
 } from "@/lib/format";
-import { identifyAmcBrand } from "@/lib/amc-brands";
+import { amcIconUrl, identifyAmcBrand } from "@/lib/amc-brands";
 import { cn } from "@/lib/utils";
 import { AmcBrandMark } from "@/components/market/amc-brand-mark";
 import type { FundClassFilter, MufapFund, MufapFundsData } from "@/lib/services/mufap";
@@ -47,8 +45,7 @@ type SortKey =
   | "d1"
   | "mtd"
   | "ytd"
-  | "d365"
-  | "profitOn100k";
+  | "d365";
 
 type StrategyFilter = "all" | "stock" | "income" | "money-market" | "allocation";
 
@@ -119,12 +116,6 @@ export function MufapFundsBoard({
       .sort((a, b) => compareFunds(a, b, sortKey, sortDir));
   }, [amc, data.funds, fundClass, query, sortDir, sortKey, strategy]);
 
-  const summary = React.useMemo(() => {
-    const amcCount = new Set(rows.map((fund) => fund.amc)).size;
-    const classCount = new Set(rows.map((fund) => fund.classFilter)).size;
-    const pricedCount = rows.filter((fund) => fund.nav != null).length;
-    return { amcCount, classCount, pricedCount };
-  }, [rows]);
   const filterSummary = `${amc === "all" ? "All AMCs" : identifyAmcBrand(amc).shortName} · ${
     rows.length
   } fund${rows.length === 1 ? "" : "s"}`;
@@ -163,13 +154,6 @@ export function MufapFundsBoard({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard label="Visible funds" value={rows.length.toLocaleString("en-US")} accent="amber" icon={<BarChart3 className="size-4" />} />
-        <StatCard label="AMCs shown" value={summary.amcCount.toLocaleString("en-US")} accent="sky" icon={<BadgePercent className="size-4" />} />
-        <StatCard label="Priced NAVs" value={summary.pricedCount.toLocaleString("en-US")} accent="emerald" icon={<Coins className="size-4" />} />
-        <StatCard label="Fund classes" value={summary.classCount.toLocaleString("en-US")} accent="violet" icon={<PieChart className="size-4" />} />
-      </div>
-
       <Card variant="feature" className="overflow-hidden">
         <CardHeader className="gap-5 border-b border-border bg-gradient-to-br from-card via-card to-amber-500/5">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -295,84 +279,109 @@ export function MufapFundsBoard({
         </CardHeader>
 
         <CardContent className="space-y-4 p-3 sm:p-4">
-          {groups.map((group) => (
+          {groups.map((group) => {
+            const brand = identifyAmcBrand(group.amc);
+            return (
             <section
               key={group.label}
-              className="overflow-hidden rounded-2xl border border-border bg-background shadow-soft transition-shadow hover:shadow-soft-lg"
+              className="overflow-hidden rounded-2xl border-2 bg-background shadow-soft transition-shadow hover:shadow-soft-lg"
+              style={{ borderColor: `${brand.color}35` }}
             >
-              <div className="flex flex-col gap-3 border-b border-border bg-muted/25 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-center gap-3">
-                  <AmcBrandMark label={group.amc} size="md" logoUrl={group.logoUrl} />
+              {/* AMC header with brand color */}
+              <div
+                className="flex flex-col gap-4 border-b p-4 sm:flex-row sm:items-center sm:justify-between"
+                style={{
+                  background: `linear-gradient(135deg, ${brand.color}10 0%, ${brand.color}04 60%, transparent 100%)`,
+                  borderColor: `${brand.color}30`,
+                }}
+              >
+                <div className="flex min-w-0 items-center gap-4">
+                  <AmcGroupLogo brand={brand} logoUrl={group.logoUrl} />
                   <div className="min-w-0">
-                    <h3 className="truncate text-base font-semibold">{group.label}</h3>
-                    <p className="truncate text-xs text-muted-foreground">{group.amc}</p>
+                    <h3 className="truncate text-lg font-bold" style={{ color: brand.color }}>
+                      {brand.shortName}
+                    </h3>
+                    <p className="truncate text-xs text-muted-foreground/70">{group.amc}</p>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                  <span>{group.funds.length} funds</span>
-                  <span>{group.stockFunds} stock funds</span>
-                  <span>Latest {group.latestDate ?? "—"}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className="rounded-full px-3 py-1 text-xs font-semibold"
+                    style={{ backgroundColor: `${brand.color}15`, color: brand.color }}
+                  >
+                    {group.funds.length} fund{group.funds.length !== 1 ? "s" : ""}
+                  </span>
+                  {group.stockFunds > 0 && (
+                    <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                      {group.stockFunds} stock
+                    </span>
+                  )}
+                  {group.latestDate && (
+                    <span className="text-xs text-muted-foreground/60">
+                      Updated {group.latestDate}
+                    </span>
+                  )}
                 </div>
               </div>
+
+              {/* Mobile cards */}
               <div className="space-y-3 p-3 sm:hidden">
                 {group.funds.map((fund) => (
                   <FundMobileCard
                     key={`${fund.fundId ?? fund.name}-${fund.type}-mobile`}
                     fund={fund}
                     etfMode={etfMode}
+                    brandColor={brand.color}
                   />
                 ))}
               </div>
+
+              {/* Desktop table */}
               <div className="hidden overflow-x-auto scrollbar-thin sm:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <SortableHead label="Fund name" active={sortKey === "name"} onClick={() => toggleSort("name")} />
-                      <TableHead>Type</TableHead>
-                      <SortableHead label="NAV" active={sortKey === "nav"} onClick={() => toggleSort("nav")} align="right" />
-                      <SortableHead label="1 day" active={sortKey === "d1"} onClick={() => toggleSort("d1")} align="right" />
-                      <SortableHead label="MTD" active={sortKey === "mtd"} onClick={() => toggleSort("mtd")} align="right" />
-                      <SortableHead label="YTD" active={sortKey === "ytd"} onClick={() => toggleSort("ytd")} align="right" />
-                      <SortableHead label="365 days" active={sortKey === "d365"} onClick={() => toggleSort("d365")} align="right" />
-                      <SortableHead label="Rs 100k P/L" active={sortKey === "profitOn100k"} onClick={() => toggleSort("profitOn100k")} align="right" />
+                      <SortableHead label="Fund name" active={sortKey === "name"} onClick={() => toggleSort("name")} className="min-w-[260px]" />
+                      <TableHead className="w-40">Type</TableHead>
+                      <SortableHead label="NAV" active={sortKey === "nav"} onClick={() => toggleSort("nav")} align="right" className="w-28" />
+                      <SortableHead label="1 day" active={sortKey === "d1"} onClick={() => toggleSort("d1")} align="right" className="w-24" />
+                      <SortableHead label="MTD" active={sortKey === "mtd"} onClick={() => toggleSort("mtd")} align="right" className="w-24" />
+                      <SortableHead label="YTD" active={sortKey === "ytd"} onClick={() => toggleSort("ytd")} align="right" className="w-24" />
+                      <SortableHead label="365 days" active={sortKey === "d365"} onClick={() => toggleSort("d365")} align="right" className="w-28" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {group.funds.map((fund) => (
                       <TableRow key={`${fund.fundId ?? fund.name}-${fund.type}`}>
                         <TableCell>
-                          <div className="min-w-[280px]">
-                            {fund.fundId ? (
-                              <Link
-                                href={`/${etfMode ? "market/etfs" : "market/mutual-funds"}/${fund.fundId}`}
-                                className="font-semibold hover:text-primary"
-                              >
-                                {fund.name}
-                              </Link>
-                            ) : (
-                              <p className="font-semibold">{fund.name}</p>
-                            )}
-                            <p className="text-xs text-muted-foreground">
-                              {fund.validityDate ?? "—"} · {fund.riskProfile ?? "Risk N/A"}
-                            </p>
-                          </div>
+                          {fund.fundId ? (
+                            <Link
+                              href={`/${etfMode ? "market/etfs" : "market/mutual-funds"}/${fund.fundId}`}
+                              className="font-semibold hover:text-primary"
+                            >
+                              {fund.name}
+                            </Link>
+                          ) : (
+                            <p className="font-semibold">{fund.name}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {fund.validityDate ?? "—"} · {fund.riskProfile ?? "Risk N/A"}
+                          </p>
                         </TableCell>
-                        <TableCell className="max-w-72 truncate">{fund.type}</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatNumber(fund.nav, 4)}</TableCell>
-                        <ReturnCell value={fund.d1} />
-                        <ReturnCell value={fund.mtd} />
-                        <ReturnCell value={fund.ytd} />
-                        <ReturnCell value={fund.d365} />
-                        <TableCell className={cn("text-right font-semibold tabular-nums", plColorClass(fund.profitOn100k))}>
-                          {formatPKR(fund.profitOn100k, { sign: true })}
-                        </TableCell>
+                        <TableCell className="w-40 truncate text-xs text-muted-foreground">{fund.type}</TableCell>
+                        <TableCell className="w-28 text-right tabular-nums">{formatNumber(fund.nav, 4)}</TableCell>
+                        <ReturnCell value={fund.d1} className="w-24" />
+                        <ReturnCell value={fund.mtd} className="w-24" />
+                        <ReturnCell value={fund.ytd} className="w-24" />
+                        <ReturnCell value={fund.d365} className="w-28" />
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </div>
             </section>
-          ))}
+            );
+          })}
           {rows.length === 0 ? (
             <div className="flex h-28 items-center justify-center rounded-2xl border border-dashed border-border text-sm text-muted-foreground">
               {data.unavailable
@@ -386,9 +395,12 @@ export function MufapFundsBoard({
   );
 }
 
-function FundMobileCard({ fund, etfMode }: { fund: MufapFund; etfMode: boolean }) {
+function FundMobileCard({ fund, etfMode, brandColor }: { fund: MufapFund; etfMode: boolean; brandColor: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
+    <div
+      className="rounded-xl border bg-card p-3"
+      style={{ borderColor: `${brandColor}25` }}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           {fund.fundId ? (
@@ -409,16 +421,11 @@ function FundMobileCard({ fund, etfMode }: { fund: MufapFund; etfMode: boolean }
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-        <MobileMetric label="1 day" value={formatPercent(fund.d1)} tone={fund.d1} />
-        <MobileMetric label="MTD" value={formatPercent(fund.mtd)} tone={fund.mtd} align="right" />
+      <div className="mt-3 grid grid-cols-4 gap-2 text-sm">
+        <MobileMetric label="1D" value={formatPercent(fund.d1)} tone={fund.d1} />
+        <MobileMetric label="MTD" value={formatPercent(fund.mtd)} tone={fund.mtd} />
         <MobileMetric label="YTD" value={formatPercent(fund.ytd)} tone={fund.ytd} />
-        <MobileMetric
-          label="Rs 100k P/L"
-          value={formatPKR(fund.profitOn100k, { sign: true })}
-          tone={fund.profitOn100k}
-          align="right"
-        />
+        <MobileMetric label="365D" value={formatPercent(fund.d365)} tone={fund.d365} align="right" />
       </div>
     </div>
   );
@@ -441,6 +448,30 @@ function MobileMetric({
       <p className={cn("font-medium tabular-nums", tone == null ? "" : plColorClass(tone))}>
         {value}
       </p>
+    </div>
+  );
+}
+
+function AmcGroupLogo({ brand, logoUrl }: { brand: ReturnType<typeof identifyAmcBrand>; logoUrl: string | null }) {
+  const iconUrl = logoUrl ?? amcIconUrl(brand);
+  const [failed, setFailed] = React.useState(false);
+  return (
+    <div
+      className="relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 shadow-md"
+      style={{ borderColor: `${brand.color}40`, backgroundColor: `${brand.color}12` }}
+    >
+      {iconUrl && !failed ? (
+        <img
+          src={iconUrl}
+          alt={brand.shortName}
+          className="h-full w-full object-contain p-1.5"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span className="text-sm font-bold" style={{ color: brand.color }}>
+          {brand.initials}
+        </span>
+      )}
     </div>
   );
 }
@@ -511,9 +542,9 @@ function FilterPill({
   );
 }
 
-function ReturnCell({ value }: { value: number | null }) {
+function ReturnCell({ value, className }: { value: number | null; className?: string }) {
   return (
-    <TableCell className={cn("text-right font-medium tabular-nums", plColorClass(value))}>
+    <TableCell className={cn("text-right font-medium tabular-nums", plColorClass(value), className)}>
       {formatPercent(value)}
     </TableCell>
   );
@@ -524,14 +555,16 @@ function SortableHead({
   active,
   align = "left",
   onClick,
+  className,
 }: {
   label: string;
   active: boolean;
   align?: "left" | "right";
   onClick: () => void;
+  className?: string;
 }) {
   return (
-    <TableHead className={align === "right" ? "text-right" : ""}>
+    <TableHead className={cn(align === "right" ? "text-right" : "", className)}>
       <button
         type="button"
         onClick={onClick}
@@ -557,7 +590,6 @@ function numericValue(fund: MufapFund, key: SortKey) {
   if (key === "mtd") return fund.mtd ?? -Infinity;
   if (key === "ytd") return fund.ytd ?? -Infinity;
   if (key === "d365") return fund.d365 ?? -Infinity;
-  if (key === "profitOn100k") return fund.profitOn100k ?? -Infinity;
   return 0;
 }
 

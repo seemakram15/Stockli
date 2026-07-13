@@ -229,7 +229,7 @@ function FundCombobox({
       <PopoverContent
         align="start"
         sideOffset={4}
-        className="w-[420px] p-0"
+        className="w-[min(420px,calc(100vw-1rem))] p-0"
       >
         {/* Search input */}
         <div className="border-b border-border p-2">
@@ -375,12 +375,12 @@ function StockPicker({
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className="h-9 min-w-[260px] justify-between gap-2 font-normal"
+            className="h-9 w-full justify-between gap-2 font-normal sm:min-w-[260px] sm:w-auto"
           >
             <span className="text-muted-foreground">
               {selected.length > 0
@@ -392,7 +392,7 @@ function StockPicker({
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          className="w-[340px] p-0"
+          className="w-[min(340px,calc(100vw-1rem))] p-0"
           sideOffset={4}
         >
           <div className="border-b border-border p-2">
@@ -457,12 +457,12 @@ function StockPicker({
       <Button
         variant="outline"
         size="sm"
-        className="h-9 gap-1.5"
+        className="h-9 gap-1.5 sm:w-auto"
         disabled={open}
         onClick={() => setOpen(true)}
       >
         <Plus className="size-4" />
-        Add
+        Add stocks
       </Button>
     </div>
   );
@@ -514,7 +514,7 @@ function TickerDropdown({
           <Pencil className="size-3 shrink-0 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[340px] p-0" sideOffset={4}>
+      <PopoverContent align="start" className="w-[min(340px,calc(100vw-1rem))] p-0" sideOffset={4}>
         <div className="border-b border-border p-2">
           <div className="flex items-center gap-2 rounded-md border border-input bg-transparent px-2">
             <Search className="size-3.5 shrink-0 text-muted-foreground" />
@@ -572,16 +572,250 @@ const AMC_ACCENTS = [
 
 // ─── Published Holdings Viewer ────────────────────────────────────────────────
 
+type RawGroup = { amc: string; fundName: string; year: number; month: number; holdings: FundHolding[] };
+type FundPeriod = { year: number; month: number; holdings: FundHolding[] };
+type FundGroup = { fundName: string; periods: FundPeriod[] };
+type AmcGroup = { amc: string; funds: FundGroup[] };
+
+function buildAmcGroups(raw: RawGroup[]): AmcGroup[] {
+  const amcMap = new Map<string, Map<string, FundPeriod[]>>();
+  for (const g of raw) {
+    if (!amcMap.has(g.amc)) amcMap.set(g.amc, new Map());
+    const fundMap = amcMap.get(g.amc)!;
+    if (!fundMap.has(g.fundName)) fundMap.set(g.fundName, []);
+    fundMap.get(g.fundName)!.push({ year: g.year, month: g.month, holdings: g.holdings });
+  }
+  return [...amcMap.entries()].map(([amc, fundMap]) => ({
+    amc,
+    funds: [...fundMap.entries()].map(([fundName, periods]) => ({
+      fundName,
+      periods: periods.sort((a, b) => b.year * 12 + b.month - (a.year * 12 + a.month)),
+    })),
+  }));
+}
+
+function HoldingsTable({ period, accent }: { period: FundPeriod; accent: typeof AMC_ACCENTS[number] }) {
+  const regularHoldings = period.holdings.filter((h) => h.stockName !== "Other Holdings");
+  const otherRow = period.holdings.find((h) => h.stockName === "Other Holdings");
+  const total = regularHoldings.reduce((s, h) => s + h.percentage, 0);
+  const grandTotal = total + (otherRow?.percentage ?? 0);
+
+  return (
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="bg-muted/30">
+          <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 w-10">#</th>
+          <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 w-20">Ticker</th>
+          <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Company</th>
+          <th className="px-4 py-2 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">% NAV</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-border/40">
+        {regularHoldings.map((h, i) => (
+          <tr key={h.id} className="hover:bg-muted/20 transition-colors">
+            <td className="px-4 py-2 text-xs tabular-nums text-muted-foreground/50 font-mono">{i + 1}</td>
+            <td className="px-4 py-2">
+              {h.symbol ? (
+                <span className={cn("font-mono text-xs font-bold px-1.5 py-0.5 rounded", accent.bg, accent.text)}>
+                  {h.symbol}
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground/40">—</span>
+              )}
+            </td>
+            <td className="px-4 py-2 text-sm text-foreground/80">{h.stockName}</td>
+            <td className="px-4 py-2">
+              <div className="flex items-center justify-end gap-2">
+                <div className="h-1 w-16 rounded-full bg-muted overflow-hidden hidden sm:block">
+                  <div
+                    className={cn("h-full rounded-full", accent.dot)}
+                    style={{ width: `${Math.min(100, (h.percentage / Math.max(grandTotal, 1)) * 100)}%`, opacity: 0.6 }}
+                  />
+                </div>
+                <span className="font-mono text-sm tabular-nums font-semibold w-14 text-right">
+                  {h.percentage.toFixed(2)}%
+                </span>
+              </div>
+            </td>
+          </tr>
+        ))}
+        {otherRow && (
+          <tr className="bg-muted/10 hover:bg-muted/20 transition-colors">
+            <td className="px-4 py-2 text-xs text-muted-foreground/40">—</td>
+            <td className="px-4 py-2"><span className="text-xs text-muted-foreground/30">—</span></td>
+            <td className="px-4 py-2 text-sm italic text-muted-foreground/60">Other Holdings</td>
+            <td className="px-4 py-2 text-right font-mono text-sm tabular-nums text-muted-foreground">
+              {otherRow.percentage.toFixed(2)}%
+            </td>
+          </tr>
+        )}
+      </tbody>
+      <tfoot>
+        <tr className="border-t border-border/60 bg-muted/20">
+          <td colSpan={3} className="px-4 py-2.5 text-xs font-medium text-muted-foreground">
+            {regularHoldings.length} stocks{otherRow ? " + other holdings" : ""} disclosed
+          </td>
+          <td className="px-4 py-2.5 text-right font-mono text-sm font-bold tabular-nums">
+            {grandTotal.toFixed(2)}%
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  );
+}
+
+function FundAccordion({
+  fund,
+  accent,
+  defaultOpenPeriodKey,
+}: {
+  fund: FundGroup;
+  accent: typeof AMC_ACCENTS[number];
+  defaultOpenPeriodKey: string;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [selectedPeriodKey, setSelectedPeriodKey] = React.useState(defaultOpenPeriodKey);
+
+  const selectedPeriod = fund.periods.find(
+    (p) => `${p.year}||${p.month}` === selectedPeriodKey
+  ) ?? fund.periods[0];
+
+  const latestPeriod = fund.periods[0];
+
+  return (
+    <div className={cn(
+      "overflow-hidden rounded-xl border transition-all duration-200",
+      open ? cn("shadow-sm", accent.border) : "border-border/50 hover:border-border/80"
+    )}>
+      {/* Fund header */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "flex w-full items-center justify-between px-4 py-3.5 text-left transition-colors duration-150",
+          open ? "bg-muted/20" : "bg-card hover:bg-muted/20"
+        )}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={cn("w-0.5 h-9 rounded-full shrink-0", accent.dot)} />
+          <div className="min-w-0">
+            <p className="font-semibold text-sm leading-snug truncate">{fund.fundName}</p>
+            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+              <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full", accent.bg, accent.text)}>
+                {MONTHS[latestPeriod.month - 1]} {latestPeriod.year}
+              </span>
+              {fund.periods.length > 1 && (
+                <span className="text-[10px] text-muted-foreground/60">
+                  +{fund.periods.length - 1} more period{fund.periods.length > 2 ? "s" : ""}
+                </span>
+              )}
+              <span className="text-[10px] text-muted-foreground/60">
+                · {latestPeriod.holdings.filter(h => h.stockName !== "Other Holdings").length} stocks
+              </span>
+            </div>
+          </div>
+        </div>
+        <ChevronDown className={cn(
+          "size-4 shrink-0 text-muted-foreground/60 transition-transform duration-200",
+          open && "rotate-180"
+        )} />
+      </button>
+
+      {/* Expanded content */}
+      {open && (
+        <div className="border-t border-border/40">
+          {/* Period selector — only shown when multiple periods exist */}
+          {fund.periods.length > 1 && (
+            <div className="flex flex-wrap gap-1.5 border-b border-border/40 px-4 py-3 bg-muted/10">
+              {fund.periods.map((p) => {
+                const key = `${p.year}||${p.month}`;
+                const isActive = key === selectedPeriodKey;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setSelectedPeriodKey(key)}
+                    className={cn(
+                      "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                      isActive
+                        ? cn("shadow-sm", accent.bg, accent.text)
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    {MONTHS[p.month - 1]} {p.year}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <HoldingsTable period={selectedPeriod} accent={accent} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AmcAccordion({ amcGroup, accent, defaultOpen }: { amcGroup: AmcGroup; accent: typeof AMC_ACCENTS[number]; defaultOpen: boolean }) {
+  const [open, setOpen] = React.useState(defaultOpen);
+
+  const totalPeriods = amcGroup.funds.reduce((s, f) => s + f.periods.length, 0);
+
+  return (
+    <div className={cn(
+      "overflow-hidden rounded-2xl border-2 transition-all duration-200",
+      open ? cn(accent.border, "shadow-md") : "border-border/40 hover:border-border/70"
+    )}>
+      {/* AMC header */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "flex w-full items-center justify-between px-5 py-4 text-left transition-colors",
+          open
+            ? cn("bg-gradient-to-r", accent.header, "bg-card")
+            : "bg-card hover:bg-muted/20"
+        )}
+      >
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className={cn("size-3 rounded-full shrink-0 shadow-sm", accent.dot)} />
+          <div className="min-w-0">
+            <h3 className={cn("text-base font-bold leading-tight", accent.text)}>{amcGroup.amc}</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground/70">
+              {amcGroup.funds.length} fund{amcGroup.funds.length !== 1 ? "s" : ""} · {totalPeriods} period{totalPeriods !== 1 ? "s" : ""}
+            </p>
+          </div>
+        </div>
+        <ChevronDown className={cn(
+          "size-5 shrink-0 transition-transform duration-200",
+          open ? accent.text : "text-muted-foreground/50",
+          open && "rotate-180"
+        )} />
+      </button>
+
+      {/* Funds list */}
+      {open && (
+        <div className="space-y-2 border-t border-border/40 bg-muted/5 p-3">
+          {amcGroup.funds.map((fund) => (
+            <FundAccordion
+              key={fund.fundName}
+              fund={fund}
+              accent={accent}
+              defaultOpenPeriodKey={`${fund.periods[0].year}||${fund.periods[0].month}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PublishedHoldingsViewer() {
   const amcList = getAmcList();
   const [amcFilter, setAmcFilter] = React.useState<string>("");
   const [yearFilter, setYearFilter] = React.useState<number>(0);
   const [monthFilter, setMonthFilter] = React.useState<number>(0);
-  const [groups, setGroups] = React.useState<
-    { amc: string; fundName: string; year: number; month: number; holdings: FundHolding[] }[]
-  >([]);
+  const [raw, setRaw] = React.useState<RawGroup[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
 
   async function reload(amc?: string, year?: number, month?: number) {
     setLoading(true);
@@ -590,42 +824,19 @@ function PublishedHoldingsViewer() {
       year: year || undefined,
       month: month || undefined,
     });
-    setGroups(g);
+    setRaw(g);
     setLoading(false);
   }
 
   React.useEffect(() => {
     reload();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function toggleExpand(key: string) {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
-  }
-
-  function applyFilters(amc: string, year: number, month: number) {
-    reload(amc, year, month);
-  }
-
-  // Group by AMC
-  const byAmc = React.useMemo(() => {
-    const map = new Map<string, typeof groups>();
-    for (const g of groups) {
-      const list = map.get(g.amc) ?? [];
-      list.push(g);
-      map.set(g.amc, list);
-    }
-    return map;
-  }, [groups]);
-
-  const amcKeys = [...byAmc.keys()];
+  const amcGroups = React.useMemo(() => buildAmcGroups(raw), [raw]);
+  const totalFundPeriods = raw.length;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Filters */}
       <Card className="border-border/60">
         <CardContent className="flex flex-wrap items-end gap-3 pt-5 pb-4">
@@ -633,7 +844,7 @@ function PublishedHoldingsViewer() {
             <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">AMC</label>
             <Select
               value={amcFilter}
-              onValueChange={(v) => { setAmcFilter(v); applyFilters(v, yearFilter, monthFilter); }}
+              onValueChange={(v) => { setAmcFilter(v); reload(v, yearFilter, monthFilter); }}
             >
               <SelectTrigger className="h-9 w-52">
                 <SelectValue placeholder="All AMCs" />
@@ -648,7 +859,7 @@ function PublishedHoldingsViewer() {
             <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Year</label>
             <Select
               value={String(yearFilter)}
-              onValueChange={(v) => { const y = Number(v); setYearFilter(y); applyFilters(amcFilter, y, monthFilter); }}
+              onValueChange={(v) => { const y = Number(v); setYearFilter(y); reload(amcFilter, y, monthFilter); }}
             >
               <SelectTrigger className="h-9 w-28">
                 <SelectValue placeholder="All years" />
@@ -663,7 +874,7 @@ function PublishedHoldingsViewer() {
             <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Month</label>
             <Select
               value={String(monthFilter)}
-              onValueChange={(v) => { const m = Number(v); setMonthFilter(m); applyFilters(amcFilter, yearFilter, m); }}
+              onValueChange={(v) => { const m = Number(v); setMonthFilter(m); reload(amcFilter, yearFilter, m); }}
             >
               <SelectTrigger className="h-9 w-28">
                 <SelectValue placeholder="All months" />
@@ -684,7 +895,8 @@ function PublishedHoldingsViewer() {
             Clear
           </Button>
           <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-medium tabular-nums text-foreground">{groups.length}</span> fund periods
+            <span className="font-medium tabular-nums text-foreground">{amcGroups.length}</span> AMCs ·{" "}
+            <span className="font-medium tabular-nums text-foreground">{totalFundPeriods}</span> fund periods
           </div>
         </CardContent>
       </Card>
@@ -694,140 +906,22 @@ function PublishedHoldingsViewer() {
           <div className="size-4 animate-spin rounded-full border-2 border-border border-t-primary" />
           Loading holdings…
         </div>
-      ) : groups.length === 0 ? (
+      ) : amcGroups.length === 0 ? (
         <div className="flex h-28 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border text-center">
           <p className="text-sm font-medium text-muted-foreground">No published holdings found.</p>
           <p className="text-xs text-muted-foreground/60">Publish a fund period in the Edit Holdings tab.</p>
         </div>
       ) : (
-        amcKeys.map((amc, amcIdx) => {
-          const fundGroups = byAmc.get(amc)!;
-          const accent = AMC_ACCENTS[amcIdx % AMC_ACCENTS.length];
-          return (
-            <div key={amc} className="space-y-2.5">
-              {/* AMC header */}
-              <div className="flex items-center gap-2.5 px-1">
-                <div className={cn("size-2.5 rounded-full shrink-0", accent.dot)} />
-                <h3 className={cn("text-xs font-bold uppercase tracking-widest", accent.text)}>
-                  {amc}
-                </h3>
-                <div className="h-px flex-1 bg-border/50" />
-                <span className="text-[10px] text-muted-foreground/60">
-                  {fundGroups.length} fund{fundGroups.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-
-              {/* Fund accordions */}
-              <div className="space-y-2">
-                {fundGroups.map((fg) => {
-                  const key = `${fg.fundName}||${fg.year}||${fg.month}`;
-                  const open = expanded.has(key);
-                  const total = fg.holdings.reduce((s, h) => s + h.percentage, 0);
-                  return (
-                    <div
-                      key={key}
-                      className={cn(
-                        "overflow-hidden rounded-xl border transition-shadow duration-200",
-                        open ? cn("shadow-md", accent.border) : "border-border/60 hover:border-border"
-                      )}
-                    >
-                      {/* Accordion header */}
-                      <button
-                        type="button"
-                        className={cn(
-                          "flex w-full items-center justify-between px-4 py-3.5 text-left transition-colors duration-150",
-                          open
-                            ? cn("bg-gradient-to-r", accent.header, "bg-background")
-                            : "bg-card hover:bg-muted/30"
-                        )}
-                        onClick={() => toggleExpand(key)}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          {/* Colored left marker */}
-                          <div className={cn("w-1 h-8 rounded-full shrink-0", accent.dot)} />
-                          <div className="min-w-0">
-                            <p className="font-semibold text-sm leading-tight truncate">{fg.fundName}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full", accent.bg, accent.text)}>
-                                {MONTHS[fg.month - 1]} {fg.year}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground">
-                                {fg.holdings.length} stocks · {total.toFixed(1)}% disclosed
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <ChevronDown
-                          className={cn(
-                            "size-4 shrink-0 transition-transform duration-200",
-                            open ? cn(accent.text) : "text-muted-foreground",
-                            open && "rotate-180"
-                          )}
-                        />
-                      </button>
-
-                      {/* Expanded table */}
-                      {open && (
-                        <div className="border-t border-border/60">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className={cn("bg-gradient-to-r", accent.header, "bg-muted/10")}>
-                                <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 w-10">#</th>
-                                <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 w-20">Ticker</th>
-                                <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">Company</th>
-                                <th className="px-4 py-2 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">% NAV</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border/40">
-                              {fg.holdings.map((h, i) => (
-                                <tr key={h.id} className="group hover:bg-muted/20 transition-colors">
-                                  <td className="px-4 py-2 text-xs tabular-nums text-muted-foreground/60 font-mono">{i + 1}</td>
-                                  <td className="px-4 py-2">
-                                    {h.symbol ? (
-                                      <span className={cn("font-mono text-xs font-bold px-1.5 py-0.5 rounded", accent.bg, accent.text)}>
-                                        {h.symbol}
-                                      </span>
-                                    ) : (
-                                      <span className="text-xs text-muted-foreground/40">—</span>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-2 text-sm text-foreground/80 font-medium">{h.stockName}</td>
-                                  <td className="px-4 py-2">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <div className="h-1 w-16 rounded-full bg-muted overflow-hidden hidden sm:block">
-                                        <div
-                                          className={cn("h-full rounded-full", accent.dot)}
-                                          style={{ width: `${Math.min(100, (h.percentage / Math.max(total, 1)) * 100)}%`, opacity: 0.6 }}
-                                        />
-                                      </div>
-                                      <span className="font-mono text-sm tabular-nums font-semibold w-14 text-right">
-                                        {h.percentage.toFixed(2)}%
-                                      </span>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                            <tfoot>
-                              <tr className="border-t border-border/60 bg-muted/20">
-                                <td colSpan={3} className="px-4 py-2.5 text-xs font-medium text-muted-foreground">
-                                  {fg.holdings.length} stocks disclosed
-                                </td>
-                                <td className="px-4 py-2.5 text-right font-mono text-sm font-bold tabular-nums">
-                                  {total.toFixed(2)}%
-                                </td>
-                              </tr>
-                            </tfoot>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })
+        <div className="space-y-3">
+          {amcGroups.map((amcGroup, idx) => (
+            <AmcAccordion
+              key={amcGroup.amc}
+              amcGroup={amcGroup}
+              accent={AMC_ACCENTS[idx % AMC_ACCENTS.length]}
+              defaultOpen={idx === 0}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
@@ -889,7 +983,6 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
       return;
     }
     getFundPeriods(fundName);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fundName]);
 
   async function getFundPeriods(name: string) {
@@ -906,7 +999,6 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
       return;
     }
     loadPeriod(fundName, year, month);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fundName, year, month]);
 
   async function loadPeriod(name: string, y: number, m: number) {
@@ -1171,7 +1263,7 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
 
       {/* ── Import Banner ── */}
       {periodSelected && canImport && latestPrevPublished && (
-        <div className="flex items-center justify-between rounded-lg border border-sky-500/30 bg-gradient-to-r from-sky-500/8 to-violet-500/5 px-4 py-3.5">
+        <div className="flex flex-col gap-3 rounded-lg border border-sky-500/30 bg-gradient-to-r from-sky-500/8 to-violet-500/5 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 text-sm">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/15">
               <Download className="size-4 text-sky-500" />
@@ -1189,7 +1281,7 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
           <Button
             variant="outline"
             size="sm"
-            className="h-8 gap-1.5 border-sky-500/30 bg-sky-500/10 text-sky-600 hover:bg-sky-500/20 dark:text-sky-400"
+            className="h-8 w-full gap-1.5 border-sky-500/30 bg-sky-500/10 text-sky-600 hover:bg-sky-500/20 sm:w-auto dark:text-sky-400"
             onClick={handleImport}
             disabled={isLoadingPeriod}
           >
@@ -1203,13 +1295,13 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
       {periodSelected && (
 
         <Card>
-          <CardHeader className="flex-row items-center justify-between gap-3 pb-3">
-            <div className="flex items-center gap-3">
-              <IconChip accent="emerald" variant="soft">
+          <CardHeader className="flex-row items-start justify-between gap-3 pb-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <IconChip accent="emerald" variant="soft" className="mt-0.5 shrink-0">
                 <PieChart />
               </IconChip>
-              <div>
-                <CardTitle className="text-base">
+              <div className="min-w-0">
+                <CardTitle className="truncate text-base">
                   Holdings — {fundName}
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
@@ -1242,10 +1334,10 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    className="h-7 shrink-0 gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
                   >
                     <Trash2 className="size-3.5" />
-                    Delete period
+                    <span className="hidden sm:inline">Delete period</span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -1320,13 +1412,13 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
                   placeholder={`Paste holdings here, one per line:\n\nEngro Corporation Limited    8.50%\nOil & Gas Dev Company        6.20\nMari Petroleum               5.10%\nOther Holdings               3.00%\n\nFormat: Name[tab or 2+ spaces]Percentage`}
                   className="w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2.5 font-mono text-sm leading-relaxed outline-none placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-ring"
                 />
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs text-muted-foreground">
-                    Separate name and percentage with a tab or 2+ spaces. Leading rank numbers (1. 2) etc.) are stripped automatically.
+                    Separate name and % with a tab or 2+ spaces. Leading rank numbers are stripped automatically.
                   </p>
                   <Button
                     size="sm"
-                    className="gap-1.5 shrink-0"
+                    className="w-full gap-1.5 sm:w-auto sm:shrink-0"
                     disabled={!pasteText.trim()}
                     onClick={handlePasteInsert}
                   >
@@ -1351,14 +1443,14 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
               </div>
             ) : (
               <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[360px] text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
-                      <th className="w-8 px-3 py-2" />
-                      <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground" colSpan={2}>
-                        Stock (click to change)
+                      <th className="w-8 px-2 py-2" />
+                      <th className="px-2 py-2 text-left text-xs font-medium text-muted-foreground">
+                        Stock <span className="hidden sm:inline">(click to change)</span>
                       </th>
-                      <th className="w-36 px-3 py-2 text-right text-xs font-medium text-muted-foreground">
+                      <th className="w-32 px-2 py-2 text-right text-xs font-medium text-muted-foreground">
                         % of NAV
                       </th>
                     </tr>
@@ -1366,16 +1458,16 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
                   <tbody className="divide-y divide-border">
                     {holdings.map((row, idx) => (
                       <tr key={idx} className="group transition-colors hover:bg-muted/20">
-                        <td className="px-3 py-2">
+                        <td className="px-2 py-1.5">
                           <button
                             type="button"
                             onClick={() => handleRemove(idx)}
-                            className="flex size-5 items-center justify-center rounded text-muted-foreground/50 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                            className="flex size-6 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:bg-destructive/10 hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100"
                           >
                             <X className="size-3.5" />
                           </button>
                         </td>
-                        <td className="px-3 py-2" colSpan={2}>
+                        <td className="px-2 py-1.5">
                           <TickerDropdown
                             tickers={tickers}
                             symbol={row.symbol}
@@ -1383,7 +1475,7 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
                             onChange={(t) => handleRowTickerChange(idx, t)}
                           />
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-2 py-1.5">
                           <div className="flex items-center justify-end gap-1">
                             <Input
                               type="number"
@@ -1392,7 +1484,7 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
                               step={0.01}
                               value={row.percentage}
                               onChange={(e) => handlePctChange(idx, e.target.value)}
-                              className="h-7 w-24 text-right font-mono text-sm tabular-nums"
+                              className="h-7 w-20 text-right font-mono text-sm tabular-nums sm:w-24"
                               placeholder="0.00"
                             />
                             <span className="text-xs text-muted-foreground">%</span>
@@ -1406,16 +1498,11 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
                   <tfoot>
                     {/* Other Holdings — manually entered */}
                     <tr className="border-t border-border/60 bg-muted/10">
-                      <td className="px-3 py-2">
-                        {/* no remove button for this row */}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className="text-xs text-muted-foreground/60 italic">—</span>
-                      </td>
-                      <td className="px-3 py-2 text-xs font-medium text-muted-foreground">
+                      <td className="px-2 py-1.5" />
+                      <td className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
                         Other Holdings
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-2 py-1.5">
                         <div className="flex items-center justify-end gap-1">
                           <Input
                             type="number"
@@ -1424,7 +1511,7 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
                             step={0.01}
                             value={otherHoldings}
                             onChange={(e) => { setOtherHoldings(e.target.value); setIsDirty(true); }}
-                            className="h-7 w-24 text-right font-mono text-sm tabular-nums"
+                            className="h-7 w-20 text-right font-mono text-sm tabular-nums sm:w-24"
                             placeholder="0.00"
                           />
                           <span className="text-xs text-muted-foreground">%</span>
@@ -1432,10 +1519,10 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
                       </td>
                     </tr>
                     <tr className="border-t border-border bg-muted/30">
-                      <td colSpan={3} className="px-3 py-2 text-xs font-medium text-muted-foreground">
-                        Total — {holdings.length} stock{holdings.length !== 1 ? "s" : ""}{otherPct > 0 ? " + other holdings" : ""}
+                      <td colSpan={2} className="px-2 py-2 text-xs font-medium text-muted-foreground">
+                        Total — {holdings.length} stock{holdings.length !== 1 ? "s" : ""}{otherPct > 0 ? " + other" : ""}
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-2 py-2 text-right">
                         <span
                           className={cn(
                             "font-mono text-sm font-semibold tabular-nums",
@@ -1466,11 +1553,11 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
             <Separator />
 
             {/* Action bar */}
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-muted-foreground"
+                className="w-full text-muted-foreground sm:w-auto"
                 disabled={!isDirty || isSaving}
                 onClick={() => {
                   if (fundName && month) loadPeriod(fundName, year, month);
@@ -1479,11 +1566,11 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
                 Discard changes
               </Button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex w-full items-center gap-2 sm:w-auto">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-1.5"
+                  className="flex-1 gap-1.5 sm:flex-none"
                   disabled={!isDirty || isSaving}
                   onClick={() => handleSave("draft")}
                 >
@@ -1495,7 +1582,7 @@ export function FundHoldingsEditor({ tickers }: { tickers: Ticker[] }) {
                   <AlertDialogTrigger asChild>
                     <Button
                       size="sm"
-                      className="gap-1.5"
+                      className="flex-1 gap-1.5 sm:flex-none"
                       disabled={holdings.length === 0 || isSaving || isOverAllocated}
                     >
                       <Upload className="size-3.5" />

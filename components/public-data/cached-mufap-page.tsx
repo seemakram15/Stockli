@@ -5,6 +5,7 @@ import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { MufapFundsBoard } from "@/components/market/mufap-funds-board";
+import { EtfTable } from "@/components/market/etf-table";
 import { PageHeader } from "@/components/page-header";
 import { DataDelayBadge } from "@/components/status-badges";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
@@ -51,7 +52,11 @@ export function CachedMufapPage({ kind }: { kind: "mutual" | "etfs" }) {
       />
 
       {data ? (
-        <MufapFundsBoard data={data} title={boardTitle} etfMode={etfMode} />
+        etfMode ? (
+          <EtfTable data={data} />
+        ) : (
+          <MufapFundsBoard data={data} title={boardTitle} etfMode={etfMode} />
+        )
       ) : isLoading ? (
         <PageLoadingState message={`Loading ${title.toLowerCase()}...`} variant="list" />
       ) : (
