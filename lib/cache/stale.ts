@@ -1,6 +1,6 @@
 import "server-only";
 import { after } from "next/server";
-import { getMemoryCache, setMemoryCache } from "@/lib/cache/memory";
+import { deleteMemoryCache, getMemoryCache, setMemoryCache } from "@/lib/cache/memory";
 import { getRedisClients } from "@/lib/cache/redis";
 
 type CacheStatus = "fresh" | "stale" | "miss";
@@ -97,6 +97,11 @@ async function refresh<T>(
   });
 
   return envelope;
+}
+
+export async function invalidateStaleCache(key: string): Promise<void> {
+  deleteMemoryCache(key);
+  await Promise.allSettled(getRedisClients().map((redis) => redis.del(key)));
 }
 
 function revalidate<T>(

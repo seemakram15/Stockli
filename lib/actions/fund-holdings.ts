@@ -11,11 +11,19 @@ import {
   getPublishedFundHoldings,
 } from "@/lib/services/fund-holdings";
 import { getAmcForFund } from "@/lib/constants/pakistan-funds";
+import { invalidateStaleCache } from "@/lib/cache/stale";
 import type {
   FundPeriodStatus,
   FundHolding,
   SaveHoldingInput,
 } from "@/lib/types/fund-holdings";
+
+async function invalidateDerivedFundCaches(): Promise<void> {
+  await Promise.allSettled([
+    invalidateStaleCache("market:funds-breakdown-v1"),
+    invalidateStaleCache("market-strategy:holdings-v1"),
+  ]);
+}
 
 export async function loadFundPeriods(
   fundName: string
@@ -45,6 +53,7 @@ export async function saveHoldings(
     if (!user) return { ok: false, error: "Not authenticated" };
     const amc = getAmcForFund(fundName);
     await savePeriodHoldings(fundName, amc, year, month, holdings, status, user.id);
+    await invalidateDerivedFundCaches();
     return { ok: true };
   } catch (e) {
     console.error("[fund-holdings] saveHoldings failed:", e);
@@ -59,6 +68,7 @@ export async function deleteHoldings(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     await deletePeriodHoldings(fundName, year, month);
+    await invalidateDerivedFundCaches();
     return { ok: true };
   } catch (e) {
     console.error("[fund-holdings] deleteHoldings failed:", e);
