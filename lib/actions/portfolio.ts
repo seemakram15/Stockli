@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { isDemoMode } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
+import { isSampleMode } from "@/lib/auth/roles";
 import { normalizeSymbol } from "@/lib/security/validation";
 import { weightedAvgPrice } from "@/lib/services/metrics";
 import type { Holding } from "@/lib/types";
@@ -16,7 +16,7 @@ export interface ActionState {
 }
 
 const DEMO_BLOCK: ActionState = {
-  error: "Demo mode — add real Supabase keys to .env.local to save changes.",
+  error: "Sign in to save changes — you're viewing sample data.",
 };
 
 async function requireUser() {
@@ -56,7 +56,7 @@ export async function createPortfolio(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  if (isDemoMode) return DEMO_BLOCK;
+  if (await isSampleMode()) return DEMO_BLOCK;
   const parsed = portfolioSchema.safeParse({
     name: formData.get("name"),
     description: formData.get("description") || undefined,
@@ -87,7 +87,7 @@ export async function updatePortfolio(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  if (isDemoMode) return DEMO_BLOCK;
+  if (await isSampleMode()) return DEMO_BLOCK;
   const id = String(formData.get("id") ?? "");
   const parsed = portfolioSchema.safeParse({
     name: formData.get("name"),
@@ -115,7 +115,7 @@ export async function updatePortfolio(
 }
 
 export async function deletePortfolio(formData: FormData): Promise<void> {
-  if (isDemoMode) return;
+  if (await isSampleMode()) return;
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   const { supabase, user } = await requireUser();
@@ -152,7 +152,7 @@ export async function addHolding(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  if (isDemoMode) return DEMO_BLOCK;
+  if (await isSampleMode()) return DEMO_BLOCK;
   const parsed = tradeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { portfolioId, symbol, quantity, price, date, note } = parsed.data;
@@ -209,7 +209,7 @@ export async function sellHolding(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  if (isDemoMode) return DEMO_BLOCK;
+  if (await isSampleMode()) return DEMO_BLOCK;
   const parsed = tradeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { portfolioId, symbol, quantity, price, date, note } = parsed.data;
@@ -256,7 +256,7 @@ export async function sellHolding(
 }
 
 export async function removeHolding(formData: FormData): Promise<ActionState> {
-  if (isDemoMode) return DEMO_BLOCK;
+  if (await isSampleMode()) return DEMO_BLOCK;
   const holdingId = String(formData.get("holdingId") ?? "");
   const portfolioId = String(formData.get("portfolioId") ?? "");
   if (!holdingId || !portfolioId) return { error: "Missing parameters." };

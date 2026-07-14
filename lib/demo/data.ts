@@ -22,6 +22,18 @@ export const DEMO_USER = {
   displayName: "Demo Investor",
 };
 
+/**
+ * Synthetic identity for an unauthenticated visitor browsing with guest
+ * access enabled (distinct from DEMO_USER — that's the deploy-time "no
+ * Supabase configured" fallback; this is a real deployment, real Supabase,
+ * just no session for this particular visitor).
+ */
+export const GUEST_USER = {
+  id: "guest-standin-0000-0000-000000000000",
+  email: null as string | null,
+  displayName: "Guest",
+};
+
 export const DEMO_TICKERS: Ticker[] = SEED_TICKERS.map((t) => ({
   symbol: t.symbol,
   company_name: t.company,

@@ -16,7 +16,15 @@ import { Logo } from "@/components/logo";
 import { NavLinks } from "./nav-links";
 import { InstallAppButton } from "@/components/pwa/install-app-button";
 
-export function MobileNav({ showAdmin = false }: { showAdmin?: boolean }) {
+export function MobileNav({
+  showAdmin = false,
+  isGuest,
+  guestPageAccess,
+}: {
+  showAdmin?: boolean;
+  isGuest?: boolean;
+  guestPageAccess?: Record<string, boolean> | null;
+}) {
   const [open, setOpen] = React.useState(false);
   const pathname = usePathname() ?? "/";
   const router = useRouter();
@@ -55,6 +63,8 @@ export function MobileNav({ showAdmin = false }: { showAdmin?: boolean }) {
               requestAnimationFrame(() => setOpen(false));
             }}
             showAdmin={showAdmin}
+            isGuest={isGuest}
+            guestPageAccess={guestPageAccess}
             prefetchOnMount={false}
           />
         </div>

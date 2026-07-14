@@ -14,6 +14,7 @@ import {
   Landmark,
   Layers3,
   LineChart,
+  Lock,
   Wallet,
   Star,
   Target,
@@ -30,10 +31,12 @@ import {
   Loader2,
   Link2,
   PlaySquare,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EXPLORE_NAV_ITEMS, MARKET_NAV_ITEMS, NAV_ITEMS, TOOL_NAV_ITEMS } from "@/lib/constants";
+import { resolvePageKey } from "@/lib/access/page-registry";
 import { PrefetchNavLink } from "./prefetch-nav-link";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -61,6 +64,7 @@ const ICONS: Record<string, LucideIcon> = {
   ShieldCheck,
   Link2,
   PlaySquare,
+  Settings,
 };
 
 /** Swaps the nav icon for a spinner while that link's navigation is pending. */
@@ -77,15 +81,32 @@ function NavIcon({ Icon, active }: { Icon: LucideIcon; active: boolean }) {
   );
 }
 
+function isLockedForGuest(
+  href: string,
+  isGuest: boolean | undefined,
+  guestPageAccess: Record<string, boolean> | null | undefined
+): boolean {
+  if (!isGuest || !guestPageAccess) return false;
+  const key = resolvePageKey(href);
+  return key != null && guestPageAccess[key] === false;
+}
+
+interface NavAccessProps {
+  isGuest?: boolean;
+  guestPageAccess?: Record<string, boolean> | null;
+}
+
 export function NavLinks({
   onNavigate,
   showAdmin = false,
   prefetchOnMount = true,
+  isGuest,
+  guestPageAccess,
 }: {
   onNavigate?: (event: React.MouseEvent<HTMLAnchorElement>, href: string) => void;
   showAdmin?: boolean;
   prefetchOnMount?: boolean;
-}) {
+} & NavAccessProps) {
   const pathname = usePathname() ?? "/";
   const marketActive = pathname === "/market" || pathname.startsWith("/market/");
   const [marketOpen, setMarketOpen] = React.useState(marketActive);
@@ -104,6 +125,7 @@ export function NavLinks({
         ...EXPLORE_NAV_ITEMS,
         { href: "/admin", label: "Admin", icon: "ShieldCheck" } as const,
         { href: "/admin/fund-holdings", label: "Fund Holdings", icon: "PieChart" } as const,
+        { href: "/admin/customisation", label: "Customisation", icon: "Settings" } as const,
       ]
     : EXPLORE_NAV_ITEMS;
 
@@ -149,6 +171,8 @@ export function NavLinks({
                     pathname={pathname}
                     onNavigate={onNavigate}
                     prefetchOnMount={prefetchOnMount}
+                    isGuest={isGuest}
+                    guestPageAccess={guestPageAccess}
                   />
                 </div>
               )}
@@ -167,6 +191,8 @@ export function NavLinks({
               items={TOOL_NAV_ITEMS}
               onNavigate={onNavigate}
               prefetchOnMount={prefetchOnMount}
+              isGuest={isGuest}
+              guestPageAccess={guestPageAccess}
             />
           );
         }
@@ -182,6 +208,8 @@ export function NavLinks({
               items={exploreItems}
               onNavigate={onNavigate}
               prefetchOnMount={prefetchOnMount}
+              isGuest={isGuest}
+              guestPageAccess={guestPageAccess}
             />
           );
         }
@@ -189,6 +217,14 @@ export function NavLinks({
         const Icon = ICONS[item.icon];
         const active =
           pathname === item.href || pathname.startsWith(item.href + "/");
+        const locked = isLockedForGuest(item.href, isGuest, guestPageAccess);
+
+        if (locked) {
+          return (
+            <LockedNavItem key={item.href} label={item.label} icon={item.icon} />
+          );
+        }
+
         return (
           <PrefetchNavLink
             key={item.href}
@@ -212,6 +248,21 @@ export function NavLinks({
   );
 }
 
+function LockedNavItem({ label, icon }: { label: string; icon: string }) {
+  const Icon = ICONS[icon];
+  return (
+    <span
+      aria-disabled="true"
+      title="Sign in to access"
+      className="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground/50"
+    >
+      {Icon && <Icon className="size-4 shrink-0" />}
+      <span className="flex-1">{label}</span>
+      <Lock className="size-3.5 shrink-0" />
+    </span>
+  );
+}
+
 function MobileNavGroup({
   label,
   icon,
@@ -220,6 +271,8 @@ function MobileNavGroup({
   items,
   onNavigate,
   prefetchOnMount,
+  isGuest,
+  guestPageAccess,
 }: {
   label: string;
   icon: string;
@@ -228,7 +281,7 @@ function MobileNavGroup({
   items: ReadonlyArray<{ href: string; label: string; icon: string }>;
   onNavigate?: (event: React.MouseEvent<HTMLAnchorElement>, href: string) => void;
   prefetchOnMount: boolean;
-}) {
+} & NavAccessProps) {
   const [open, setOpen] = React.useState(active);
   const Icon = ICONS[icon];
 
@@ -276,6 +329,8 @@ function MobileNavGroup({
               pathname={pathname}
               onNavigate={onNavigate}
               prefetchOnMount={prefetchOnMount}
+              isGuest={isGuest}
+              guestPageAccess={guestPageAccess}
             />
           ))}
         </div>
@@ -288,11 +343,13 @@ function MarketNavItems({
   pathname,
   onNavigate,
   prefetchOnMount,
+  isGuest,
+  guestPageAccess,
 }: {
   pathname: string;
   onNavigate?: (event: React.MouseEvent<HTMLAnchorElement>, href: string) => void;
   prefetchOnMount: boolean;
-}) {
+} & NavAccessProps) {
   const activeGroups = React.useMemo(() => {
     const groups: Record<string, boolean> = {};
     for (const item of MARKET_NAV_ITEMS) {
@@ -368,6 +425,8 @@ function MarketNavItems({
                       pathname={pathname}
                       onNavigate={onNavigate}
                       prefetchOnMount={prefetchOnMount}
+                      isGuest={isGuest}
+                      guestPageAccess={guestPageAccess}
                     />
                   ))}
                 </div>
@@ -385,6 +444,8 @@ function MarketNavItems({
             pathname={pathname}
             onNavigate={onNavigate}
             prefetchOnMount={prefetchOnMount}
+            isGuest={isGuest}
+            guestPageAccess={guestPageAccess}
           />
         );
       })}
@@ -399,6 +460,8 @@ function MarketNavLink({
   pathname,
   onNavigate,
   prefetchOnMount,
+  isGuest,
+  guestPageAccess,
 }: {
   href: string;
   label: string;
@@ -406,9 +469,24 @@ function MarketNavLink({
   pathname: string;
   onNavigate?: (event: React.MouseEvent<HTMLAnchorElement>, href: string) => void;
   prefetchOnMount: boolean;
-}) {
+} & NavAccessProps) {
   const Icon = ICONS[icon];
   const active = pathname === href || (href !== "/market" && pathname.startsWith(href + "/"));
+  const locked = isLockedForGuest(href, isGuest, guestPageAccess);
+
+  if (locked) {
+    return (
+      <span
+        aria-disabled="true"
+        title="Sign in to access"
+        className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground/50"
+      >
+        {Icon && <Icon className="size-4 shrink-0" />}
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        <Lock className="size-3.5 shrink-0" />
+      </span>
+    );
+  }
 
   return (
     <PrefetchNavLink

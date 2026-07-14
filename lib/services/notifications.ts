@@ -1,6 +1,6 @@
 import "server-only";
-import { isDemoMode } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
+import { isSampleMode } from "@/lib/auth/roles";
 import { DEMO_NOTIFICATIONS } from "@/lib/demo/data";
 import type { AppNotification } from "@/lib/types";
 
@@ -11,7 +11,7 @@ export interface NotificationFeed {
 
 /** Recent notifications (own + global) + unread count for the current user. */
 export async function getNotifications(): Promise<NotificationFeed> {
-  if (isDemoMode) {
+  if (await isSampleMode()) {
     return { items: DEMO_NOTIFICATIONS, unread: 2 };
   }
   const supabase = await createClient();

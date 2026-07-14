@@ -1,5 +1,5 @@
 import "server-only";
-import { isDemoMode } from "@/lib/config";
+import { isSampleMode } from "@/lib/auth/roles";
 import { PSX_TIMEZONE } from "@/lib/constants";
 import { hasPsxTradingStartedToday } from "@/lib/psx/market-hours";
 import { getEodCandlesCached } from "@/lib/services/history";
@@ -215,7 +215,7 @@ async function getPersistedCalendarDays(
   portfolioIds: string[],
   symbol?: string
 ): Promise<CalendarDay[]> {
-  if (isDemoMode) return [];
+  if (await isSampleMode()) return [];
   const ids = Array.from(new Set(portfolioIds.filter(Boolean)));
   if (ids.length === 0) return [];
 

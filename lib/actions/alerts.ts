@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { isDemoMode } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
+import { isSampleMode } from "@/lib/auth/roles";
 import { normalizeSymbol } from "@/lib/security/validation";
 
 export interface AlertActionState {
@@ -33,8 +33,8 @@ export async function createAlert(
   _prev: AlertActionState,
   formData: FormData
 ): Promise<AlertActionState> {
-  if (isDemoMode)
-    return { error: "Demo mode — add Supabase keys to create alerts." };
+  if (await isSampleMode())
+    return { error: "Sign in to save changes — you're viewing sample data." };
   const parsed = alertSchema.safeParse({
     symbol: formData.get("symbol"),
     condition: formData.get("condition"),
@@ -64,7 +64,7 @@ export async function createAlert(
 }
 
 export async function deleteAlert(formData: FormData): Promise<void> {
-  if (isDemoMode) return;
+  if (await isSampleMode()) return;
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   const supabase = await createClient();
@@ -77,7 +77,7 @@ export async function deleteAlert(formData: FormData): Promise<void> {
 }
 
 export async function toggleAlert(formData: FormData): Promise<void> {
-  if (isDemoMode) return;
+  if (await isSampleMode()) return;
   const id = String(formData.get("id") ?? "");
   const active = String(formData.get("active") ?? "") === "true";
   if (!id) return;

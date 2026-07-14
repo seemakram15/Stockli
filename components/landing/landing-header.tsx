@@ -8,19 +8,28 @@ import {
   BadgePercent,
   Bell,
   Bitcoin,
+  Boxes,
+  CalendarDays,
   CandlestickChart,
   ChevronDown,
   Droplets,
   FileText,
+  Gift,
   Globe2,
-  Layers3,
+  History,
   LayoutDashboard,
+  Layers3,
+  Landmark,
   LineChart,
+  Link2,
   Lock,
   Menu,
+  PieChart,
+  PlaySquare,
   Star,
   Target,
   TrendingUp,
+  Trophy,
   Wallet,
   X,
   type LucideIcon,
@@ -28,48 +37,83 @@ import {
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME, EXPLORE_NAV_ITEMS, MARKET_NAV_ITEMS, TOOL_NAV_ITEMS } from "@/lib/constants";
+import { resolvePageKey } from "@/lib/access/page-registry";
 import { cn } from "@/lib/utils";
+
+const ICONS: Record<string, LucideIcon> = {
+  BadgePercent,
+  Bell,
+  Bitcoin,
+  Boxes,
+  CalendarDays,
+  CandlestickChart,
+  Droplets,
+  FileText,
+  Gift,
+  Globe2,
+  History,
+  LayoutDashboard,
+  Layers3,
+  Landmark,
+  LineChart,
+  Link2,
+  PieChart,
+  PlaySquare,
+  Star,
+  Target,
+  TrendingUp,
+  Trophy,
+  Wallet,
+};
+
+const TINTS = [
+  "text-emerald-500",
+  "text-sky-500",
+  "text-violet-500",
+  "text-amber-500",
+  "text-cyan-500",
+  "text-orange-500",
+  "text-rose-500",
+];
 
 type Leaf = { label: string; href: string; icon: LucideIcon; tint: string };
 type Item = { label: string; href?: string; icon?: LucideIcon; children?: Leaf[] };
 
+function toLeaves(items: ReadonlyArray<{ href: string; label: string; icon: string }>): Leaf[] {
+  return items.map((item, i) => ({
+    label: item.label,
+    href: item.href,
+    icon: ICONS[item.icon] ?? Wallet,
+    tint: TINTS[i % TINTS.length],
+  }));
+}
+
+const marketLeaves: Leaf[] = MARKET_NAV_ITEMS.flatMap((item) =>
+  "children" in item ? toLeaves(item.children) : toLeaves([item])
+);
+
 const NAV: Item[] = [
-  {
-    label: "Markets",
-    children: [
-      { label: "PSX stock market", href: "/market", icon: TrendingUp, tint: "text-emerald-500" },
-      { label: "Sector performance", href: "/market/sectors", icon: LineChart, tint: "text-sky-500" },
-      { label: "US S&P 500", href: "/market/us", icon: LineChart, tint: "text-violet-500" },
-      { label: "India market", href: "/market/india", icon: CandlestickChart, tint: "text-amber-500" },
-      { label: "World view", href: "/market/world", icon: Globe2, tint: "text-cyan-500" },
-      { label: "Crypto", href: "/market/crypto", icon: Bitcoin, tint: "text-orange-500" },
-      { label: "Oil & commodities", href: "/market/oil", icon: Droplets, tint: "text-rose-500" },
-    ],
-  },
-  {
-    label: "Funds",
-    children: [
-      { label: "Mutual funds", href: "/market/mutual-funds", icon: BadgePercent, tint: "text-emerald-500" },
-      { label: "Exchange traded funds", href: "/market/etfs", icon: Layers3, tint: "text-sky-500" },
-      { label: "Funds daily returns", href: "/market/strategy", icon: Target, tint: "text-violet-500" },
-    ],
-  },
-  {
-    label: "Tools",
-    children: [
-      { label: "Stock analyzer", href: "/analysis/stock-analyzer", icon: LineChart, tint: "text-emerald-500" },
-      { label: "Portfolio suggestions", href: "/analysis/portfolio-suggestions", icon: Target, tint: "text-violet-500" },
-      { label: "Fundamentals", href: "/analysis/fundamentals", icon: FileText, tint: "text-sky-500" },
-      { label: "Pivot points", href: "/analysis/pivot-points", icon: Target, tint: "text-amber-500" },
-    ],
-  },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Portfolio", href: "/portfolios", icon: Wallet },
+  { label: "Market", children: marketLeaves },
+  { label: "Tools", children: toLeaves(TOOL_NAV_ITEMS) },
+  { label: "Explore", children: toLeaves(EXPLORE_NAV_ITEMS) },
   { label: "Watchlist", href: "/watchlist", icon: Star },
   { label: "Alerts", href: "/alerts", icon: Bell },
 ];
 
-export function LandingHeader({ authed, displayName }: { authed: boolean; displayName?: string | null }) {
+export function LandingHeader({
+  authed,
+  displayName,
+  isGuest = false,
+  guestPageAccess = null,
+}: {
+  authed: boolean;
+  displayName?: string | null;
+  isGuest?: boolean;
+  guestPageAccess?: Record<string, boolean> | null;
+}) {
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const reduce = useReducedMotion();
@@ -81,10 +125,23 @@ export function LandingHeader({ authed, displayName }: { authed: boolean; displa
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // gate any app route behind sign-in
+  // A page is locked only when the visitor is signed out AND guest browsing
+  // doesn't cover it (globally off, or this specific page toggled off by a
+  // superadmin) — mirrors the same access rule the in-app nav uses.
+  const isLocked = React.useCallback(
+    (href: string) => {
+      if (authed) return false;
+      if (!isGuest) return true;
+      if (!guestPageAccess) return false;
+      const key = resolvePageKey(href);
+      return key != null && guestPageAccess[key] === false;
+    },
+    [authed, isGuest, guestPageAccess]
+  );
+
   const gate = React.useCallback(
-    (href: string) => (authed ? href : `/login?redirectTo=${encodeURIComponent(href)}`),
-    [authed]
+    (href: string) => (isLocked(href) ? `/login?redirectTo=${encodeURIComponent(href)}` : href),
+    [isLocked]
   );
 
   const initials = (displayName || "You")
@@ -124,25 +181,31 @@ export function LandingHeader({ authed, displayName }: { authed: boolean; displa
                   )}
                 >
                   {item.label}
-                  {!authed && <Lock className="size-3 opacity-60" />}
+                  {item.children.every((leaf) => isLocked(leaf.href)) && (
+                    <Lock className="size-3 opacity-60" />
+                  )}
                   <ChevronDown className="size-3.5 opacity-70 transition-transform group-hover:rotate-180" />
                 </button>
                 {/* dropdown */}
-                <div className="invisible absolute left-0 top-full pt-2 opacity-0 transition-all duration-200 group-hover:visible group-hover:opacity-100">
+                <div className="invisible absolute left-0 top-full max-h-[75vh] overflow-y-auto pt-2 opacity-0 transition-all duration-200 group-hover:visible group-hover:opacity-100">
                   <div className="w-72 overflow-hidden rounded-2xl border border-border bg-popover p-2 text-popover-foreground shadow-xl shadow-black/10">
-                    {item.children.map((leaf) => (
-                      <Link
-                        key={leaf.href}
-                        href={gate(leaf.href)}
-                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-muted"
-                      >
-                        <span className="flex size-8 items-center justify-center rounded-lg bg-muted">
-                          <leaf.icon className={cn("size-4", leaf.tint)} />
-                        </span>
-                        <span className="text-sm font-medium">{leaf.label}</span>
-                      </Link>
-                    ))}
-                    {!authed && (
+                    {item.children.map((leaf) => {
+                      const locked = isLocked(leaf.href);
+                      return (
+                        <Link
+                          key={leaf.href}
+                          href={gate(leaf.href)}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-muted"
+                        >
+                          <span className="flex size-8 items-center justify-center rounded-lg bg-muted">
+                            <leaf.icon className={cn("size-4", leaf.tint)} />
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium">{leaf.label}</span>
+                          {locked && <Lock className="size-3.5 shrink-0 text-muted-foreground" />}
+                        </Link>
+                      );
+                    })}
+                    {item.children.some((leaf) => isLocked(leaf.href)) && (
                       <Link
                         href="/login"
                         className="mt-1 flex items-center justify-between gap-2 rounded-xl bg-emerald-500/10 px-3 py-2.5 text-sm font-semibold text-emerald-600 transition-colors hover:bg-emerald-500/15 dark:text-emerald-300"
@@ -166,7 +229,7 @@ export function LandingHeader({ authed, displayName }: { authed: boolean; displa
                 )}
               >
                 {item.label}
-                {!authed && <Lock className="size-3 opacity-60" />}
+                {isLocked(item.href!) && <Lock className="size-3 opacity-60" />}
               </Link>
             )
           )}
@@ -236,26 +299,29 @@ export function LandingHeader({ authed, displayName }: { authed: boolean; displa
             className="lg:hidden"
           >
             <div className="mx-3 mb-3 max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-popover p-3 text-popover-foreground shadow-2xl">
-              {!authed && (
+              {!authed && !isGuest && (
                 <div className="mb-3 flex items-center gap-2 rounded-xl bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-300">
                   <Lock className="size-4" /> Sign in to unlock every menu
                 </div>
               )}
               {NAV.flatMap((item) => (item.children ? item.children : [{ label: item.label, href: item.href!, icon: item.icon ?? Wallet, tint: "text-emerald-500" }])).map(
-                (leaf) => (
-                  <Link
-                    key={leaf.href + leaf.label}
-                    href={gate(leaf.href)}
-                    onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-muted"
-                  >
-                    <span className="flex size-8 items-center justify-center rounded-lg bg-muted">
-                      <leaf.icon className={cn("size-4", leaf.tint)} />
-                    </span>
-                    <span className="text-sm font-medium">{leaf.label}</span>
-                    {!authed && <Lock className="ml-auto size-3.5 text-muted-foreground" />}
-                  </Link>
-                )
+                (leaf) => {
+                  const locked = isLocked(leaf.href);
+                  return (
+                    <Link
+                      key={leaf.href + leaf.label}
+                      href={gate(leaf.href)}
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-muted"
+                    >
+                      <span className="flex size-8 items-center justify-center rounded-lg bg-muted">
+                        <leaf.icon className={cn("size-4", leaf.tint)} />
+                      </span>
+                      <span className="text-sm font-medium">{leaf.label}</span>
+                      {locked && <Lock className="ml-auto size-3.5 text-muted-foreground" />}
+                    </Link>
+                  );
+                }
               )}
               <div className="mt-3 grid grid-cols-2 gap-2">
                 {authed ? (

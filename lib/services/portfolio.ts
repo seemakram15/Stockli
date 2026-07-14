@@ -2,6 +2,7 @@ import "server-only";
 import { isDemoMode } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
 import { getRequestUser } from "@/lib/auth/current-user";
+import { isSampleMode } from "@/lib/auth/roles";
 import { getQuotes } from "@/lib/services/prices";
 import { PSX_TIMEZONE } from "@/lib/constants";
 import {
@@ -23,6 +24,7 @@ import {
   DEMO_USER,
   DEMO_WATCHLISTS,
   DEMO_WATCHLIST_ITEMS,
+  GUEST_USER,
 } from "@/lib/demo/data";
 import { SEED_TICKERS } from "@/lib/psx/symbols";
 import { sectorName } from "@/lib/psx/sectors";
@@ -44,13 +46,18 @@ export interface SessionUser {
   displayName: string | null;
 }
 
-/** Current user (demo user in DEMO MODE, else Supabase auth). */
+/** Current user (demo/guest user in sample mode, else Supabase auth). */
 export async function getSessionUser(): Promise<SessionUser | null> {
   if (isDemoMode) {
     return { id: DEMO_USER.id, email: DEMO_USER.email, displayName: DEMO_USER.displayName };
   }
   const user = await getRequestUser();
-  if (!user) return null;
+  if (!user) {
+    if (await isSampleMode()) {
+      return { id: GUEST_USER.id, email: GUEST_USER.email, displayName: GUEST_USER.displayName };
+    }
+    return null;
+  }
   return {
     id: user.id,
     email: user.email ?? null,
@@ -64,7 +71,7 @@ export async function getTickerMap(symbols: string[]): Promise<Map<string, Ticke
   const map = new Map<string, Ticker>();
   if (upper.length === 0) return map;
 
-  if (isDemoMode) {
+  if (await isSampleMode()) {
     DEMO_TICKERS.filter((t) => upper.includes(t.symbol)).forEach((t) =>
       map.set(t.symbol, t)
     );
@@ -95,7 +102,7 @@ function fillFromSeed(map: Map<string, Ticker>, symbols: string[]): Map<string, 
 }
 
 export async function getPortfolios(): Promise<Portfolio[]> {
-  if (isDemoMode) return DEMO_PORTFOLIOS;
+  if (await isSampleMode()) return DEMO_PORTFOLIOS;
   const user = await getSessionUser();
   if (!user) return [];
   const supabase = await createClient();
@@ -108,7 +115,7 @@ export async function getPortfolios(): Promise<Portfolio[]> {
 }
 
 export async function getPortfolio(id: string): Promise<Portfolio | null> {
-  if (isDemoMode) return DEMO_PORTFOLIOS.find((p) => p.id === id) ?? null;
+  if (await isSampleMode()) return DEMO_PORTFOLIOS.find((p) => p.id === id) ?? null;
   const user = await getSessionUser();
   if (!user) return null;
   const supabase = await createClient();
@@ -122,7 +129,7 @@ export async function getPortfolio(id: string): Promise<Portfolio | null> {
 }
 
 export async function getHoldings(portfolioId: string): Promise<Holding[]> {
-  if (isDemoMode) return DEMO_HOLDINGS.filter((h) => h.portfolio_id === portfolioId);
+  if (await isSampleMode()) return DEMO_HOLDINGS.filter((h) => h.portfolio_id === portfolioId);
   const supabase = await createClient();
   const { data } = await supabase
     .from("holdings")
@@ -132,13 +139,13 @@ export async function getHoldings(portfolioId: string): Promise<Holding[]> {
 }
 
 export async function getAllHoldings(): Promise<Holding[]> {
-  if (isDemoMode) return DEMO_HOLDINGS;
+  if (await isSampleMode()) return DEMO_HOLDINGS;
   const portfolios = await getPortfolios();
   return getHoldingsForPortfolioIds(portfolios.map((p) => p.id));
 }
 
 async function getHoldingsForPortfolioIds(ids: string[]): Promise<Holding[]> {
-  if (isDemoMode) return DEMO_HOLDINGS.filter((h) => ids.includes(h.portfolio_id));
+  if (await isSampleMode()) return DEMO_HOLDINGS.filter((h) => ids.includes(h.portfolio_id));
   const portfolioIds = ids.filter(Boolean);
   if (portfolioIds.length === 0) return [];
   const supabase = await createClient();
@@ -147,7 +154,7 @@ async function getHoldingsForPortfolioIds(ids: string[]): Promise<Holding[]> {
 }
 
 export async function getTransactions(portfolioId?: string): Promise<Transaction[]> {
-  if (isDemoMode) {
+  if (await isSampleMode()) {
     const list = portfolioId
       ? DEMO_TRANSACTIONS.filter((t) => t.portfolio_id === portfolioId)
       : DEMO_TRANSACTIONS;
@@ -166,7 +173,7 @@ export async function getTransactions(portfolioId?: string): Promise<Transaction
 export async function getTransactionsForSymbol(symbol: string): Promise<Transaction[]> {
   const sym = normalizeSymbol(symbol);
   if (!sym) return [];
-  if (isDemoMode) {
+  if (await isSampleMode()) {
     return DEMO_TRANSACTIONS.filter((t) => t.symbol.toUpperCase() === sym).sort((a, b) =>
       a.transacted_at.localeCompare(b.transacted_at)
     );
@@ -220,7 +227,7 @@ export async function enrichHoldings(
 
 async function getHistoricalPLBaseMap(holdings: Holding[]): Promise<Map<string, number>> {
   const map = new Map<string, number>();
-  if (isDemoMode || holdings.length === 0) return map;
+  if (holdings.length === 0 || (await isSampleMode())) return map;
 
   const portfolioIds = Array.from(new Set(holdings.map((h) => h.portfolio_id).filter(Boolean)));
   if (portfolioIds.length === 0) return map;
@@ -346,7 +353,7 @@ export async function getDashboard(): Promise<DashboardData> {
 // ── Watchlist & alerts ────────────────────────────────────────
 
 export async function getWatchlistSymbols(): Promise<string[]> {
-  if (isDemoMode) return DEMO_WATCHLIST_ITEMS.map((i) => i.symbol);
+  if (await isSampleMode()) return DEMO_WATCHLIST_ITEMS.map((i) => i.symbol);
   const user = await getSessionUser();
   if (!user) return [];
   const supabase = await createClient();
@@ -364,7 +371,7 @@ export async function getWatchlistSymbols(): Promise<string[]> {
 }
 
 export async function getAlerts(): Promise<Alert[]> {
-  if (isDemoMode) return DEMO_ALERTS;
+  if (await isSampleMode()) return DEMO_ALERTS;
   const user = await getSessionUser();
   if (!user) return [];
   const supabase = await createClient();

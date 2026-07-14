@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isDemoMode } from "@/lib/config";
-import { DEMO_USER } from "@/lib/demo/data";
+import { DEMO_USER, GUEST_USER } from "@/lib/demo/data";
+import { isSampleMode } from "@/lib/auth/roles";
 import { runBackendWarmup } from "@/lib/services/backend-warmup";
 import { createClient } from "@/lib/supabase/server";
 
@@ -55,5 +56,10 @@ async function getAuthenticatedUserId() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  return user?.id ?? null;
+  if (user) return user.id;
+
+  // Guests get a read-only refresh (re-fetches public price/market caches +
+  // their own sample dashboard) — no privileged writes happen either way.
+  if (await isSampleMode()) return GUEST_USER.id;
+  return null;
 }

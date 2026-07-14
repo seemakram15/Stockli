@@ -22,6 +22,8 @@ import { getSessionContext } from "@/lib/auth/roles";
 import { config, isDemoMode } from "@/lib/config";
 import { APP_NAME } from "@/lib/constants";
 import { getMarketRows } from "@/lib/services/prices";
+import { getAppSettings } from "@/lib/services/app-settings";
+import { PAGE_REGISTRY } from "@/lib/access/page-registry";
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -172,6 +174,18 @@ const WORKFLOW = [
 export default async function Home() {
   const { user } = await getSessionContext();
   const authed = Boolean(user);
+
+  // The landing page ("/") isn't itself a registered nav page, so it can't
+  // rely on getSessionContext()'s per-page guest synthesis. Read the global
+  // settings directly instead, purely to render accurate links/lock icons —
+  // real enforcement still happens when a link is actually followed.
+  const appSettings = isDemoMode ? null : await getAppSettings();
+  const isGuest = !authed && (isDemoMode || Boolean(appSettings?.guestBrowsingEnabled));
+  const guestPageAccess = isGuest
+    ? Object.fromEntries(
+        PAGE_REGISTRY.map((entry) => [entry.key, appSettings ? appSettings.isPageEnabled(entry.key) : true])
+      )
+    : null;
   const primaryHref = isDemoMode ? "/portfolios" : "/signup";
   const primaryLabel = isDemoMode ? "Open demo" : "Start tracking free";
 
@@ -206,7 +220,12 @@ export default async function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
 
-      <LandingHeader authed={authed} displayName={user?.displayName} />
+      <LandingHeader
+        authed={authed}
+        displayName={user?.displayName}
+        isGuest={isGuest}
+        guestPageAccess={guestPageAccess}
+      />
 
       <LandingHero demo={isDemoMode} />
 

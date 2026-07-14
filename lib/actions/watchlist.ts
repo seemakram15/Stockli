@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { isDemoMode } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
+import { isSampleMode } from "@/lib/auth/roles";
 import { normalizeSymbol } from "@/lib/security/validation";
 
 export interface ToggleState {
@@ -36,8 +36,8 @@ export async function toggleWatchlist(
 ): Promise<ToggleState> {
   const symbol = normalizeSymbol(formData.get("symbol"));
   const watching = String(formData.get("watching") ?? "") === "true";
-  if (isDemoMode)
-    return { error: "Demo mode — add Supabase keys to use watchlists." };
+  if (await isSampleMode())
+    return { error: "Sign in to save changes — you're viewing sample data." };
   if (!symbol) return { error: "Invalid symbol" };
 
   try {
@@ -70,7 +70,7 @@ export async function toggleWatchlist(
 }
 
 export async function removeFromWatchlist(formData: FormData): Promise<void> {
-  if (isDemoMode) return;
+  if (await isSampleMode()) return;
   const symbol = normalizeSymbol(formData.get("symbol"));
   if (!symbol) return;
   const supabase = await createClient();

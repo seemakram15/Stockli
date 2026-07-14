@@ -22,8 +22,10 @@ import {
   LineChart,
   Link2,
   Loader2,
+  Lock,
   PieChart,
   PlaySquare,
+  Settings,
   ShieldCheck,
   Star,
   Target,
@@ -32,6 +34,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { EXPLORE_NAV_ITEMS, MARKET_NAV_ITEMS, NAV_ITEMS, TOOL_NAV_ITEMS } from "@/lib/constants";
+import { resolvePageKey } from "@/lib/access/page-registry";
 import { useRouteTransition } from "@/components/navigation/route-transition-provider";
 import { cn } from "@/lib/utils";
 import { PrefetchNavLink } from "./prefetch-nav-link";
@@ -55,6 +58,7 @@ const ICONS: Record<string, LucideIcon> = {
   Link2,
   PieChart,
   PlaySquare,
+  Settings,
   ShieldCheck,
   Star,
   Target,
@@ -62,7 +66,25 @@ const ICONS: Record<string, LucideIcon> = {
   Wallet,
 };
 
-export function DesktopNav({ showAdmin = false }: { showAdmin?: boolean }) {
+function isLockedForGuest(
+  href: string,
+  isGuest: boolean | undefined,
+  guestPageAccess: Record<string, boolean> | null | undefined
+): boolean {
+  if (!isGuest || !guestPageAccess) return false;
+  const key = resolvePageKey(href);
+  return key != null && guestPageAccess[key] === false;
+}
+
+export function DesktopNav({
+  showAdmin = false,
+  isGuest,
+  guestPageAccess,
+}: {
+  showAdmin?: boolean;
+  isGuest?: boolean;
+  guestPageAccess?: Record<string, boolean> | null;
+}) {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const { beginNavigation } = useRouteTransition();
@@ -84,6 +106,7 @@ export function DesktopNav({ showAdmin = false }: { showAdmin?: boolean }) {
         ? [
             { href: "/admin", label: "Admin", icon: "ShieldCheck" },
             { href: "/admin/fund-holdings", label: "Fund Holdings", icon: "PieChart" },
+            { href: "/admin/customisation", label: "Customisation", icon: "Settings" },
           ]
         : []),
     ],
@@ -118,6 +141,8 @@ export function DesktopNav({ showAdmin = false }: { showAdmin?: boolean }) {
         icon={dashboardItem.icon}
         active={pathname === dashboardItem.href || pathname.startsWith(dashboardItem.href + "/")}
         onNavigate={handleNavigate}
+        isGuest={isGuest}
+        guestPageAccess={guestPageAccess}
       />
       <DesktopNavLink
         href={portfoliosItem.href}
@@ -125,8 +150,16 @@ export function DesktopNav({ showAdmin = false }: { showAdmin?: boolean }) {
         icon={portfoliosItem.icon}
         active={pathname === portfoliosItem.href || pathname.startsWith(portfoliosItem.href + "/")}
         onNavigate={handleNavigate}
+        isGuest={isGuest}
+        guestPageAccess={guestPageAccess}
       />
-      <MarketDropdown active={marketActive} pathname={pathname} onNavigate={handleNavigate} />
+      <MarketDropdown
+        active={marketActive}
+        pathname={pathname}
+        onNavigate={handleNavigate}
+        isGuest={isGuest}
+        guestPageAccess={guestPageAccess}
+      />
       <NavDropdown
         label="Tools"
         sectionLabel="Tools"
@@ -134,6 +167,8 @@ export function DesktopNav({ showAdmin = false }: { showAdmin?: boolean }) {
         pathname={pathname}
         links={toolsLinks}
         onNavigate={handleNavigate}
+        isGuest={isGuest}
+        guestPageAccess={guestPageAccess}
       />
       <NavDropdown
         label="Explore"
@@ -142,6 +177,8 @@ export function DesktopNav({ showAdmin = false }: { showAdmin?: boolean }) {
         pathname={pathname}
         links={exploreLinks}
         onNavigate={handleNavigate}
+        isGuest={isGuest}
+        guestPageAccess={guestPageAccess}
       />
       <DesktopNavLink
         href={watchlistItem.href}
@@ -149,6 +186,8 @@ export function DesktopNav({ showAdmin = false }: { showAdmin?: boolean }) {
         icon={watchlistItem.icon}
         active={pathname === watchlistItem.href || pathname.startsWith(watchlistItem.href + "/")}
         onNavigate={handleNavigate}
+        isGuest={isGuest}
+        guestPageAccess={guestPageAccess}
       />
       <DesktopNavLink
         href={alertsItem.href}
@@ -156,6 +195,8 @@ export function DesktopNav({ showAdmin = false }: { showAdmin?: boolean }) {
         icon={alertsItem.icon}
         active={pathname === alertsItem.href || pathname.startsWith(alertsItem.href + "/")}
         onNavigate={handleNavigate}
+        isGuest={isGuest}
+        guestPageAccess={guestPageAccess}
       />
     </nav>
   );
@@ -180,6 +221,8 @@ function NavDropdown({
   pathname,
   links,
   onNavigate,
+  isGuest,
+  guestPageAccess,
 }: {
   label: string;
   sectionLabel: string;
@@ -187,6 +230,8 @@ function NavDropdown({
   pathname: string;
   links: DropdownLink[];
   onNavigate: DesktopNavigateHandler;
+  isGuest?: boolean;
+  guestPageAccess?: Record<string, boolean> | null;
 }) {
   const [open, setOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
@@ -271,6 +316,8 @@ function NavDropdown({
                   active={pathname === item.href || pathname.startsWith(item.href + "/")}
                   onNavigate={onNavigate}
                   afterNavigate={closeMenu}
+                  isGuest={isGuest}
+                  guestPageAccess={guestPageAccess}
                 />
               ))}
             </div>
@@ -285,10 +332,14 @@ function MarketDropdown({
   active,
   pathname,
   onNavigate,
+  isGuest,
+  guestPageAccess,
 }: {
   active: boolean;
   pathname: string;
   onNavigate: DesktopNavigateHandler;
+  isGuest?: boolean;
+  guestPageAccess?: Record<string, boolean> | null;
 }) {
   const [open, setOpen] = React.useState(false);
   const [openGroup, setOpenGroup] = React.useState<string | null>(null);
@@ -414,6 +465,8 @@ function MarketDropdown({
                                 active={isMarketRouteActive(pathname, child.href)}
                                 onNavigate={onNavigate}
                                 afterNavigate={closeMenu}
+                                isGuest={isGuest}
+                                guestPageAccess={guestPageAccess}
                               />
                             ))}
                           </div>
@@ -432,6 +485,8 @@ function MarketDropdown({
                       active={isMarketRouteActive(pathname, item.href)}
                       onNavigate={onNavigate}
                       afterNavigate={closeMenu}
+                      isGuest={isGuest}
+                      guestPageAccess={guestPageAccess}
                     />
                   </div>
                 );
@@ -455,14 +510,33 @@ function DesktopNavLink({
   icon,
   active,
   onNavigate,
+  isGuest,
+  guestPageAccess,
 }: {
   href: string;
   label: string;
   icon: string;
   active: boolean;
   onNavigate?: DesktopNavigateHandler;
+  isGuest?: boolean;
+  guestPageAccess?: Record<string, boolean> | null;
 }) {
   const Icon = ICONS[icon];
+  const locked = isLockedForGuest(href, isGuest, guestPageAccess);
+
+  if (locked) {
+    return (
+      <span
+        aria-disabled="true"
+        title="Sign in to access"
+        className="inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-muted-foreground/50"
+      >
+        {Icon ? <Icon className="size-4" /> : null}
+        <span>{label}</span>
+        <Lock className="size-3.5" />
+      </span>
+    );
+  }
 
   return (
     <PrefetchNavLink
@@ -487,6 +561,8 @@ function DesktopMarketItem({
   active,
   onNavigate,
   afterNavigate,
+  isGuest,
+  guestPageAccess,
 }: {
   href: string;
   label: string;
@@ -494,8 +570,27 @@ function DesktopMarketItem({
   active: boolean;
   onNavigate?: DesktopNavigateHandler;
   afterNavigate?: () => void;
+  isGuest?: boolean;
+  guestPageAccess?: Record<string, boolean> | null;
 }) {
   const Icon = ICONS[icon];
+  const locked = isLockedForGuest(href, isGuest, guestPageAccess);
+
+  if (locked) {
+    return (
+      <span
+        aria-disabled="true"
+        title="Sign in to access"
+        className="flex min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground/50"
+      >
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground/50">
+          {Icon ? <Icon className="size-4" /> : null}
+        </span>
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        <Lock className="size-3.5 shrink-0" />
+      </span>
+    );
+  }
 
   return (
     <PrefetchNavLink

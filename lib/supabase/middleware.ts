@@ -4,17 +4,12 @@ import { config, isDemoMode } from "@/lib/config";
 import { shouldForceCanonicalHost } from "@/lib/site-url";
 import { FORWARDED_USER_HEADER } from "@/lib/auth/user-header-key";
 
-const PROTECTED_PREFIXES = [
-  "/account",
-  "/dashboard",
-  "/portfolios",
-  "/watchlist",
-  "/market",
-  "/alerts",
-  "/stock",
-  "/search",
-  "/admin",
-];
+// Only routes that must NEVER be guest-accessible, regardless of the
+// site's public-browsing settings. Everything else (dashboard, portfolios,
+// watchlist, alerts, market, stock, search) is conditionally gated further
+// down the stack — see lib/auth/roles.ts's getSessionContext(), which
+// synthesizes a guest session for those routes when settings allow it.
+const PROTECTED_PREFIXES = ["/account", "/admin"];
 
 const MODAL_AUTH_ROUTES = ["/login", "/signup", "/forgot-password"];
 
@@ -96,6 +91,7 @@ export async function updateSession(request: NextRequest) {
   if (user) {
     forwardedHeaders.set(FORWARDED_USER_HEADER, encodeURIComponent(JSON.stringify(user)));
   }
+  forwardedHeaders.set("x-pathname", pathname);
   const finalResponse = NextResponse.next({ request: { headers: forwardedHeaders } });
   supabaseResponse.cookies.getAll().forEach((cookie) => finalResponse.cookies.set(cookie));
 
