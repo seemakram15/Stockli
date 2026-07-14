@@ -12,7 +12,11 @@ import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// A "change suggestion" request can retry the AI up to 3 times (each with its
+// own AI_REQUEST_TIMEOUT_MS budget) to find a materially different, still-strong
+// basket — 60s wasn't enough headroom for that worst case with the fuller,
+// rules-driven prompt.
+export const maxDuration = 150;
 
 const requestSchema = z.object({
   duration: z.enum(PORTFOLIO_DURATIONS),

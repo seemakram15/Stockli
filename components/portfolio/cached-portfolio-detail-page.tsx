@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/empty-state";
 import { HoldingsTable } from "@/components/holdings-table";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { LiveSummaryCards } from "@/components/live-summary-cards";
+import { useLiveHoldings } from "@/lib/hooks/use-live-holdings";
 import { PageHeader } from "@/components/page-header";
 import { AddTradeDialog } from "@/components/portfolio/add-trade-dialog";
 import { PortfolioSettings } from "@/components/portfolio/portfolio-settings";
@@ -28,7 +29,7 @@ import {
   isPortfolioCacheFresh,
   PORTFOLIO_MUTATION_EVENT,
 } from "@/lib/cache/portfolio-mutations";
-import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
+import { isMarketOpen, shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { PortfolioPageData } from "@/lib/services/portfolio-page";
 import type { RealizedPositionPL } from "@/lib/types";
 
@@ -89,6 +90,8 @@ export function CachedPortfolioDetailPage({
   const holdingsBySymbol = Object.fromEntries(
     holdings.map((h) => [h.symbol.toUpperCase(), h.quantity])
   );
+  const { liveHoldings } = useLiveHoldings(holdings);
+  const liveByHoldingId = new Map(liveHoldings.map((h) => [h.id, h]));
 
   // The route's own <title> is static (see app/(app)/portfolios/[id]/page.tsx
   // — fetching the portfolio row there just to set a title would block the
@@ -122,6 +125,11 @@ export function CachedPortfolioDetailPage({
 
   const hasHoldings = holdings.length > 0;
   const hasHistory = transactions.length > 0;
+  const lastCalendarDay = data.calendar?.days.at(-1) ?? null;
+  const dayPLOverride =
+    !isMarketOpen() && lastCalendarDay
+      ? { dayPL: lastCalendarDay.dayPL, dayPLPct: lastCalendarDay.dayPLPct }
+      : null;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -164,7 +172,13 @@ export function CachedPortfolioDetailPage({
         </p>
       ) : null}
 
-      <LiveSummaryCards holdings={holdings} realizedPL={summary.realizedPL} valueLabel="Value" />
+      <LiveSummaryCards
+        holdings={holdings}
+        liveHoldings={liveHoldings}
+        realizedPL={summary.realizedPL}
+        valueLabel="Value"
+        dayPLOverride={dayPLOverride}
+      />
 
       {!hasHoldings && !hasHistory ? (
         <EmptyState
@@ -231,12 +245,17 @@ export function CachedPortfolioDetailPage({
               <PLCalendar
                 data={data.calendar?.days ?? []}
                 hasPosition={hasHoldings}
-                livePositions={holdings.map((h) => ({
-                  symbol: h.symbol,
-                  quantity: h.quantity,
-                  avgBuyPrice: h.avg_buy_price,
-                  initial: h.quote,
-                }))}
+                livePositions={holdings.map((h) => {
+                  const live = liveByHoldingId.get(h.id);
+                  return {
+                    symbol: h.symbol,
+                    quantity: h.quantity,
+                    avgBuyPrice: h.avg_buy_price,
+                    initial: h.quote,
+                    liveDayChange: live?.dayChange,
+                    liveMarketValue: live?.marketValue,
+                  };
+                })}
               />
             </CardContent>
           </Card>

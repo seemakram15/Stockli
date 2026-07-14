@@ -11,20 +11,35 @@ import type { HoldingWithMetrics } from "@/lib/types";
 
 export function LiveSummaryCards({
   holdings,
+  liveHoldings: precomputedLiveHoldings,
   realizedPL = 0,
   valueLabel = "Total Value",
   holdingsLabel = "positions",
+  dayPLOverride,
 }: {
   holdings: HoldingWithMetrics[];
+  /** Pass this when a parent already computed live holdings (e.g. to also
+   *  feed a sibling PLCalendar) — keeps both views byte-identical instead of
+   *  each independently polling quotes. */
+  liveHoldings?: HoldingWithMetrics[];
   realizedPL?: number;
   valueLabel?: string;
   holdingsLabel?: string;
+  /** When there's no live session today, use the gain/loss calendar's own
+   *  most recent day instead of a quote-derived figure — the calendar's
+   *  persisted/EOD numbers are the authoritative record for a closed day,
+   *  so this keeps the stat card from disagreeing with it. */
+  dayPLOverride?: { dayPL: number; dayPLPct: number } | null;
 }) {
-  const { liveHoldings } = useLiveHoldings(holdings);
-  const summary = React.useMemo(
-    () => computeSummary(liveHoldings, realizedPL),
-    [liveHoldings, realizedPL]
+  const { liveHoldings: ownLiveHoldings } = useLiveHoldings(
+    precomputedLiveHoldings ? [] : holdings
   );
+  const liveHoldings = precomputedLiveHoldings ?? ownLiveHoldings;
+  const summary = React.useMemo(() => {
+    const base = computeSummary(liveHoldings, realizedPL);
+    if (!dayPLOverride) return base;
+    return { ...base, dayPL: dayPLOverride.dayPL, dayPLPct: dayPLOverride.dayPLPct };
+  }, [liveHoldings, realizedPL, dayPLOverride]);
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

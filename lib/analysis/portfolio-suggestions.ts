@@ -1,5 +1,6 @@
 import {
   getMetricScoreByLabel,
+  getMetricValueByLabel,
   type SectorLeadersDataset,
   type SectorLeaderStock,
 } from "@/lib/analysis/sector-ranking";
@@ -79,6 +80,11 @@ export type PortfolioSuggestionCandidate = {
   priceReturn1Y: number | null;
   dividendYield: number | null;
   payoutRatio: number | null;
+  /** Raw valuation ratios (not percentile scores) — for the AI to reason about directly. */
+  peRatio: number | null;
+  pbRatio: number | null;
+  evSales: number | null;
+  earningsYield: number | null;
   metricsAvailable: number;
   strongestMetrics: string[];
   weakestMetrics: string[];
@@ -183,6 +189,10 @@ export function buildPortfolioSuggestionCandidatePool({
     priceReturn1Y: candidate.stock.priceReturn1Y,
     dividendYield: candidate.stock.dividendYield,
     payoutRatio: candidate.stock.payoutRatio,
+    peRatio: getMetricValueByLabel(candidate.stock, "P/E Ratio"),
+    pbRatio: getMetricValueByLabel(candidate.stock, "P/B"),
+    evSales: getMetricValueByLabel(candidate.stock, "EV / Sales"),
+    earningsYield: getMetricValueByLabel(candidate.stock, "Earnings Yield"),
     metricsAvailable: candidate.stock.metricsAvailable,
     strongestMetrics: candidate.stock.strongestMetrics,
     weakestMetrics: candidate.stock.weakestMetrics,

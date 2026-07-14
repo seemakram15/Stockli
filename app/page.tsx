@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import Script from "next/script";
 import type { Metadata } from "next";
 import { BarChart3, Bell, Globe2, Search, Target, Wallet, Zap } from "lucide-react";
@@ -174,6 +175,13 @@ const WORKFLOW = [
 export default async function Home() {
   const { user } = await getSessionContext();
   const authed = Boolean(user);
+
+  // A real signed-in visitor landing on the marketing page (e.g. following an
+  // old bookmark, or the canonical redirect from the site root) should go
+  // straight to their portfolio — demo mode keeps its own "Open demo" flow.
+  if (authed && !isDemoMode) {
+    redirect("/portfolios");
+  }
 
   // The landing page ("/") isn't itself a registered nav page, so it can't
   // rely on getSessionContext()'s per-page guest synthesis. Read the global

@@ -17,6 +17,10 @@ import type { IndexSummary } from "@/lib/types";
 export interface PortfolioCommandPageData {
   dashboard: DashboardData;
   calendar: StockCalendar | null;
+  /** Each portfolio's own most recent calendar day, keyed by portfolio id —
+   *  lets the per-portfolio "Day P/L" cards agree with the gain/loss
+   *  calendar instead of recomputing independently from live quotes. */
+  portfolioDayPL: Record<string, { dayPL: number; dayPLPct: number } | null>;
   headlineTicker: DashboardTickerItem | null;
   tickerItems: DashboardTickerItem[];
   performance: PerformanceResult | null;
@@ -33,9 +37,10 @@ export async function getPortfolioCommandPageData(): Promise<PortfolioCommandPag
       getGlobalMarketData("commodities").catch(() => null),
     ]);
 
-  const [enriched, calendar] = await Promise.all([
+  const [enriched, calendar, portfolioDayPL] = await Promise.all([
     enrichHoldings(holdings, transactions),
     holdings.length ? getPortfolioCalendar(holdings, transactions) : Promise.resolve(null),
+    getPortfolioDayPLByPortfolio(portfolios, holdings, transactions),
   ]);
 
   const dashboard = buildDashboardData(portfolios, enriched, transactions);
@@ -49,12 +54,31 @@ export async function getPortfolioCommandPageData(): Promise<PortfolioCommandPag
   return {
     dashboard,
     calendar,
+    portfolioDayPL,
     headlineTicker,
     tickerItems,
     performance: null,
     market: marketStatus(),
     updatedAt: new Date().toISOString(),
   };
+}
+
+async function getPortfolioDayPLByPortfolio(
+  portfolios: Awaited<ReturnType<typeof getDashboardRaw>>["portfolios"],
+  holdings: Awaited<ReturnType<typeof getDashboardRaw>>["holdings"],
+  transactions: Awaited<ReturnType<typeof getDashboardRaw>>["transactions"]
+): Promise<Record<string, { dayPL: number; dayPLPct: number } | null>> {
+  const entries = await Promise.all(
+    portfolios.map(async (p) => {
+      const pHoldings = holdings.filter((h) => h.portfolio_id === p.id);
+      if (pHoldings.length === 0) return [p.id, null] as const;
+      const pTransactions = transactions.filter((t) => t.portfolio_id === p.id);
+      const cal = await getPortfolioCalendar(pHoldings, pTransactions);
+      const last = cal.days.at(-1) ?? null;
+      return [p.id, last ? { dayPL: last.dayPL, dayPLPct: last.dayPLPct } : null] as const;
+    })
+  );
+  return Object.fromEntries(entries);
 }
 
 function buildTickerStripItems(
