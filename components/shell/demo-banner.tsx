@@ -16,7 +16,7 @@ export function DemoBanner({ variant = "demo" }: { variant?: "demo" | "guest" })
       {variant === "guest" ? (
         <>
           <p className="flex-1">
-            <span className="font-medium">You're browsing with sample data.</span>{" "}
+            <span className="font-medium">You&apos;re browsing with sample data.</span>{" "}
             <span className="text-muted-foreground">
               Sign in or create a free account to track your own portfolio.
             </span>
