@@ -1,5 +1,7 @@
 import "server-only";
 
+import fs from "node:fs";
+import path from "node:path";
 import { z } from "zod";
 import {
   buildDeterministicPortfolioSuggestionInsight,
@@ -26,9 +28,53 @@ import { getSectorLeadersData } from "@/lib/services/sector-leaders";
 
 const AI_TTL_SECONDS = 6 * 60 * 60;
 const AI_STALE_SECONDS = 24 * 60 * 60;
-const AI_REQUEST_TIMEOUT_MS = 15_000;
+// The fuller, rules-driven system prompt invites more model reasoning before
+// the final answer than the old one-liner did — give it real room instead of
+// silently falling back to the deterministic basket on a slow-but-good reply.
+const AI_REQUEST_TIMEOUT_MS = 45_000;
 const AI_REFRESH_ERROR_MESSAGE =
   "We could not refresh the AI summary right now. Please try again in a few minutes.";
+
+const OUTPUT_SCHEMA_INSIGHT = `
+Reply with exactly one JSON object in this shape — no extra top-level fields, none missing:
+{
+  "headline": "one sentence, under 180 characters",
+  "summary": "a few sentences, under 900 characters",
+  "portfolioFit": ["short sentence", "short sentence"] (1 to 5 items, plain strings, not one combined string),
+  "holdingCalls": [{"symbol": "TICKER", "note": "one sentence, under 280 characters"}] (one object per holding, 1 to 8 items, key is exactly "note"),
+  "watchouts": ["short sentence", "short sentence"] (1 to 4 items, plain strings, not one combined string),
+  "suggestion": "one closing sentence, under 420 characters",
+  "confidence": "high", "medium", or "low" (exactly one of these three words)
+}`.trim();
+
+const OUTPUT_SCHEMA_SELECTION = `${OUTPUT_SCHEMA_INSIGHT}
+Also include this field in the same JSON object:
+  "selectedSymbols": ["TICKER", "TICKER"] (1 to 12 tickers, chosen only from the candidate list you were given)`;
+
+const AGENT_RULES_PATH = path.join(
+  process.cwd(),
+  "docs/ai/portfolio-suggestions-agent.md"
+);
+const AGENT_RULES_FALLBACK =
+  "You are Stockli's portfolio construction analyst for the Pakistan Stock Exchange. Choose stocks only from the supplied candidate list. Build a diversified basket with strong fundamentals, stronger sectors, sensible role balance, and plain-language explanations. Never output markdown.";
+
+let cachedAgentRules: string | null = null;
+
+/**
+ * Loads docs/ai/portfolio-suggestions-agent.md as the system prompt for the
+ * portfolio-suggestions AI — that file IS the agent's rulebook, editable
+ * without a code change. Cached in memory per server process; falls back to
+ * a minimal inline instruction if the file is ever missing.
+ */
+function loadPortfolioAgentRules(): string {
+  if (cachedAgentRules) return cachedAgentRules;
+  try {
+    cachedAgentRules = fs.readFileSync(AGENT_RULES_PATH, "utf-8").trim();
+  } catch {
+    cachedAgentRules = AGENT_RULES_FALLBACK;
+  }
+  return cachedAgentRules;
+}
 
 export class StrategyAiError extends Error {
   statusCode: number;
@@ -263,8 +309,7 @@ export async function getPortfolioSuggestionAiInsight({
       insight: await callZaiJsonWithFallback({
         preferredModel: model,
         schema: portfolioInsightSchema,
-        system:
-          "You are Stockli's portfolio suggestion analyst for the Pakistan Stock Exchange. Stay grounded in the supplied facts. Use plain language. Prefer durable, fundamentally strong companies. Favor blue-chip anchors plus credible growth names from healthier sectors. Avoid recommending stocks that only look strong because of recent price movement when the multi-year fundamentals are weak. Never output markdown.",
+        system: `${loadPortfolioAgentRules()}\n\n${OUTPUT_SCHEMA_INSIGHT}`,
         prompt: {
           duration,
           objective,
@@ -341,8 +386,7 @@ async function selectAiPortfolio({
       preferredModel: model,
       temperature: currentSymbols.length > 0 ? 0.55 : 0.35,
       schema: portfolioSelectionSchema,
-      system:
-        "You are Stockli's portfolio construction analyst for the Pakistan Stock Exchange. Choose stocks only from the supplied candidate list. Build a diversified basket with strong fundamentals, stronger sectors, sensible role balance, and plain-language explanations. Never output markdown.",
+      system: `${loadPortfolioAgentRules()}\n\n${OUTPUT_SCHEMA_SELECTION}`,
       prompt: {
         duration,
         objective,
@@ -394,6 +438,10 @@ async function selectAiPortfolio({
           expectedAnnualReturn: candidate.expectedAnnualReturn,
           dividendYield: candidate.dividendYield,
           payoutRatio: candidate.payoutRatio,
+          peRatio: candidate.peRatio,
+          pbRatio: candidate.pbRatio,
+          evSales: candidate.evSales,
+          earningsYield: candidate.earningsYield,
           revenueGrowth: candidate.revenueGrowth,
           epsGrowth: candidate.epsGrowth,
           priceReturn1Y: candidate.priceReturn1Y,

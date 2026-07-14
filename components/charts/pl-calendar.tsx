@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { formatPKR, formatPercent } from "@/lib/format";
 import { usePrices } from "@/lib/hooks/use-prices";
 import { PSX_TIMEZONE } from "@/lib/constants";
-import { hasPsxTradingStartedToday } from "@/lib/psx/market-hours";
+import { hasPsxTradingStartedToday, isMarketOpen } from "@/lib/psx/market-hours";
 import { computeDayChange, effectiveQuotePrice } from "@/lib/services/metrics";
 import type { Quote } from "@/lib/types";
 import type { CalendarDay } from "@/lib/services/daily-pl";
@@ -32,7 +32,18 @@ export function PLCalendar({
 }: {
   data: CalendarDay[];
   hasPosition: boolean;
-  livePositions?: { symbol: string; quantity: number; avgBuyPrice: number; initial?: Quote | null }[];
+  livePositions?: {
+    symbol: string;
+    quantity: number;
+    avgBuyPrice: number;
+    initial?: Quote | null;
+    /** Precomputed today figures from a sibling live-holdings calculation
+     *  (e.g. the page's own stat cards) — when every active position has
+     *  these, they're used verbatim instead of an independent quote fetch,
+     *  so this calendar can never disagree with that sibling view. */
+    liveDayChange?: number;
+    liveMarketValue?: number;
+  }[];
   showSummaryPL?: boolean;
 }) {
   const { liveData, positionSummary } = useLiveCalendarData(data, livePositions, hasPosition);
@@ -181,14 +192,26 @@ export function PLCalendar({
 
 function useLiveCalendarData(
   data: CalendarDay[],
-  livePositions: { symbol: string; quantity: number; avgBuyPrice: number; initial?: Quote | null }[],
+  livePositions: {
+    symbol: string;
+    quantity: number;
+    avgBuyPrice: number;
+    initial?: Quote | null;
+    liveDayChange?: number;
+    liveMarketValue?: number;
+  }[],
   hasPosition: boolean
 ) {
   const active = React.useMemo(
     () => livePositions.filter((p) => p.quantity > 0),
     [livePositions]
   );
-  const symbols = React.useMemo(() => active.map((p) => p.symbol), [active]);
+  const hasPrecomputed =
+    active.length > 0 && active.every((p) => p.liveDayChange != null && p.liveMarketValue != null);
+  const symbols = React.useMemo(
+    () => (hasPrecomputed ? [] : active.map((p) => p.symbol)),
+    [active, hasPrecomputed]
+  );
   const initial = React.useMemo(
     () => active.map((p) => p.initial).filter(Boolean) as Quote[],
     [active]
@@ -196,6 +219,7 @@ function useLiveCalendarData(
   const { quotes } = usePrices(symbols, initial);
   const [now, setNow] = React.useState(() => new Date());
   const tradingStartedToday = hasPsxTradingStartedToday(now);
+  const marketOpen = isMarketOpen(now);
 
   React.useEffect(() => {
     if (!hasPosition || active.length === 0) return undefined;
@@ -214,7 +238,15 @@ function useLiveCalendarData(
     let up = 0;
     let down = 0;
     for (const position of active) {
-      const q = quotes.get(position.symbol.toUpperCase()) ?? position.initial;
+      if (position.liveDayChange != null && position.liveMarketValue != null) {
+        found++;
+        dayPL += position.liveDayChange;
+        close += position.liveMarketValue;
+        if (position.liveDayChange > 0) up++;
+        if (position.liveDayChange < 0) down++;
+        continue;
+      }
+      const q = (marketOpen ? quotes.get(position.symbol.toUpperCase()) : null) ?? position.initial;
       if (!q) continue;
       const price = effectiveQuotePrice(q);
       if (price == null) continue;
@@ -249,7 +281,7 @@ function useLiveCalendarData(
         totalPositions: found,
       },
     };
-  }, [active, data, hasPosition, quotes, tradingStartedToday]);
+  }, [active, data, hasPosition, quotes, tradingStartedToday, marketOpen]);
 }
 
 function DayCell({

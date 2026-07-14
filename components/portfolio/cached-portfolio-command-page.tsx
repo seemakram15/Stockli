@@ -20,6 +20,7 @@ import { PLCalendar } from "@/components/charts/pl-calendar";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { LiveSummaryCards } from "@/components/live-summary-cards";
+import { useLiveHoldings } from "@/lib/hooks/use-live-holdings";
 import { PageHeader } from "@/components/page-header";
 import { CreatePortfolioDialog } from "@/components/portfolio/create-portfolio-dialog";
 import { MarketStatusBadge } from "@/components/status-badges";
@@ -34,12 +35,13 @@ import {
   isPortfolioCacheFresh,
   PORTFOLIO_MUTATION_EVENT,
 } from "@/lib/cache/portfolio-mutations";
-import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
+import { isMarketOpen, shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import { formatPKR, formatPercent, plColorClass } from "@/lib/format";
 import type { PortfolioCommandPageData } from "@/lib/services/portfolio-command-page";
 import type { PerfPoint, PerformanceResult } from "@/lib/services/performance";
 import type { HoldingWithMetrics } from "@/lib/types";
 
+const EMPTY_HOLDINGS: HoldingWithMetrics[] = [];
 const PORTFOLIO_COMMAND_URL = "/api/private/portfolio-command";
 const PORTFOLIO_PERFORMANCE_URL = "/api/private/portfolio-performance";
 const EMPTY_PERF: PerformanceResult = { points: [], series: [] };
@@ -180,6 +182,10 @@ export function CachedPortfolioCommandPage({
     }
   }, [lastCachedAt, userId, refreshNow]);
 
+  // Hooks must run unconditionally, so compute a safe holdings source before
+  // the loading-state early return below.
+  const { liveHoldings } = useLiveHoldings(data?.dashboard.holdings ?? EMPTY_HOLDINGS);
+
   if (!data || forceRefreshing) {
     return (
       <div className="mx-auto max-w-7xl">
@@ -191,16 +197,28 @@ export function CachedPortfolioCommandPage({
     );
   }
 
-  const { dashboard, headlineTicker, tickerItems, calendar, market } = data;
+  const { dashboard, headlineTicker, tickerItems, calendar, market, portfolioDayPL } = data;
   const { summary, holdings, portfolios } = dashboard;
   const hasHoldings = holdings.length > 0;
   const hasPortfolios = portfolios.length > 0;
-  const liveCalendarPositions = holdings.map((holding) => ({
-    symbol: holding.symbol,
-    quantity: holding.quantity,
-    avgBuyPrice: holding.avg_buy_price,
-    initial: holding.quote,
-  }));
+  const marketOpen = isMarketOpen();
+  const lastCalendarDay = calendar?.days.at(-1) ?? null;
+  const dayPLOverride =
+    !marketOpen && lastCalendarDay
+      ? { dayPL: lastCalendarDay.dayPL, dayPLPct: lastCalendarDay.dayPLPct }
+      : null;
+  const liveByHoldingId = new Map(liveHoldings.map((h) => [h.id, h]));
+  const liveCalendarPositions = holdings.map((holding) => {
+    const live = liveByHoldingId.get(holding.id);
+    return {
+      symbol: holding.symbol,
+      quantity: holding.quantity,
+      avgBuyPrice: holding.avg_buy_price,
+      initial: holding.quote,
+      liveDayChange: live?.dayChange,
+      liveMarketValue: live?.marketValue,
+    };
+  });
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -285,9 +303,19 @@ export function CachedPortfolioCommandPage({
         </>
       ) : (
         <>
-          <LiveSummaryCards holdings={holdings} realizedPL={summary.realizedPL} />
+          <LiveSummaryCards
+            holdings={holdings}
+            liveHoldings={liveHoldings}
+            realizedPL={summary.realizedPL}
+            dayPLOverride={dayPLOverride}
+          />
 
-          <PortfolioJumpCards portfolios={portfolios} holdings={holdings} userId={userId} />
+          <PortfolioJumpCards
+            portfolios={portfolios}
+            holdings={liveHoldings}
+            userId={userId}
+            dayPLByPortfolio={marketOpen ? null : portfolioDayPL}
+          />
 
           <div className="grid gap-4 lg:grid-cols-3">
             <PerformanceCard data={perfData} holdings={holdings} />
@@ -337,10 +365,15 @@ function PortfolioJumpCards({
   portfolios,
   holdings,
   userId,
+  dayPLByPortfolio,
 }: {
   portfolios: PortfolioCommandPageData["dashboard"]["portfolios"];
   holdings: HoldingWithMetrics[];
   userId: string;
+  /** When there's no live session today, each portfolio's own most recent
+   *  calendar day — keeps these mini-cards from disagreeing with the
+   *  gain/loss calendar once the market's closed. */
+  dayPLByPortfolio?: PortfolioCommandPageData["portfolioDayPL"] | null;
 }) {
   if (portfolios.length === 0) return null;
 
@@ -374,7 +407,10 @@ function PortfolioJumpCards({
               (sum, holding) => sum + holding.livePrice * holding.quantity,
               0
             );
-            const dayPL = portfolioHoldings.reduce((sum, holding) => sum + holding.dayChange, 0);
+            const override = dayPLByPortfolio?.[portfolio.id];
+            const dayPL =
+              override?.dayPL ??
+              portfolioHoldings.reduce((sum, holding) => sum + holding.dayChange, 0);
 
             return (
               <Link
