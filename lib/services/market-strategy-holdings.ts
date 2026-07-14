@@ -5,6 +5,7 @@ import { getLatestPublishedHoldingsAll } from "@/lib/services/fund-holdings";
 import { getAllQuotes } from "@/lib/services/prices";
 import { identifyAmcBrand, shortAmcName } from "@/lib/amc-brands";
 import { psxLiveCacheTtlSeconds, shouldRefreshPsxData } from "@/lib/psx/market-hours";
+import { computeFundReturnEstimate } from "@/lib/services/fund-return-estimate";
 import type { FundClassFilter } from "@/lib/services/mufap";
 
 const INVESTMENT_AMOUNT = 100_000;
@@ -18,7 +19,7 @@ export interface HoldingsStrategyFund {
   classFilter: FundClassFilter;
   /** Official NAV 1-day return% from MUFAP (may be null if no match or no data). */
   navReturnPct: number | null;
-  /** Holdings-weighted return%: Σ(holding% × stockChangePct) / 100. */
+  /** Holdings-weighted return%, averaged over priced holdings only. */
   holdingsReturnPct: number | null;
   /** Rs per 100k invested based on holdings return. */
   estimatedReturn: number | null;
@@ -27,6 +28,8 @@ export interface HoldingsStrategyFund {
   /** Number of stocks with PSX symbols used in the estimate. */
   pricedHoldings: number;
   totalHoldings: number;
+  /** Weight% of the catch-all "Other Holdings" row (undisclosed allocations, excluded from the estimate). */
+  unknownWeight: number;
 }
 
 export interface HoldingsStrategyData {
@@ -81,35 +84,7 @@ async function loadHoldingsStrategyData(): Promise<HoldingsStrategyData> {
     const mufap = mufapByName.get(norm(hf.fundName)) ?? null;
     const brand = identifyAmcBrand(hf.amc);
 
-    // Only count stocks with symbols (skip "Other Holdings" catch-all row)
-    const symbolHoldings = hf.holdings.filter(
-      (h) => h.symbol && h.stockName !== "Other Holdings"
-    );
-
-    let holdingsReturnPct: number | null = null;
-    let pricedHoldings = 0;
-
-    if (symbolHoldings.length > 0) {
-      let weightedReturnSum = 0; // Σ(holding% × changePct)
-      let totalWeight = 0;       // Σ(holding%)
-      for (const h of symbolHoldings) {
-        const quote = quoteMap.get(h.symbol!.toUpperCase());
-        if (quote != null) {
-          weightedReturnSum += h.percentage * quote.changePct;
-          totalWeight += h.percentage;
-          pricedHoldings++;
-        }
-      }
-      // Weighted average: Σ(w × r) / Σ(w) — independent of coverage %
-      if (pricedHoldings > 0 && totalWeight > 0) {
-        holdingsReturnPct = weightedReturnSum / totalWeight;
-      }
-    }
-
-    const estimatedReturn =
-      holdingsReturnPct != null
-        ? (holdingsReturnPct / 100) * INVESTMENT_AMOUNT
-        : null;
+    const estimate = computeFundReturnEstimate(hf.holdings, quoteMap, INVESTMENT_AMOUNT);
 
     return {
       fundName: hf.fundName,
@@ -119,12 +94,13 @@ async function loadHoldingsStrategyData(): Promise<HoldingsStrategyData> {
       amcLogoUrl: mufap?.amcLogoUrl ?? null,
       classFilter: mufap?.classFilter ?? "conventional",
       navReturnPct: mufap?.d1 ?? null,
-      holdingsReturnPct,
-      estimatedReturn,
+      holdingsReturnPct: estimate.returnPct,
+      estimatedReturn: estimate.estimatedReturn,
       periodYear: year,
       periodMonth: month,
-      pricedHoldings,
-      totalHoldings: symbolHoldings.length,
+      pricedHoldings: estimate.pricedHoldings,
+      totalHoldings: hf.holdings.length,
+      unknownWeight: estimate.unknownWeight,
     };
   });
 

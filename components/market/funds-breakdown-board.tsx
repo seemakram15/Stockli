@@ -262,12 +262,8 @@ function FundCard({ fund }: { fund: BreakdownFund }) {
       >
         {hasUnknown && (
           <p className="text-[10px] text-muted-foreground/60">
-            Unknown holdings: {fund.unknownWeight.toFixed(1)}%
-            {fund.unknownEstimate != null && (
-              <span className={cn("ml-1 font-semibold", plColorClass(fund.unknownEstimate))}>
-                (approx. {formatPKR(fund.unknownEstimate, { sign: true })})
-              </span>
-            )}
+            Unknown holdings: {fund.unknownWeight.toFixed(1)}% — estimate may vary slightly since these
+            allocations aren&apos;t publicly disclosed.
           </p>
         )}
         {coveragePct < 100 && fund.knownWeight > 0 && (

@@ -66,7 +66,7 @@ export function MarketStrategyBoard({ data }: { data: HoldingsStrategyData }) {
     <div className="space-y-3">
       {periodLabel && (
         <p className="text-xs text-muted-foreground/60">
-          Based on <span className="font-medium text-muted-foreground">{periodLabel}</span> published holdings × today&apos;s PSX prices
+          Based on <span className="font-medium text-muted-foreground">{periodLabel}</span> published holdings × today&apos;s PSX prices. Estimates may vary slightly for funds with undisclosed (&quot;Other Holdings&quot;) allocations.
         </p>
       )}
 

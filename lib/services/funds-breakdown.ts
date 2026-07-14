@@ -5,6 +5,7 @@ import { getLatestPublishedHoldingsAll } from "@/lib/services/fund-holdings";
 import { getAllQuotes } from "@/lib/services/prices";
 import { identifyAmcBrand, shortAmcName } from "@/lib/amc-brands";
 import { psxLiveCacheTtlSeconds, shouldRefreshPsxData } from "@/lib/psx/market-hours";
+import { computeFundReturnEstimate } from "@/lib/services/fund-return-estimate";
 
 const INVESTMENT_AMOUNT = 100_000;
 
@@ -27,15 +28,13 @@ export interface BreakdownFund {
   holdings: BreakdownHolding[];
   /** Sum of weight% of holdings that have a PSX symbol (excl. "Other Holdings"). */
   knownWeight: number;
-  /** Weight% of the catch-all "Other Holdings" row. */
+  /** Weight% of the catch-all "Other Holdings" row (undisclosed allocations, excluded from the estimate). */
   unknownWeight: number;
-  /** Sum of weight% of holdings for which we got a live PSX price. */
+  /** Sum of weight% of holdings for which we got a live PSX price — what totalEstimate is based on. */
   pricedWeight: number;
-  /** Rs P/L on 100k from priced holdings only. */
-  pricedEstimate: number | null;
-  /** Rs P/L estimate for the unknown% (proxy: weighted avg change of priced holdings). */
-  unknownEstimate: number | null;
-  /** Total Rs P/L on 100k (priced + unknown proxy). */
+  /** Fund-level weighted-average return %, over priced holdings only. */
+  returnPct: number | null;
+  /** Rs P/L on 100k based on returnPct. Same figure shown on /market/strategy for this fund. */
   totalEstimate: number | null;
   periodYear: number;
   periodMonth: number;
@@ -89,16 +88,10 @@ async function loadFundsBreakdownData(): Promise<FundsBreakdownData> {
       )?.percent ?? null;
 
     let knownWeight = 0;
-    let unknownWeight = 0;
-    let pricedWeightedReturnSum = 0;
-    let pricedWeight = 0;
-    let pricedEstimate = 0;
 
     const holdings: BreakdownHolding[] = hf.holdings.map((h) => {
       const isOther = h.stockName === "Other Holdings" || !h.symbol;
-
       if (isOther) {
-        if (h.stockName === "Other Holdings") unknownWeight += h.percentage;
         return { symbol: h.symbol, stockName: h.stockName, percentage: h.percentage, changePct: null, plAmount: null };
       }
 
@@ -107,25 +100,14 @@ async function loadFundsBreakdownData(): Promise<FundsBreakdownData> {
       if (quote != null) {
         const changePct = quote.changePct;
         const pl = (h.percentage / 100) * (changePct / 100) * INVESTMENT_AMOUNT;
-        pricedWeightedReturnSum += h.percentage * changePct;
-        pricedWeight += h.percentage;
-        pricedEstimate += pl;
         return { symbol: h.symbol, stockName: h.stockName, percentage: h.percentage, changePct, plAmount: pl };
       }
       return { symbol: h.symbol, stockName: h.stockName, percentage: h.percentage, changePct: null, plAmount: null };
     });
 
-    // Proxy for unknown holdings: assume same avg changePct as priced holdings
-    let unknownEstimate: number | null = null;
-    if (unknownWeight > 0 && pricedWeight > 0) {
-      const avgChangePct = pricedWeightedReturnSum / pricedWeight;
-      unknownEstimate = (unknownWeight / 100) * (avgChangePct / 100) * INVESTMENT_AMOUNT;
-    }
-
-    const hasPriced = pricedWeight > 0;
-    const totalEstimate = hasPriced
-      ? pricedEstimate + (unknownEstimate ?? 0)
-      : null;
+    // Same weighted-average-over-priced-holdings formula used on /market/strategy,
+    // so the two pages never independently drift on the same underlying data.
+    const estimate = computeFundReturnEstimate(hf.holdings, quoteMap, INVESTMENT_AMOUNT);
 
     return {
       fundName: hf.fundName,
@@ -137,11 +119,10 @@ async function loadFundsBreakdownData(): Promise<FundsBreakdownData> {
       equityPct,
       holdings,
       knownWeight,
-      unknownWeight,
-      pricedWeight,
-      pricedEstimate: hasPriced ? pricedEstimate : null,
-      unknownEstimate,
-      totalEstimate,
+      unknownWeight: estimate.unknownWeight,
+      pricedWeight: estimate.pricedWeight,
+      returnPct: estimate.returnPct,
+      totalEstimate: estimate.estimatedReturn,
       periodYear: year,
       periodMonth: month,
     };
