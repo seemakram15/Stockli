@@ -165,7 +165,7 @@ export interface WatchlistItem {
   created_at: string;
 }
 
-export type NotificationType = "ALERT" | "MARKET" | "SYSTEM" | "PORTFOLIO";
+export type NotificationType = "ALERT" | "MARKET" | "SYSTEM" | "PORTFOLIO" | "WATCHLIST";
 
 export interface AppNotification {
   id: string;

@@ -1,6 +1,12 @@
 "use client";
 
 import { CandlestickChart } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { formatNumber } from "@/lib/format";
 import type { HoldingWithMetrics } from "@/lib/types";
 
@@ -34,16 +40,23 @@ export function TopHoldingsByShares({ holdings }: { holdings: HoldingWithMetrics
   const candleWidth = Math.max(26, Math.min(44, step * 0.42));
 
   return (
-    <div className="rounded-xl border border-border bg-muted/10 p-4">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <CandlestickChart className="size-4 text-primary" />
-          <p className="font-semibold">Top holdings by shares</p>
-        </div>
-        <span className="text-xs text-muted-foreground">Top 8</span>
-      </div>
-      <MobileHoldingsBars rows={rows} maxShares={maxShares} />
-      <div className="hidden rounded-xl border border-border bg-background/70 p-2 sm:block">
+    <Accordion
+      type="single"
+      collapsible
+      defaultValue="top-holdings"
+      className="rounded-xl border border-border bg-muted/10 px-4"
+    >
+      <AccordionItem value="top-holdings" className="border-b-0">
+        <AccordionTrigger className="py-3">
+          <span className="flex flex-1 items-center gap-2">
+            <CandlestickChart className="size-4 text-primary" />
+            <span className="font-semibold">Top holdings by shares</span>
+            <span className="ml-auto text-xs font-normal text-muted-foreground">Top 8</span>
+          </span>
+        </AccordionTrigger>
+        <AccordionContent className="pt-1 pb-4">
+          <MobileHoldingsBars rows={rows} maxShares={maxShares} />
+          <div className="hidden rounded-xl border border-border bg-background/70 p-2 sm:block">
         <svg
           role="img"
           aria-label="Top holdings by share count candle chart"
@@ -157,8 +170,10 @@ export function TopHoldingsByShares({ holdings }: { holdings: HoldingWithMetrics
             Shares held across all portfolios
           </text>
         </svg>
-      </div>
-    </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }
 

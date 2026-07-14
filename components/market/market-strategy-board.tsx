@@ -151,13 +151,23 @@ function FundRow({ fund: f }: { fund: HoldingsStrategyFund }) {
   return (
     <div
       className={cn("grid items-center px-3 py-1.5 text-xs", rowTint(f.estimatedReturn))}
-      style={{ gridTemplateColumns: "1fr 4.5rem 5.75rem", gap: "0.75rem" }}
+      style={{ gridTemplateColumns: "minmax(0,1fr) 4rem 6.5rem", gap: "0.5rem" }}
     >
       <span className="min-w-0 truncate text-foreground/80">{name}</span>
-      <span className={cn("text-right font-semibold tabular-nums", plColorClass(f.holdingsReturnPct))}>
+      <span
+        className={cn(
+          "whitespace-nowrap text-right font-semibold tabular-nums",
+          plColorClass(f.holdingsReturnPct)
+        )}
+      >
         {f.holdingsReturnPct != null ? formatPercent(f.holdingsReturnPct) : "—"}
       </span>
-      <span className={cn("text-right font-bold tabular-nums", plColorClass(f.estimatedReturn))}>
+      <span
+        className={cn(
+          "whitespace-nowrap text-right font-bold tabular-nums",
+          plColorClass(f.estimatedReturn)
+        )}
+      >
         {f.estimatedReturn != null ? formatPKR(f.estimatedReturn, { sign: true }) : "—"}
       </span>
     </div>

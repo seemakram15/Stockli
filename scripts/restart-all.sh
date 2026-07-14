@@ -40,7 +40,7 @@ if ! load_nvm; then
   exit 1
 fi
 
-nvm install "$NODE_VERSION" >/dev/null
+nvm use "$NODE_VERSION" >/dev/null 2>&1 || nvm install "$NODE_VERSION" >/dev/null
 nvm use "$NODE_VERSION" >/dev/null
 
 if lsof -tiTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then

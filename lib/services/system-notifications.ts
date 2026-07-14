@@ -35,6 +35,9 @@ interface WarmupNotificationOptions {
   psxRefreshError?: string | null;
 }
 
+/** Minimum absolute day move (%) for a watched stock to notify its watcher. */
+const WATCHLIST_MOVE_THRESHOLD_PCT = 3;
+
 export async function createNotification(admin: SupabaseClient, input: CreateNotificationInput) {
   if (input.eventKey) {
     const { error } = await admin.from("notification_events").insert({
@@ -84,10 +87,11 @@ export async function runSystemNotificationJobs({
   psxRefreshError,
 }: WarmupNotificationOptions) {
   const results: Record<string, unknown> = {};
-  const [marketEvent, kseEvent, portfolioEvent, macroEvent, feedEvent] = await Promise.allSettled([
+  const [marketEvent, kseEvent, portfolioEvent, watchlistEvent, macroEvent, feedEvent] = await Promise.allSettled([
     createMarketSituationNotification(admin, now),
     createKse100ChangeNotification(admin, now),
     createPortfolioPulseNotifications(admin, now, quotes, triggerUserId),
+    createWatchlistMoveNotifications(admin, now, quotes, triggerUserId),
     createGlobalMacroNotifications(admin),
     psxRefreshError ? createFeedIssueNotification(admin, now, psxRefreshError) : Promise.resolve(null),
   ]);
@@ -98,6 +102,8 @@ export async function runSystemNotificationJobs({
     kseEvent.status === "fulfilled" ? kseEvent.value : String(kseEvent.reason);
   results.portfolioPulse =
     portfolioEvent.status === "fulfilled" ? portfolioEvent.value : String(portfolioEvent.reason);
+  results.watchlistMoves =
+    watchlistEvent.status === "fulfilled" ? watchlistEvent.value : String(watchlistEvent.reason);
   results.globalMacro =
     macroEvent.status === "fulfilled" ? macroEvent.value : String(macroEvent.reason);
   if (psxRefreshError) {
@@ -236,6 +242,75 @@ async function createPortfolioPulseNotifications(
         href: "/dashboard",
         eventKey: `portfolio-pulse:${userId}:${pktDate(now)}:${bucket}`,
         eventPayload: total,
+      });
+      if (result.created) created += 1;
+    })
+  );
+
+  return { created };
+}
+
+async function createWatchlistMoveNotifications(
+  admin: SupabaseClient,
+  now: Date,
+  quotes: Map<string, Quote>,
+  triggerUserId?: string | null
+) {
+  if (!isMarketOpen(now)) return null;
+
+  let quoteMap = quotes;
+  if (quoteMap.size === 0) {
+    const rows = await getMarketRows();
+    quoteMap = new Map(rows.map((row) => [row.symbol.toUpperCase(), marketWatchRowToQuote(row)]));
+  }
+
+  let listsQuery = admin.from("watchlists").select("id,user_id");
+  if (triggerUserId) listsQuery = listsQuery.eq("user_id", triggerUserId);
+
+  const { data: lists } = await listsQuery;
+  const listRows = (lists as { id: string; user_id: string }[] | null) ?? [];
+  if (listRows.length === 0) return { created: 0 };
+
+  const ownerByList = new Map(listRows.map((list) => [list.id, list.user_id]));
+  const { data: items } = await admin
+    .from("watchlist_items")
+    .select("watchlist_id,symbol")
+    .in("watchlist_id", listRows.map((list) => list.id));
+
+  // Deduplicate to one (user, symbol) pair — a user may watch a symbol in more than one list.
+  const seen = new Set<string>();
+  const pairs: { userId: string; symbol: string }[] = [];
+  for (const item of (items as { watchlist_id: string; symbol: string }[] | null) ?? []) {
+    const userId = ownerByList.get(item.watchlist_id);
+    if (!userId) continue;
+    const symbol = String(item.symbol).toUpperCase();
+    const key = `${userId}:${symbol}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    pairs.push({ userId, symbol });
+  }
+  if (pairs.length === 0) return { created: 0 };
+
+  let created = 0;
+  await Promise.all(
+    pairs.map(async ({ userId, symbol }) => {
+      const quote = quoteMap.get(symbol);
+      if (!quote || Math.abs(quote.changePct) < WATCHLIST_MOVE_THRESHOLD_PCT) return;
+      const direction = quote.change >= 0 ? "up" : "down";
+      const result = await createNotification(admin, {
+        userId,
+        type: "WATCHLIST",
+        title: `${symbol} is ${direction} ${formatPct(Math.abs(quote.changePct))} today`,
+        body: `${symbol} on your watchlist is trading at Rs ${money(quote.price)} (${formatSignedMoney(quote.change)} today).`,
+        symbol,
+        href: `/stock/${symbol}`,
+        eventKey: `watchlist-move:${userId}:${symbol}:${pktDate(now)}:${direction}`,
+        eventPayload: {
+          symbol,
+          price: quote.price,
+          change: quote.change,
+          changePct: quote.changePct,
+        },
       });
       if (result.created) created += 1;
     })

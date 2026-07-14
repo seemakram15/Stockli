@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Bell, BellRing, Activity, Info, CircleAlert, WalletCards } from "lucide-react";
+import { Bell, BellRing, Activity, Info, CircleAlert, WalletCards, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ const ICONS: Record<NotificationType, typeof Bell> = {
   MARKET: Activity,
   SYSTEM: Info,
   PORTFOLIO: WalletCards,
+  WATCHLIST: Star,
 };
 
 export function NotificationBell({ userId: _userId }: { userId: string }) {
@@ -96,7 +97,9 @@ export function NotificationBell({ userId: _userId }: { userId: string }) {
                           ? "bg-chart-3/15 text-chart-3"
                           : n.type === "MARKET"
                             ? "bg-primary/10 text-primary"
-                            : "bg-muted text-muted-foreground"
+                            : n.type === "WATCHLIST"
+                              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                              : "bg-muted text-muted-foreground"
                       )}
                     >
                       <Icon className="size-4" />

@@ -179,6 +179,28 @@
   .animate-stockli-marquee {
     animation: stockli-marquee 24s linear infinite;
   }
+  @keyframes stockli-accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes stockli-accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+  .animate-accordion-down {
+    animation: stockli-accordion-down 0.2s ease-out;
+  }
+  .animate-accordion-up {
+    animation: stockli-accordion-up 0.2s ease-out;
+  }
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
