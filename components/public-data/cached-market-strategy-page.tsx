@@ -1,12 +1,15 @@
 "use client";
 
+import * as React from "react";
 import {
   Award,
   BarChart3,
+  RotateCw,
   Target,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
+import { toast } from "sonner";
 import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
@@ -14,6 +17,7 @@ import { MarketStrategyBoard } from "@/components/market/market-strategy-board";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { DataDelayBadge } from "@/components/status-badges";
+import { Button } from "@/components/ui/button";
 import { formatPKR } from "@/lib/format";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import type { HoldingsStrategyData } from "@/lib/services/market-strategy-holdings";
@@ -21,12 +25,25 @@ import type { HoldingsStrategyData } from "@/lib/services/market-strategy-holdin
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 export function CachedMarketStrategyPage() {
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt } =
+  const [refreshing, setRefreshing] = React.useState(false);
+  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<HoldingsStrategyData>({
       cacheKey: "public:market-strategy-holdings",
       url: "/api/public/market-strategy-holdings",
       refreshInterval: 5 * 60_000,
     });
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await refreshNow();
+      toast.success("Fund returns updated.");
+    } catch {
+      toast.error("Could not refresh. Please try again.");
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const periodLabel =
     data?.periodYear && data?.periodMonth
@@ -54,6 +71,16 @@ export function CachedMarketStrategyPage() {
               isFromDeviceCache={isFromDeviceCache}
               isRefreshing={isRefreshing}
             />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              <RotateCw className={refreshing ? "size-4 animate-spin" : "size-4"} />
+              Refresh live data
+            </Button>
           </>
         }
       />
