@@ -19,7 +19,8 @@ const MONTHS = [
 
 interface AmcGroup {
   amc: string;
-  amcShort: string;
+  fullName: string;
+  shortName: string;
   color: string;
   totalPct: number;
   funds: FundHoldingStock[];
@@ -36,7 +37,8 @@ function groupByAmc(funds: FundHoldingStock[]): AmcGroup[] {
     } else {
       map.set(fund.amc, {
         amc: fund.amc,
-        amcShort: fund.amcShort,
+        fullName: brand.fullName,
+        shortName: brand.shortName,
         color: brand.color,
         totalPct: fund.percentage,
         funds: [fund],
@@ -69,12 +71,12 @@ export function StockFundHolders({ symbol }: { symbol: string }) {
       type="single"
       collapsible
       defaultValue="funds-section"
-      className="rounded-xl border border-border bg-card"
+      className="overflow-hidden rounded-xl border border-violet-200/60 bg-card dark:border-violet-800/30"
     >
       <AccordionItem value="funds-section" className="border-b-0">
-        <AccordionTrigger className="gap-3 px-5 py-4 hover:no-underline">
+        <AccordionTrigger className="bg-gradient-to-r from-violet-500/10 via-violet-400/6 to-transparent px-5 py-4 hover:from-violet-500/15 hover:no-underline">
           <div className="flex flex-1 items-center gap-3">
-            <IconChip accent="violet"><Building2 /></IconChip>
+            <IconChip accent="violet" variant="gradient"><Building2 /></IconChip>
             <div className="text-left">
               <p className="text-base font-semibold leading-snug">Funds holding {normalized}</p>
               <p className="text-sm font-normal text-muted-foreground">
@@ -85,38 +87,51 @@ export function StockFundHolders({ symbol }: { symbol: string }) {
           </div>
         </AccordionTrigger>
 
-        <AccordionContent className="px-3 pb-4">
-          <Accordion type="multiple" defaultValue={amcGroups.map((g) => g.amc)}>
+        <AccordionContent className="space-y-1.5 px-3 pt-2 pb-3">
+          <Accordion type="multiple" defaultValue={[]}>
             {amcGroups.map((group) => (
-              <AccordionItem key={group.amc} value={group.amc}>
-                <AccordionTrigger className="rounded-lg px-2 py-2.5 hover:bg-muted/40 hover:no-underline">
-                  <div className="flex flex-1 items-center gap-2.5">
+              <AccordionItem
+                key={group.amc}
+                value={group.amc}
+                className="mb-1.5 overflow-hidden rounded-lg border-0 last:mb-0"
+              >
+                <AccordionTrigger
+                  className="rounded-lg px-3 py-2.5 hover:no-underline hover:brightness-95 dark:hover:brightness-110"
+                  style={{
+                    borderLeft: `4px solid ${group.color}`,
+                    backgroundColor: `${group.color}18`,
+                  }}
+                >
+                  <div className="flex flex-1 items-center gap-2.5 min-w-0">
                     <span
-                      className="size-2.5 shrink-0 rounded-full"
+                      className="size-2.5 shrink-0 rounded-full ring-2 ring-white/30"
                       style={{ backgroundColor: group.color }}
                     />
-                    <span className="text-sm font-semibold">{group.amcShort}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {group.funds.length} fund{group.funds.length !== 1 ? "s" : ""}
-                    </span>
-                    <span className="ml-auto mr-2 text-sm font-semibold tabular-nums">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold leading-snug">{group.fullName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {group.funds.length} fund{group.funds.length !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                    <span
+                      className="mr-1 shrink-0 rounded-md px-2 py-0.5 text-sm font-bold tabular-nums text-white"
+                      style={{ backgroundColor: group.color }}
+                    >
                       {group.totalPct.toFixed(1)}%
                     </span>
                   </div>
                 </AccordionTrigger>
 
-                <AccordionContent className="pb-1">
-                  <div className="space-y-0.5 pl-4">
+                <AccordionContent className="pb-1 pt-1">
+                  <div className="space-y-0.5 pl-2">
                     {group.funds.map((fund) => (
                       <div
                         key={`${fund.amc}||${fund.fundName}`}
                         className="grid grid-cols-[1fr_4.5rem] items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted/40"
                       >
-                        <p className="min-w-0 truncate text-sm">{fund.fundName}</p>
+                        <p className="min-w-0 truncate text-sm text-foreground/80">{fund.fundName}</p>
                         <div className="text-right">
-                          <p className="text-sm font-semibold tabular-nums">
-                            {fund.percentage.toFixed(1)}%
-                          </p>
+                          <p className="text-sm font-semibold tabular-nums">{fund.percentage.toFixed(1)}%</p>
                           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
                             <div
                               className="h-full rounded-full"
