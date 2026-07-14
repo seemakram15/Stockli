@@ -101,6 +101,7 @@ export const MARKET_NAV_ITEMS = [
       { href: "/market/sectors", label: "Sector Performance", icon: "LineChart" },
       { href: "/market/mutual-funds", label: "Mutual Funds", icon: "BadgePercent" },
       { href: "/market/funds-breakdown", label: "Funds Breakdown", icon: "PieChart" },
+      { href: "/market/mf-top-holdings", label: "Top Holdings by MFs", icon: "Trophy" },
       { href: "/market/strategy", label: "Funds Daily Returns Report", icon: "Target" },
       { href: "/market/etfs", label: "Exchange Traded Funds", icon: "Layers3" },
     ],
