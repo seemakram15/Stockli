@@ -17,23 +17,14 @@ export function computeDayChange(
   const price = effectiveQuotePrice(quote) ?? avgBuyPrice;
   const marketValue = price * quantity;
   const costBasis = avgBuyPrice * quantity;
-  const rawUnrealizedPL = marketValue - costBasis;
-  const atCost = Math.abs(rawUnrealizedPL) < 0.005;
-  const rawDayChange = (quote?.change ?? 0) * quantity;
-  const dayCapped =
-    rawDayChange * rawUnrealizedPL > 0 &&
-    Math.abs(rawDayChange) > Math.abs(rawUnrealizedPL);
-  const dayChange = atCost ? 0 : dayCapped ? rawUnrealizedPL : rawDayChange;
-  const dayChangePct = atCost
-    ? 0
-    : dayCapped
-      ? (costBasis !== 0 ? (rawUnrealizedPL / costBasis) * 100 : 0)
-      : (quote?.changePct ?? 0);
+  const unrealizedPL = marketValue - costBasis;
+  const dayChange = (quote?.change ?? 0) * quantity;
+  const dayChangePct = quote?.changePct ?? 0;
   return {
     dayChange,
     dayChangePct,
-    unrealizedPL: atCost ? 0 : rawUnrealizedPL,
-    atCost,
+    unrealizedPL,
+    atCost: false,
   };
 }
 
