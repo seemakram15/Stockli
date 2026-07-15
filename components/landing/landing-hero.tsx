@@ -18,7 +18,7 @@ const STATS = [
     value: 9,
     suffix: "+",
     label: "Markets & assets",
-    note: "PSX, US, India, funds, crypto",
+    note: "PSX, US, funds, crypto",
     color: "text-emerald-500 dark:text-emerald-400",
     bg: "bg-emerald-500/10",
   },

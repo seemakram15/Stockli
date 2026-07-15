@@ -101,18 +101,18 @@ function LeaderboardFallback() {
 export const metadata: Metadata = {
   title: `${APP_NAME} — All-market portfolio workspace`,
   description:
-    "Track PSX, US, India, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
+    "Track PSX, US, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
   alternates: { canonical: "/" },
   openGraph: {
     title: `${APP_NAME} — All-market portfolio workspace`,
     description:
-      "Track PSX, US, India, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
+      "Track PSX, US, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
     url: "/",
   },
   twitter: {
     title: `${APP_NAME} — All-market portfolio workspace`,
     description:
-      "Track PSX, US, India, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
+      "Track PSX, US, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
   },
 };
 
@@ -205,7 +205,7 @@ export default async function Home() {
         name: APP_NAME,
         url: config.siteUrl,
         description:
-          "Track PSX, US, India, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
+          "Track PSX, US, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
       },
       {
         "@type": "SoftwareApplication",
@@ -214,7 +214,7 @@ export default async function Home() {
         operatingSystem: "Web, iOS, Android, Desktop",
         url: config.siteUrl,
         description:
-          "Installable multi-market portfolio and analysis workspace for PSX, US, India, funds, commodities, oil and crypto.",
+          "Installable multi-market portfolio and analysis workspace for PSX, US, funds, commodities, oil and crypto.",
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
       },
     ],

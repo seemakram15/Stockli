@@ -337,12 +337,20 @@ function DayCell({
         {hasPosition ? (
           <>
             <span className={cn(
-              "rounded px-1 py-0.5 text-center text-[9px] font-bold tabular-nums leading-none sm:text-[11px]",
+              "rounded px-1 py-0.5 text-center text-[9px] font-bold tabular-nums leading-none sm:hidden",
               active
                 ? "bg-background/85 text-foreground shadow-sm ring-1 ring-foreground/10"
                 : "text-muted-foreground/60"
             )}>
               {compactValue}
+            </span>
+            <span className={cn(
+              "hidden whitespace-nowrap rounded px-1 py-0.5 text-center text-[11px] font-bold tabular-nums leading-none sm:block",
+              active
+                ? "bg-background/85 text-foreground shadow-sm ring-1 ring-foreground/10"
+                : "text-muted-foreground/60"
+            )}>
+              {fullValueText}
             </span>
             <span className={cn(
               "text-center text-[8px] font-semibold tabular-nums leading-none sm:text-[10px]",

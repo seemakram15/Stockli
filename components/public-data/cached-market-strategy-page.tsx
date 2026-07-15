@@ -4,6 +4,8 @@ import * as React from "react";
 import {
   Award,
   BarChart3,
+  LayoutGrid,
+  LayoutList,
   RotateCw,
   Target,
   TrendingDown,
@@ -20,12 +22,14 @@ import { DataDelayBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
 import { formatPKR } from "@/lib/format";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import { cn } from "@/lib/utils";
 import type { HoldingsStrategyData } from "@/lib/services/market-strategy-holdings";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 export function CachedMarketStrategyPage() {
   const [refreshing, setRefreshing] = React.useState(false);
+  const [view, setView] = React.useState<"detailed" | "simple">("detailed");
   const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<HoldingsStrategyData>({
       cacheKey: "public:market-strategy-holdings",
@@ -141,8 +145,8 @@ export function CachedMarketStrategyPage() {
                 <StatCard
                   label="Worst fund"
                   value={formatPKR(data.summary.worst.estimatedReturn, { sign: true })}
-                  tone="loss"
-                  accent="rose"
+                  tone={toneOf(data.summary.worst.estimatedReturn)}
+                  accent={toneOf(data.summary.worst.estimatedReturn) === "gain" ? "emerald" : "rose"}
                   icon={<TrendingDown className="size-4" />}
                   sub={
                     <span className="truncate text-muted-foreground">
@@ -154,7 +158,41 @@ export function CachedMarketStrategyPage() {
             </div>
           )}
 
-          <MarketStrategyBoard data={data} />
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-medium text-muted-foreground">
+              {view === "detailed" ? "Detailed view — grouped by AMC" : "Simple view — all funds at a glance"}
+            </p>
+            <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+              <button
+                type="button"
+                onClick={() => setView("detailed")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+                  view === "detailed"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <LayoutList className="size-3.5" />
+                Detailed
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("simple")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+                  view === "simple"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <LayoutGrid className="size-3.5" />
+                Simple
+              </button>
+            </div>
+          </div>
+
+          <MarketStrategyBoard data={data} view={view} />
         </>
       ) : isLoading ? (
         <PageLoadingState message="Loading fund holdings estimate…" variant="strategy" />

@@ -160,7 +160,7 @@ export default function OGImage() {
             </div>
 
             <div style={{ color: "rgba(240,253,244,0.50)", fontSize: 22, marginTop: 4 }}>
-              Live P&L · PSX, US, USA & Global · Mutual Funds · Crypto · Alerts
+              Live P&L · PSX, US & Global · Mutual Funds · Crypto · Alerts
             </div>
           </div>
 

@@ -22,7 +22,13 @@ function displayAmcName(fullName: string) {
   return fullName.replace(/\s+(Company\s+)?Limited$/i, "").trim();
 }
 
-export function MarketStrategyBoard({ data }: { data: HoldingsStrategyData }) {
+export function MarketStrategyBoard({
+  data,
+  view = "detailed",
+}: {
+  data: HoldingsStrategyData;
+  view?: "detailed" | "simple";
+}) {
   const periodLabel =
     data.periodYear && data.periodMonth
       ? `${MONTHS[data.periodMonth - 1]} ${data.periodYear}`
@@ -48,17 +54,41 @@ export function MarketStrategyBoard({ data }: { data: HoldingsStrategyData }) {
       });
   }, [data.funds]);
 
-  // Distribute: priority AMCs alternate left/right at the top,
-  // then fill remaining AMCs into each column in order.
+  // Distribute AMCs across two columns, balancing by total fund-row count
+  // (not card count) so both columns end at roughly the same height.
   const { left, right } = React.useMemo(() => {
     const priority = groups.filter((g) => priorityIndex(g.brand.key) < Infinity);
-    const others = groups.filter((g) => priorityIndex(g.brand.key) === Infinity);
+    const others = groups
+      .filter((g) => priorityIndex(g.brand.key) === Infinity)
+      .sort((a, b) => b.funds.length - a.funds.length); // largest first for better balance
+
     const l: typeof groups = [];
     const r: typeof groups = [];
-    priority.forEach((g, i) => (i % 2 === 0 ? l : r).push(g));
-    const mid = Math.ceil(others.length / 2);
-    others.slice(0, mid).forEach((g) => l.push(g));
-    others.slice(mid).forEach((g) => r.push(g));
+    let lHeight = 0;
+    let rHeight = 0;
+
+    const rowsOf = (g: (typeof groups)[number]) => g.funds.length + 1.5; // + header weight
+
+    priority.forEach((g, i) => {
+      if (i % 2 === 0) {
+        l.push(g);
+        lHeight += rowsOf(g);
+      } else {
+        r.push(g);
+        rHeight += rowsOf(g);
+      }
+    });
+
+    for (const g of others) {
+      if (lHeight <= rHeight) {
+        l.push(g);
+        lHeight += rowsOf(g);
+      } else {
+        r.push(g);
+        rHeight += rowsOf(g);
+      }
+    }
+
     return { left: l, right: r };
   }, [groups]);
 
@@ -70,18 +100,47 @@ export function MarketStrategyBoard({ data }: { data: HoldingsStrategyData }) {
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div className="space-y-3">
-          {left.map((g) => (
-            <AmcCard key={g.amc} brand={g.brand} logoUrl={g.logoUrl} funds={g.funds} />
-          ))}
+      {view === "simple" ? (
+        <SimpleFundsGrid groups={groups} />
+      ) : (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
+          <div className="space-y-3">
+            {left.map((g) => (
+              <AmcCard key={g.amc} brand={g.brand} logoUrl={g.logoUrl} funds={g.funds} />
+            ))}
+          </div>
+          <div className="space-y-3">
+            {right.map((g) => (
+              <AmcCard key={g.amc} brand={g.brand} logoUrl={g.logoUrl} funds={g.funds} />
+            ))}
+          </div>
         </div>
-        <div className="space-y-3">
-          {right.map((g) => (
-            <AmcCard key={g.amc} brand={g.brand} logoUrl={g.logoUrl} funds={g.funds} />
-          ))}
+      )}
+    </div>
+  );
+}
+
+/**
+ * Compact AMC-grouped sections (same grouping as Detailed), arranged in a
+ * dense multi-column masonry so every AMC is visible with minimal scrolling.
+ */
+function SimpleFundsGrid({
+  groups,
+}: {
+  groups: {
+    amc: string;
+    brand: ReturnType<typeof identifyAmcBrand>;
+    logoUrl: string | null;
+    funds: HoldingsStrategyFund[];
+  }[];
+}) {
+  return (
+    <div className="columns-1 gap-3 sm:columns-2 lg:columns-3 xl:columns-4">
+      {groups.map((g) => (
+        <div key={g.amc} className="mb-3 break-inside-avoid">
+          <AmcCard brand={g.brand} logoUrl={g.logoUrl} funds={g.funds} compact />
         </div>
-      </div>
+      ))}
     </div>
   );
 }
@@ -90,10 +149,12 @@ function AmcCard({
   brand,
   logoUrl,
   funds,
+  compact = false,
 }: {
   brand: ReturnType<typeof identifyAmcBrand>;
   logoUrl: string | null;
   funds: HoldingsStrategyFund[];
+  compact?: boolean;
 }) {
   const iconUrl = logoUrl ?? amcIconUrl(brand);
   const [imgFailed, setImgFailed] = React.useState(false);
@@ -105,14 +166,17 @@ function AmcCard({
     >
       {/* AMC header */}
       <div
-        className="flex items-center gap-2.5 px-3 py-2"
+        className={cn("flex items-center gap-2.5", compact ? "px-2.5 py-1.5" : "px-3 py-2")}
         style={{
           background: `linear-gradient(135deg, ${brand.color}12 0%, ${brand.color}04 100%)`,
           borderBottom: `1px solid ${brand.color}20`,
         }}
       >
         <div
-          className="relative flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md border"
+          className={cn(
+            "relative flex shrink-0 items-center justify-center overflow-hidden rounded-md border",
+            compact ? "size-6" : "size-7"
+          )}
           style={{ borderColor: `${brand.color}40`, backgroundColor: `${brand.color}18` }}
         >
           {iconUrl && !imgFailed ? (
@@ -124,7 +188,7 @@ function AmcCard({
             </span>
           )}
         </div>
-        <span className="text-sm font-bold" style={{ color: brand.color }}>
+        <span className={cn("min-w-0 truncate font-bold", compact ? "text-xs" : "text-sm")} style={{ color: brand.color }}>
           {displayAmcName(brand.fullName)}
         </span>
       </div>
@@ -132,14 +196,14 @@ function AmcCard({
       {/* Fund rows — no column headers */}
       <div className="divide-y divide-border/30">
         {funds.map((f) => (
-          <FundRow key={f.fundId ?? f.fundName} fund={f} />
+          <FundRow key={f.fundId ?? f.fundName} fund={f} compact={compact} />
         ))}
       </div>
     </div>
   );
 }
 
-function FundRow({ fund: f }: { fund: HoldingsStrategyFund }) {
+function FundRow({ fund: f, compact = false }: { fund: HoldingsStrategyFund; compact?: boolean }) {
   const name = f.fundId ? (
     <Link href={`/market/mutual-funds/${f.fundId}`} className="hover:underline">
       {f.fundName}
@@ -150,8 +214,15 @@ function FundRow({ fund: f }: { fund: HoldingsStrategyFund }) {
 
   return (
     <div
-      className={cn("grid items-center px-3 py-1.5 text-xs", rowTint(f.estimatedReturn))}
-      style={{ gridTemplateColumns: "minmax(0,1fr) 4rem 6.5rem", gap: "0.5rem" }}
+      className={cn(
+        "grid items-center text-xs",
+        compact ? "px-2.5 py-1" : "px-3 py-1.5",
+        rowTint(f.estimatedReturn)
+      )}
+      style={{
+        gridTemplateColumns: compact ? "minmax(0,1fr) 3.25rem 5rem" : "minmax(0,1fr) 4rem 6.5rem",
+        gap: "0.5rem",
+      }}
     >
       <span className="min-w-0 truncate text-foreground/80">{name}</span>
       <span

@@ -11,6 +11,7 @@ import {
   CalendarDays,
   CandlestickChart,
   ChevronDown,
+  ExternalLink,
   FileText,
   Droplets,
   Gift,
@@ -574,7 +575,8 @@ function DesktopMarketItem({
   guestPageAccess?: Record<string, boolean> | null;
 }) {
   const Icon = ICONS[icon];
-  const locked = isLockedForGuest(href, isGuest, guestPageAccess);
+  const external = /^https?:\/\//.test(href);
+  const locked = !external && isLockedForGuest(href, isGuest, guestPageAccess);
 
   if (locked) {
     return (
@@ -589,6 +591,24 @@ function DesktopMarketItem({
         <span className="min-w-0 flex-1 truncate">{label}</span>
         <Lock className="size-3.5 shrink-0" />
       </span>
+    );
+  }
+
+  if (external) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={afterNavigate}
+        className="flex min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
+      >
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+          {Icon ? <Icon className="size-4" /> : null}
+        </span>
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        <ExternalLink className="size-3.5 shrink-0 text-muted-foreground/60" />
+      </a>
     );
   }
 

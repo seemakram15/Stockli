@@ -11,7 +11,7 @@ import {
   type DashboardData,
 } from "@/lib/services/portfolio";
 import { getIndexSummariesCached } from "@/lib/services/history";
-import { marketStatus } from "@/lib/psx/market-hours";
+import { marketStatus, psxLocalDateString } from "@/lib/psx/market-hours";
 import type { IndexSummary } from "@/lib/types";
 
 export interface PortfolioCommandPageData {
@@ -75,7 +75,11 @@ async function getPortfolioDayPLByPortfolio(
       const pTransactions = transactions.filter((t) => t.portfolio_id === p.id);
       const cal = await getPortfolioCalendar(pHoldings, pTransactions);
       const last = cal.days.at(-1) ?? null;
-      return [p.id, last ? { dayPL: last.dayPL, dayPLPct: last.dayPLPct } : null] as const;
+      // Only trust this as "today" once its own EOD candle is actually
+      // published for today's date — otherwise it's still yesterday's row,
+      // and the client should fall back to its live-quote calculation.
+      const isToday = last?.date === psxLocalDateString();
+      return [p.id, last && isToday ? { dayPL: last.dayPL, dayPLPct: last.dayPLPct } : null] as const;
     })
   );
   return Object.fromEntries(entries);

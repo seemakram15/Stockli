@@ -13,7 +13,7 @@ import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { APP_NAME } from "@/lib/constants";
 
 const PERKS = [
-  { icon: Globe2, tint: "text-sky-300", ring: "ring-sky-300/30 bg-sky-300/10", title: "Every market in one place", desc: "PSX, US, India, funds, ETFs, oil, commodities & crypto." },
+  { icon: Globe2, tint: "text-sky-300", ring: "ring-sky-300/30 bg-sky-300/10", title: "Every market in one place", desc: "PSX, US, funds, ETFs, oil, commodities & crypto." },
   { icon: CalendarRange, tint: "text-emerald-300", ring: "ring-emerald-300/30 bg-emerald-300/10", title: "Live P/L & daily calendars", desc: "Day and total P/L with a persistent gain/loss calendar." },
   { icon: LineChart, tint: "text-violet-300", ring: "ring-violet-300/30 bg-violet-300/10", title: "Fundamentals & AI analyzer", desc: "Statements, ratios, peer comparison and AI insights." },
   { icon: BellRing, tint: "text-amber-300", ring: "ring-amber-300/30 bg-amber-300/10", title: "Watchlists & price alerts", desc: "Follow symbols and get above/below alerts each refresh." },

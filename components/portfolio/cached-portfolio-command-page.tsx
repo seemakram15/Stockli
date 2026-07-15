@@ -35,7 +35,7 @@ import {
   isPortfolioCacheFresh,
   PORTFOLIO_MUTATION_EVENT,
 } from "@/lib/cache/portfolio-mutations";
-import { isMarketOpen, shouldRefreshPsxData } from "@/lib/psx/market-hours";
+import { isMarketOpen, psxLocalDateString, shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import { formatPKR, formatPercent, plColorClass } from "@/lib/format";
 import type { PortfolioCommandPageData } from "@/lib/services/portfolio-command-page";
 import type { PerfPoint, PerformanceResult } from "@/lib/services/performance";
@@ -203,8 +203,12 @@ export function CachedPortfolioCommandPage({
   const hasPortfolios = portfolios.length > 0;
   const marketOpen = isMarketOpen();
   const lastCalendarDay = calendar?.days.at(-1) ?? null;
+  // Only trust the calendar's last day as "today" once its own EOD candle has
+  // actually been published for today's date — otherwise it's still
+  // yesterday's row, and overriding with it would show yesterday's P/L as if
+  // it were today's the moment the market closes (before EOD data catches up).
   const dayPLOverride =
-    !marketOpen && lastCalendarDay
+    !marketOpen && lastCalendarDay && lastCalendarDay.date === psxLocalDateString()
       ? { dayPL: lastCalendarDay.dayPL, dayPLPct: lastCalendarDay.dayPLPct }
       : null;
   const liveByHoldingId = new Map(liveHoldings.map((h) => [h.id, h]));

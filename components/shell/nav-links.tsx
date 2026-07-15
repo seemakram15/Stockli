@@ -10,6 +10,7 @@ import {
   CalendarDays,
   CandlestickChart,
   ChevronDown,
+  ExternalLink,
   LayoutDashboard,
   Landmark,
   Layers3,
@@ -471,8 +472,9 @@ function MarketNavLink({
   prefetchOnMount: boolean;
 } & NavAccessProps) {
   const Icon = ICONS[icon];
-  const active = pathname === href || (href !== "/market" && pathname.startsWith(href + "/"));
-  const locked = isLockedForGuest(href, isGuest, guestPageAccess);
+  const external = /^https?:\/\//.test(href);
+  const active = !external && (pathname === href || (href !== "/market" && pathname.startsWith(href + "/")));
+  const locked = !external && isLockedForGuest(href, isGuest, guestPageAccess);
 
   if (locked) {
     return (
@@ -485,6 +487,21 @@ function MarketNavLink({
         <span className="min-w-0 flex-1 truncate">{label}</span>
         <Lock className="size-3.5 shrink-0" />
       </span>
+    );
+  }
+
+  if (external) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+      >
+        {Icon && <Icon className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />}
+        <span className="min-w-0 truncate">{label}</span>
+        <ExternalLink className="size-3 shrink-0 text-muted-foreground/60" />
+      </a>
     );
   }
 

@@ -13,6 +13,7 @@ import {
   CandlestickChart,
   ChevronDown,
   Droplets,
+  ExternalLink,
   FileText,
   Gift,
   Globe2,
@@ -130,6 +131,7 @@ export function LandingHeader({
   // superadmin) — mirrors the same access rule the in-app nav uses.
   const isLocked = React.useCallback(
     (href: string) => {
+      if (/^https?:\/\//.test(href)) return false; // external links are never gated
       if (authed) return false;
       if (!isGuest) return true;
       if (!guestPageAccess) return false;
@@ -191,6 +193,24 @@ export function LandingHeader({
                   <div className="w-72 overflow-hidden rounded-2xl border border-border bg-popover p-2 text-popover-foreground shadow-xl shadow-black/10">
                     {item.children.map((leaf) => {
                       const locked = isLocked(leaf.href);
+                      const external = /^https?:\/\//.test(leaf.href);
+                      if (external) {
+                        return (
+                          <a
+                            key={leaf.href}
+                            href={leaf.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-muted"
+                          >
+                            <span className="flex size-8 items-center justify-center rounded-lg bg-muted">
+                              <leaf.icon className={cn("size-4", leaf.tint)} />
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium">{leaf.label}</span>
+                            <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+                          </a>
+                        );
+                      }
                       return (
                         <Link
                           key={leaf.href}
@@ -307,6 +327,25 @@ export function LandingHeader({
               {NAV.flatMap((item) => (item.children ? item.children : [{ label: item.label, href: item.href!, icon: item.icon ?? Wallet, tint: "text-emerald-500" }])).map(
                 (leaf) => {
                   const locked = isLocked(leaf.href);
+                  const external = /^https?:\/\//.test(leaf.href);
+                  if (external) {
+                    return (
+                      <a
+                        key={leaf.href + leaf.label}
+                        href={leaf.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-muted"
+                      >
+                        <span className="flex size-8 items-center justify-center rounded-lg bg-muted">
+                          <leaf.icon className={cn("size-4", leaf.tint)} />
+                        </span>
+                        <span className="text-sm font-medium">{leaf.label}</span>
+                        <ExternalLink className="ml-auto size-3.5 text-muted-foreground" />
+                      </a>
+                    );
+                  }
                   return (
                     <Link
                       key={leaf.href + leaf.label}

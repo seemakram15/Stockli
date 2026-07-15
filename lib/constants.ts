@@ -61,9 +61,10 @@ export const TOOL_NAV_ITEMS = [
 
 export const EXPLORE_NAV_ITEMS = [
   {
-    href: "/explore/world-monitor",
+    href: "https://www.worldmonitor.app/dashboard?lat=28.1153&lon=14.2733&zoom=1.65&view=global&timeRange=7d&layers=conflicts%2Cbases%2Cmilitary",
     label: "World Monitor",
     icon: "Globe2",
+    external: true,
   },
   {
     href: "/explore/useful-links",

@@ -36,7 +36,6 @@ const SUPPORTED_INDEX_PAGES = new Set(["^GSPC", "^DJI", "^NDX", "^NSEI", "^BSESN
 const SEARCH_LIMIT = 48;
 
 const PAGE_RESULTS = [
-  pageResult("page:world-monitor", "World Monitor", "Live world map with hotspots, disasters and market stress", "/explore/world-monitor"),
   pageResult("page:psx", "Pakistan Stock Market", "Stocks, sectors, performers and PSX indexes", "/market"),
   pageResult("page:strategy", "Funds Daily Returns Report", "Estimated daily stock fund returns by AMC", "/market/strategy"),
   pageResult("page:mutual-funds", "Mutual Funds", "MUFAP funds, AMCs, NAVs and returns", "/market/mutual-funds"),

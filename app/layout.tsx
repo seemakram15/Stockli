@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     siteName: APP_NAME,
     title: `${APP_NAME} — ${APP_TAGLINE}`,
     description:
-      "Track live P/L, calendars, PSX, US, India, funds, crypto and global market performance in one installable market workspace.",
+      "Track live P/L, calendars, PSX, US, funds, crypto and global market performance in one installable market workspace.",
     images: [
       {
         url: "/landing/market-command-center.webp",
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: `${APP_NAME} — ${APP_TAGLINE}`,
     description:
-      "Track live P/L, calendars, PSX, US, India, funds, crypto and global market performance in one installable market workspace.",
+      "Track live P/L, calendars, PSX, US, funds, crypto and global market performance in one installable market workspace.",
     images: ["/landing/market-command-center.webp"],
   },
   formatDetection: {

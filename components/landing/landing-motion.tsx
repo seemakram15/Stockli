@@ -368,8 +368,8 @@ const SLIDES: Slide[] = [
     icon: Globe2,
     eyebrow: "Coverage",
     title: "Every market in one workspace",
-    desc: "Pakistan Stock Exchange, US S&P 500, India, a global world view, oil, commodities and crypto — tracked side by side without switching apps.",
-    chips: ["PSX", "US S&P 500", "India", "World", "Oil", "Crypto"],
+    desc: "Pakistan Stock Exchange, US S&P 500, a global world view, oil, commodities and crypto — tracked side by side without switching apps.",
+    chips: ["PSX", "US S&P 500", "World", "Oil", "Crypto"],
     metric: { value: "9+", label: "market surfaces" },
   },
   {
