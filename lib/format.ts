@@ -54,6 +54,27 @@ export function formatNumber(
   });
 }
 
+/**
+ * Compact money flow with an auto-scaled unit and currency suffix.
+ * e.g. +12.34M USD · −340.00k USD · +1.20B PKR. Used for FIPI/LIPI flows.
+ */
+export function formatFlow(
+  value: number | null | undefined,
+  currency: "USD" | "PKR" = "USD",
+  opts: { sign?: boolean; showUnit?: boolean } = {}
+): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  const { sign = true, showUnit = true } = opts;
+  const abs = Math.abs(value);
+  const prefix = value < 0 ? "−" : sign ? "+" : "";
+  let scaled: string;
+  if (abs >= 1e9) scaled = `${(abs / 1e9).toFixed(2)}B`;
+  else if (abs >= 1e6) scaled = `${(abs / 1e6).toFixed(2)}M`;
+  else if (abs >= 1e3) scaled = `${(abs / 1e3).toFixed(2)}k`;
+  else scaled = abs.toFixed(0);
+  return `${prefix}${scaled}${showUnit ? ` ${currency}` : ""}`;
+}
+
 /** Compact plain number, e.g. "1.2M" (good for volume). */
 export function formatCompact(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "—";

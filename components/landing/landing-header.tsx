@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
+  ArrowLeftRight,
   ArrowRight,
   BadgePercent,
   Bell,
@@ -43,6 +44,7 @@ import { resolvePageKey } from "@/lib/access/page-registry";
 import { cn } from "@/lib/utils";
 
 const ICONS: Record<string, LucideIcon> = {
+  ArrowLeftRight,
   BadgePercent,
   Bell,
   Bitcoin,
