@@ -104,6 +104,7 @@ export const MARKET_NAV_ITEMS = [
       { href: "/market/funds-breakdown", label: "Funds Breakdown", icon: "PieChart" },
       { href: "/market/mf-top-holdings", label: "Top Holdings by MFs", icon: "Trophy" },
       { href: "/market/strategy", label: "Funds Daily Returns Report", icon: "Target" },
+      { href: "/market/fipi-lipi", label: "FIPI / LIPI Data", icon: "ArrowLeftRight" },
       { href: "/market/etfs", label: "Exchange Traded Funds", icon: "Layers3" },
     ],
   },

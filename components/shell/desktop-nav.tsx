@@ -4,6 +4,7 @@ import * as React from "react";
 import { useLinkStatus } from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  ArrowLeftRight,
   BadgePercent,
   Bell,
   Bitcoin,
@@ -41,6 +42,7 @@ import { cn } from "@/lib/utils";
 import { PrefetchNavLink } from "./prefetch-nav-link";
 
 const ICONS: Record<string, LucideIcon> = {
+  ArrowLeftRight,
   BadgePercent,
   Bell,
   Bitcoin,
