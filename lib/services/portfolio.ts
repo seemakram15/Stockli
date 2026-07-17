@@ -5,6 +5,7 @@ import { getRequestUser } from "@/lib/auth/current-user";
 import { isSampleMode } from "@/lib/auth/roles";
 import { getQuotes } from "@/lib/services/prices";
 import { PSX_TIMEZONE } from "@/lib/constants";
+import { defaultTaxSettings } from "@/lib/services/tax";
 import {
   allocationBySector,
   allocationByHolding,
@@ -288,6 +289,15 @@ export function buildPortfolioView(
     transactions,
     realizedPositions,
     summary: computeSummary(enriched, realized),
+    dividendIncome: {
+      received: [],
+      upcoming: [],
+      totalGross: 0,
+      totalWHT: 0,
+      totalZakat: 0,
+      totalNet: 0,
+    },
+    taxSettings: defaultTaxSettings(),
   };
 }
 

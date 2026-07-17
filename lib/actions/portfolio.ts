@@ -143,6 +143,7 @@ const tradeSchema = z.object({
     }),
   quantity: z.coerce.number().positive("Quantity must be > 0"),
   price: z.coerce.number().nonnegative("Price must be ≥ 0"),
+  fees: z.coerce.number().nonnegative().default(0),
   date: z.string().optional(),
   note: z.string().max(280).optional(),
 });
@@ -155,7 +156,7 @@ export async function addHolding(
   if (await isSampleMode()) return DEMO_BLOCK;
   const parsed = tradeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { portfolioId, symbol, quantity, price, date, note } = parsed.data;
+  const { portfolioId, symbol, quantity, price, fees, date, note } = parsed.data;
   const sym = symbol;
   const when = date ? new Date(date).toISOString() : new Date().toISOString();
 
@@ -191,6 +192,7 @@ export async function addHolding(
       type: "BUY",
       quantity,
       price,
+      fees,
       note: note ?? null,
       transacted_at: when,
     });
@@ -212,7 +214,7 @@ export async function sellHolding(
   if (await isSampleMode()) return DEMO_BLOCK;
   const parsed = tradeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { portfolioId, symbol, quantity, price, date, note } = parsed.data;
+  const { portfolioId, symbol, quantity, price, fees, date, note } = parsed.data;
   const sym = symbol;
   const when = date ? new Date(date).toISOString() : new Date().toISOString();
 
@@ -242,6 +244,7 @@ export async function sellHolding(
       type: "SELL",
       quantity,
       price,
+      fees,
       note: note ?? null,
       transacted_at: when,
     });

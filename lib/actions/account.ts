@@ -285,3 +285,48 @@ export async function updateAccountPassword(
 
   return { ok: true, message: "Your password was updated successfully." };
 }
+
+const taxSettingsSchema = z.object({
+  taxFiler: z.boolean(),
+  brokerFeePct: z.number().min(0).max(5),
+  zakatOnDividends: z.boolean(),
+  cgtRateOverride: z.number().min(0).max(100).nullable(),
+});
+
+export async function updateTaxSettings(
+  _prev: AccountActionState,
+  formData: FormData
+): Promise<AccountActionState> {
+  const auth = await requireSignedInUser();
+  if ("error" in auth) return { error: auth.error };
+
+  const parsed = taxSettingsSchema.safeParse({
+    taxFiler: formData.get("taxFiler") === "true",
+    brokerFeePct: parseFloat(formData.get("brokerFeePct") as string),
+    zakatOnDividends: formData.get("zakatOnDividends") === "true",
+    cgtRateOverride: formData.get("cgtRateOverride")
+      ? parseFloat(formData.get("cgtRateOverride") as string)
+      : null,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid tax settings." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      tax_filer: parsed.data.taxFiler,
+      broker_fee_pct: parsed.data.brokerFeePct,
+      zakat_on_dividends: parsed.data.zakatOnDividends,
+      cgt_rate_override: parsed.data.cgtRateOverride,
+    })
+    .eq("id", auth.user.id);
+
+  if (error) {
+    return { error: toActionError(error, "We could not update your tax settings right now.") };
+  }
+
+  refreshAccountViews();
+  return { ok: true, message: "Tax settings saved." };
+}

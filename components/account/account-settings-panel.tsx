@@ -3,18 +3,22 @@
 import * as React from "react";
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, ImagePlus, Loader2, LockKeyhole, Mail, Save, UserRound } from "lucide-react";
+import { Camera, ImagePlus, Loader2, LockKeyhole, Mail, ReceiptText, Save, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   updateAccountAvatar,
   updateAccountEmail,
   updateAccountPassword,
   updateAccountProfile,
+  updateTaxSettings,
   type AccountActionState,
 } from "@/lib/actions/account";
+import type { TaxSettings } from "@/lib/types";
 
 function initials(name: string | null, email: string | null) {
   const base = name || email || "U";
@@ -32,11 +36,13 @@ export function AccountSettingsPanel({
   displayName,
   email,
   avatarUrl,
+  taxSettings,
   demo = false,
 }: {
   displayName: string | null;
   email: string | null;
   avatarUrl: string | null;
+  taxSettings: TaxSettings;
   demo?: boolean;
 }) {
   const router = useRouter();
@@ -58,6 +64,11 @@ export function AccountSettingsPanel({
     FormData
   >(updateAccountPassword, {});
 
+  const [taxState, taxAction, taxPending] = useActionState<AccountActionState, FormData>(
+    updateTaxSettings,
+    {}
+  );
+
   const [nameValue, setNameValue] = React.useState(displayName ?? "");
   const [emailValue, setEmailValue] = React.useState(email ?? "");
   const [selectedAvatarName, setSelectedAvatarName] = React.useState("");
@@ -66,6 +77,13 @@ export function AccountSettingsPanel({
   const avatarFormRef = React.useRef<HTMLFormElement>(null);
   const avatarInputRef = React.useRef<HTMLInputElement>(null);
   const passwordFormRef = React.useRef<HTMLFormElement>(null);
+
+  const [taxFiler, setTaxFiler] = React.useState(taxSettings.taxFiler);
+  const [brokerFeePct, setBrokerFeePct] = React.useState(String(taxSettings.brokerFeePct));
+  const [zakatEnabled, setZakatEnabled] = React.useState(taxSettings.zakatOnDividends);
+  const [cgtOverride, setCgtOverride] = React.useState(
+    taxSettings.cgtRateOverride != null ? String(taxSettings.cgtRateOverride) : ""
+  );
 
   React.useEffect(() => setNameValue(displayName ?? ""), [displayName]);
   React.useEffect(() => setEmailValue(email ?? ""), [email]);
@@ -119,6 +137,15 @@ export function AccountSettingsPanel({
       toast.error(passwordState.error);
     }
   }, [passwordState]);
+
+  React.useEffect(() => {
+    if (taxState.ok) {
+      toast.success(taxState.message ?? "Tax settings saved.");
+      router.refresh();
+    } else if (taxState.error) {
+      toast.error(taxState.error);
+    }
+  }, [taxState, router]);
 
   return (
     <div className="space-y-6">
@@ -308,6 +335,132 @@ export function AccountSettingsPanel({
             </div>
             {emailState.error ? (
               <p className="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{emailState.error}</p>
+            ) : null}
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ReceiptText className="size-4 text-primary" />
+            Tax &amp; fees
+          </CardTitle>
+          <CardDescription>
+            Set your Pakistan tax filing status and default broker fee. These are used to calculate
+            WHT on dividends, CGT on realized gains, and to pre-fill fees when adding trades.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form action={taxAction} className="space-y-6">
+            <input type="hidden" name="taxFiler" value={String(taxFiler)} />
+            <input type="hidden" name="zakatOnDividends" value={String(zakatEnabled)} />
+
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Tax filing status</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTaxFiler(true)}
+                  className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                    taxFiler
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-muted/20 text-muted-foreground hover:border-border/80"
+                  }`}
+                >
+                  <div className="text-sm font-semibold">Filer</div>
+                  <div className="mt-0.5 text-xs opacity-70">WHT 15% · CGT 15%</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTaxFiler(false)}
+                  className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                    !taxFiler
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-muted/20 text-muted-foreground hover:border-border/80"
+                  }`}
+                >
+                  <div className="text-sm font-semibold">Non-Filer</div>
+                  <div className="mt-0.5 text-xs opacity-70">WHT 30% · CGT 30%</div>
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="brokerFeePct" className="text-sm font-medium">
+                Default broker fee
+              </Label>
+              <div className="relative max-w-48">
+                <Input
+                  id="brokerFeePct"
+                  name="brokerFeePct"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="5"
+                  value={brokerFeePct}
+                  onChange={(e) => setBrokerFeePct(e.target.value)}
+                  className="h-11 pr-8"
+                  placeholder="0.20"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  %
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Pre-fills the fee field when you add a new trade.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-border bg-muted/10 px-4 py-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="zakatToggle" className="text-sm font-medium">
+                  Deduct Zakat on dividends
+                </Label>
+                <p className="text-xs text-muted-foreground">Applies 2.5% Zakat to gross dividend income.</p>
+              </div>
+              <Switch
+                id="zakatToggle"
+                checked={zakatEnabled}
+                onCheckedChange={setZakatEnabled}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cgtOverride" className="text-sm font-medium">
+                CGT rate override{" "}
+                <span className="font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <div className="relative max-w-48">
+                <Input
+                  id="cgtOverride"
+                  name="cgtRateOverride"
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  max="100"
+                  value={cgtOverride}
+                  onChange={(e) => setCgtOverride(e.target.value)}
+                  className="h-11 pr-8"
+                  placeholder={taxFiler ? "15" : "30"}
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  %
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Leave blank to use the statutory rate ({taxFiler ? "15%" : "30%"} for {taxFiler ? "filers" : "non-filers"}).
+              </p>
+            </div>
+
+            <div className="flex justify-end">
+              <Button type="submit" className="h-11" disabled={demo || taxPending}>
+                {taxPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                Save tax settings
+              </Button>
+            </div>
+            {taxState.error ? (
+              <p className="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{taxState.error}</p>
             ) : null}
           </form>
         </CardContent>

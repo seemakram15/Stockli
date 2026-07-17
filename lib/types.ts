@@ -83,7 +83,47 @@ export interface Profile {
   display_name: string | null;
   avatar_path: string | null;
   base_currency: string;
+  tax_filer: boolean;
+  broker_fee_pct: number;
+  zakat_on_dividends: boolean;
+  cgt_rate_override: number | null;
   created_at: string;
+}
+
+export interface TaxSettings {
+  taxFiler: boolean;
+  brokerFeePct: number;
+  zakatOnDividends: boolean;
+  cgtRateOverride: number | null;
+}
+
+export interface ReceivedDividend {
+  symbol: string;
+  creditedOn: string;
+  perShare: number;
+  quantityHeld: number;
+  grossAmount: number;
+  whtAmount: number;
+  zakatAmount: number;
+  netAmount: number;
+}
+
+export interface UpcomingDividend {
+  symbol: string;
+  company: string;
+  payout: string;
+  bookClosureFrom: string;
+  bookClosureTo: string;
+  currentQty: number;
+}
+
+export interface DividendIncomeSummary {
+  received: ReceivedDividend[];
+  upcoming: UpcomingDividend[];
+  totalGross: number;
+  totalWHT: number;
+  totalZakat: number;
+  totalNet: number;
 }
 
 export interface Portfolio {
@@ -236,6 +276,8 @@ export interface PortfolioWithMetrics extends Portfolio {
   transactions: Transaction[];
   realizedPositions: RealizedPositionPL[];
   summary: PortfolioSummary;
+  dividendIncome: DividendIncomeSummary;
+  taxSettings: TaxSettings;
 }
 
 /** Allocation slice for pie charts. */

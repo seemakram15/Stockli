@@ -20,8 +20,9 @@ import { Label } from "@/components/ui/label";
 import { SymbolField } from "./symbol-field";
 import { markPortfolioMutated } from "@/lib/cache/portfolio-mutations";
 import { addHolding, sellHolding, type ActionState } from "@/lib/actions/portfolio";
+import { calcBrokerFee, calcCGT } from "@/lib/services/tax";
 import { PSX_TIMEZONE } from "@/lib/constants";
-import type { Quote } from "@/lib/types";
+import type { Quote, TaxSettings } from "@/lib/types";
 
 export function AddTradeDialog({
   portfolioId,
@@ -30,6 +31,8 @@ export function AddTradeDialog({
   trigger,
   userId,
   holdingsBySymbol,
+  avgBuyPriceBySymbol,
+  taxSettings,
 }: {
   portfolioId: string;
   defaultSymbol?: string;
@@ -37,6 +40,8 @@ export function AddTradeDialog({
   trigger?: React.ReactNode;
   userId?: string | null;
   holdingsBySymbol?: Record<string, number>;
+  avgBuyPriceBySymbol?: Record<string, number>;
+  taxSettings?: TaxSettings;
 }) {
   const [open, setOpen] = React.useState(false);
 
@@ -68,6 +73,7 @@ export function AddTradeDialog({
               defaultSymbol={defaultSymbol}
               userId={userId}
               holdingsBySymbol={holdingsBySymbol}
+              taxSettings={taxSettings}
               onDone={() => setOpen(false)}
             />
           </TabsContent>
@@ -78,6 +84,8 @@ export function AddTradeDialog({
               defaultSymbol={defaultSymbol}
               userId={userId}
               holdingsBySymbol={holdingsBySymbol}
+              avgBuyPriceBySymbol={avgBuyPriceBySymbol}
+              taxSettings={taxSettings}
               onDone={() => setOpen(false)}
             />
           </TabsContent>
@@ -93,6 +101,8 @@ function TradeForm({
   defaultSymbol,
   userId,
   holdingsBySymbol,
+  avgBuyPriceBySymbol,
+  taxSettings,
   onDone,
 }: {
   kind: "buy" | "sell";
@@ -100,6 +110,8 @@ function TradeForm({
   defaultSymbol?: string;
   userId?: string | null;
   holdingsBySymbol?: Record<string, number>;
+  avgBuyPriceBySymbol?: Record<string, number>;
+  taxSettings?: TaxSettings;
   onDone: () => void;
 }) {
   const router = useRouter();
@@ -109,6 +121,8 @@ function TradeForm({
     {}
   );
   const [price, setPrice] = React.useState("");
+  const [qty, setQty] = React.useState("");
+  const [fees, setFees] = React.useState("");
   const [priceLoading, setPriceLoading] = React.useState(false);
   const [selectedSymbol, setSelectedSymbol] = React.useState(defaultSymbol?.toUpperCase() ?? "");
   const priceTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -153,10 +167,37 @@ function TradeForm({
     };
   }, []);
 
+  // Auto-compute broker fee when qty or price changes
+  React.useEffect(() => {
+    if (!taxSettings) return;
+    const q = parseFloat(qty);
+    const p = parseFloat(price);
+    if (Number.isFinite(q) && Number.isFinite(p) && q > 0 && p > 0) {
+      const computed = calcBrokerFee(q * p, taxSettings.brokerFeePct);
+      setFees(computed.toFixed(2));
+    }
+  }, [qty, price, taxSettings]);
+
   const currentHolding =
     kind === "sell" && selectedSymbol && holdingsBySymbol
       ? (holdingsBySymbol[selectedSymbol] ?? null)
       : null;
+
+  const avgBuyPrice =
+    kind === "sell" && selectedSymbol && avgBuyPriceBySymbol
+      ? (avgBuyPriceBySymbol[selectedSymbol] ?? null)
+      : null;
+
+  const estCGT = React.useMemo(() => {
+    if (kind !== "sell" || !taxSettings || !avgBuyPrice) return null;
+    const q = parseFloat(qty);
+    const p = parseFloat(price);
+    if (!Number.isFinite(q) || !Number.isFinite(p) || q <= 0 || p <= 0) return null;
+    const proceeds = q * p - parseFloat(fees || "0");
+    const costBasis = q * avgBuyPrice;
+    const pl = proceeds - costBasis;
+    return calcCGT(pl, taxSettings);
+  }, [kind, taxSettings, avgBuyPrice, qty, price, fees]);
 
   return (
     <form action={action} className="space-y-4 pt-4">
@@ -173,7 +214,17 @@ function TradeForm({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor={`${kind}-qty`}>Quantity</Label>
-          <Input id={`${kind}-qty`} name="quantity" type="number" min="1" step="1" placeholder="100" required />
+          <Input
+            id={`${kind}-qty`}
+            name="quantity"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="100"
+            required
+            value={qty}
+            onChange={(e) => setQty(e.target.value)}
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor={`${kind}-price`} className="flex items-center gap-1.5">
@@ -193,10 +244,31 @@ function TradeForm({
           />
         </div>
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor={`${kind}-date`}>Date</Label>
-        <Input id={`${kind}-date`} name="date" type="date" defaultValue={today} max={today} />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor={`${kind}-fees`}>Broker fee (PKR)</Label>
+          <Input
+            id={`${kind}-fees`}
+            name="fees"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="0.00"
+            value={fees}
+            onChange={(e) => setFees(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor={`${kind}-date`}>Date</Label>
+          <Input id={`${kind}-date`} name="date" type="date" defaultValue={today} max={today} />
+        </div>
       </div>
+      {kind === "sell" && estCGT !== null && estCGT > 0 && (
+        <div className="rounded-lg bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          Est. CGT: <span className="font-medium tabular-nums text-foreground">PKR {estCGT.toLocaleString("en-PK", { maximumFractionDigits: 0 })}</span>{" "}
+          ({taxSettings?.taxFiler ? "15% filer" : "30% non-filer"}) — estimate only
+        </div>
+      )}
       <p className="text-xs text-muted-foreground">
         Price auto-fills with the latest quote — edit it to match your fill.
       </p>
