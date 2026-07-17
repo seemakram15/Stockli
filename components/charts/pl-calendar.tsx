@@ -268,6 +268,7 @@ function useLiveCalendarData(
       changePct: dayPLPct,
       dayPL,
       dayPLPct,
+      marketValue: close,
     };
 
     const next = data.filter((d) => d.date !== today);

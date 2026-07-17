@@ -40,7 +40,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# python scraper service
-scraper/venv
-scraper/__pycache__

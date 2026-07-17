@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CalendarClock, TrendingUp, Wallet } from "lucide-react";
+import { CalendarClock, LineChart, TrendingUp, Wallet } from "lucide-react";
 import { AllocationExplorer } from "@/components/portfolio/allocation-explorer";
 import { EmptyState } from "@/components/empty-state";
 import { HoldingsTable } from "@/components/holdings-table";
@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { IconChip } from "@/components/ui/accent";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PLCalendar } from "@/components/charts/pl-calendar";
+import { PortfolioValueChart } from "@/components/charts/portfolio-value-chart";
 import { formatDate, formatNumber, formatPKR, formatPercent, plColorClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -126,6 +127,25 @@ export function CachedPortfolioDetailPage({
   const hasHoldings = holdings.length > 0;
   const hasHistory = transactions.length > 0;
   const lastCalendarDay = data.calendar?.days.at(-1) ?? null;
+
+  // Portfolio value-over-time = each day's aggregated market value from the
+  // P/L calendar (sum of every holding's shares × close price that day).
+  // While the market's open, replace/append today's point with the live
+  // total so the chart moves in real time; once closed, trust the same
+  // EOD-settled data PLCalendar shows below it.
+  const today = psxLocalDateString();
+  const valueSeries = (data.calendar?.days ?? []).map((d) => ({
+    date: d.date,
+    close: d.marketValue,
+  }));
+  if (hasHoldings && isMarketOpen()) {
+    const liveTotal = liveHoldings.reduce((sum, h) => sum + h.marketValue, 0);
+    if (valueSeries.length > 0 && valueSeries[valueSeries.length - 1].date === today) {
+      valueSeries[valueSeries.length - 1] = { date: today, close: liveTotal };
+    } else {
+      valueSeries.push({ date: today, close: liveTotal });
+    }
+  }
   // Only trust the calendar's last day as "today" once its own EOD candle has
   // actually been published for today's date — otherwise it's still
   // yesterday's row, and overriding with it would show yesterday's P/L as if
@@ -183,6 +203,23 @@ export function CachedPortfolioDetailPage({
         valueLabel="Value"
         dayPLOverride={dayPLOverride}
       />
+
+      {hasHoldings && (
+        <Card>
+          <CardHeader className="flex-row items-start gap-3">
+            <IconChip accent="emerald"><LineChart /></IconChip>
+            <div>
+              <CardTitle>Portfolio value</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Total market value over time, live while the market&apos;s open.
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <PortfolioValueChart days={valueSeries} />
+          </CardContent>
+        </Card>
+      )}
 
       {!hasHoldings && !hasHistory ? (
         <EmptyState

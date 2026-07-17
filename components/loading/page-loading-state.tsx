@@ -343,6 +343,27 @@ function PortfolioDetailSkeleton() {
         </div>
       </LoadingCard>
 
+      <LoadingCard>
+        <div className="space-y-3 p-4 sm:p-5">
+          <div className="flex items-center gap-3">
+            <Skeleton className="size-9 shrink-0 rounded-lg" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3.5 w-56 max-w-full" />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Skeleton className="h-4 w-40" />
+            <div className="flex flex-wrap gap-1.5">
+              {Array.from({ length: 7 }).map((_, index) => (
+                <Skeleton key={index} className="h-6 w-9 rounded-full" />
+              ))}
+            </div>
+          </div>
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
+      </LoadingCard>
+
       <div className="grid gap-4 lg:grid-cols-3">
         <LoadingCard className="lg:col-span-2">
           <div className="space-y-4 p-4 sm:p-5">

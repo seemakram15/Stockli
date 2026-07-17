@@ -32,16 +32,15 @@ export {
 const FIPI_TTL_SECONDS = 30 * 60;
 const FIPI_STALE_SECONDS = 24 * 60 * 60;
 const HISTORY_DAYS = 180;
-/** How many trailing trading days to scrape live per refresh. NCCPL's Cloudflare
- * flags rapid-fire automated requests, and each day takes ~15-30s of real
- * browser automation, so we only re-scrape a small recent window and let
- * older days stay sample-filled (or previously-scraped, once cached). */
-const LIVE_SCRAPE_DAYS = 5;
+/** How many trailing trading days to scrape live per refresh. Cheap plain
+ * JSON POSTs (no browser), so this can go much higher than a scraped-site
+ * budget — 60 trading days is just courtesy, not a hard technical limit. */
+const LIVE_SCRAPE_DAYS = 60;
 const USD_PKR_FALLBACK = 278.5;
 
 export async function getFipiLipiData(): Promise<FipiLipiData> {
   const { value } = await getStaleCached({
-    key: "market:fipi-lipi-v3",
+    key: "market:fipi-lipi-v7",
     ttlSeconds: FIPI_TTL_SECONDS,
     staleSeconds: FIPI_STALE_SECONDS,
     load: loadFipiLipiData,
@@ -60,11 +59,24 @@ async function loadFipiLipiData(): Promise<FipiLipiData> {
   });
   const liveByDate = new Map((liveDays ?? []).map((d) => [d.date, d]));
 
-  const days = dates.map((date) => liveByDate.get(date) ?? buildSampleDay(date));
+  // Trim trailing dates that were attempted live but came back with nothing
+  // published yet (e.g. today, before close) — drop them rather than
+  // sample-filling the most recent day with a fake number. Older gaps (not
+  // at the very end) still get sample-filled so history stays contiguous.
+  let trimmedDates = dates;
+  while (
+    trimmedDates.length > 0 &&
+    liveDates.includes(trimmedDates[trimmedDates.length - 1]) &&
+    !liveByDate.has(trimmedDates[trimmedDates.length - 1])
+  ) {
+    trimmedDates = trimmedDates.slice(0, -1);
+  }
+
+  const days = trimmedDates.map((date) => liveByDate.get(date) ?? buildSampleDay(date));
 
   const liveCount = liveByDate.size;
   const source: FipiLipiData["source"] =
-    liveCount === 0 ? "sample" : liveCount === dates.length ? "nccpl" : "mixed";
+    liveCount === 0 ? "sample" : liveCount === trimmedDates.length ? "nccpl" : "mixed";
 
   applyCumulatives(days);
 
@@ -88,40 +100,165 @@ async function loadFipiLipiData(): Promise<FipiLipiData> {
 }
 
 /**
- * Live NCCPL fetch for the Regular market, via a small standalone scraper
- * service (scraper/) that drives a real stealth browser to solve NCCPL's
- * Cloudflare challenge and replay its tab-click -> date -> search flow.
- * See scraper/README.md for what it does and how to deploy it.
+ * Live FIPI/LIPI fetch, sourced from Standard Capital Securities' public
+ * market-information page (scstrade.com/FIPILIPI.aspx), which republishes
+ * NCCPL's data through its own plain JSON endpoints — no Cloudflare, no
+ * CSRF token, no browser automation required (unlike NCCPL's own site).
  *
- * Set NCCPL_SCRAPER_URL (and NCCPL_SCRAPER_API_KEY if the service requires
- * one) to switch on live data; until then the caller falls back to sample
- * figures and the UI labels itself accordingly.
+ * Endpoints (verified against the live site, 2026-07):
+ *   POST /FIPILIPI.aspx/loadmainsumdetails  {date1, date2}  -> per-category buy/sell/net
+ *   POST /FIPILIPI.aspx/loadfipisector      {date1, date2}  -> per-(sector, category) buy/sell/net
+ * date1/date2 are the same single date in MM/DD/YYYY format (the site uses
+ * them as a from/to range; passing the same date both times gets one day).
  */
-async function scrapeNccplRegular(dates: string[]): Promise<FipiLipiDay[] | null> {
-  const baseUrl = process.env.NCCPL_SCRAPER_URL;
-  if (!baseUrl || dates.length === 0) return null;
+const SCS_BASE_URL = "https://scstrade.com/FIPILIPI.aspx";
 
-  const apiKey = process.env.NCCPL_SCRAPER_API_KEY;
-  const days: FipiLipiDay[] = [];
+interface ScsCategoryRow {
+  FLType: string;
+  FLBuyValue: number;
+  FLSellValue: number;
+  FLNetValueUSD: number;
+}
 
-  for (const date of dates) {
-    const url = new URL("/fipi-lipi", baseUrl);
-    url.searchParams.set("date", date);
+interface ScsSectorRow {
+  FLSectorName: string;
+  FLTypeNew: string;
+  FLBuyValue: number;
+  FLSellValue: number;
+  FLNetValueUSD: number;
+}
 
-    const res = await fetch(url, {
-      headers: apiKey ? { "X-API-Key": apiKey } : undefined,
-      // Real browser automation on the other end; give it room to work.
-      signal: AbortSignal.timeout(120_000),
-    });
-    if (!res.ok) {
-      console.warn(`[fipi-lipi] scraper returned ${res.status} for ${date}, skipping day`);
-      continue;
-    }
+// scstrade.com's real CLIENT_TYPE strings vary slightly from NCCPL's, so map
+// by keyword rather than exact string. FIPI classification requires a
+// FOREIGN/OVERSEAS prefix specifically — a bare "INDIVIDUAL" needle would
+// also match LIPI's "INDIVIDUALS" and misfile it as foreign flow.
+const FIPI_KEYWORDS: [string, string][] = [
+  ["OVERSEAS", "Overseas Pakistani"],
+  ["FOREIGN CORPORATE", "Foreign Corporate"],
+  ["FOREIGN INDIVIDUAL", "Foreign Individual"],
+];
+const LIPI_KEYWORDS: [string, string][] = [
+  ["INDIVIDUAL", "Individuals"],
+  ["COMPAN", "Companies"],
+  ["BANK", "Banks / DFI"],
+  ["DFI", "Banks / DFI"],
+  ["NBFC", "NBFC"],
+  ["MUTUAL", "Mutual Funds"],
+  ["BROKER", "Brokers"],
+  ["INSURANCE", "Insurance"],
+  ["OTHER", "Other"],
+];
+const SECTOR_KEYWORDS: [string, string][] = [
+  ["COMMERCIAL BANK", "Banks"],
+  ["OIL AND GAS MARKETING", "OMCs"],
+  ["OIL AND GAS EXPLORATION", "E&Ps"],
+  ["EXPLORATION", "E&Ps"],
+  ["CEMENT", "Cement"],
+  ["FERTILIZER", "Fertilizer"],
+  ["FOOD", "FMCGs"],
+  ["PERSONAL CARE", "FMCGs"],
+  ["POWER GENERATION", "IPPs"],
+  ["TECHNOLOGY", "Telecom"],
+  ["COMMUNICATION", "Telecom"],
+  ["TEXTILE", "Textile"],
+  ["DEBT MARKET", "Debt Mkt."],
+];
 
-    const day = (await res.json()) as FipiLipiDay;
-    days.push(day);
+function matchKeyword(value: string, table: [string, string][], fallback: string): string {
+  const upper = value.trim().toUpperCase();
+  for (const [needle, bucket] of table) {
+    if (upper.includes(needle)) return bucket;
+  }
+  return fallback;
+}
+
+function emptyCategoryRow(label: string): CategoryRow {
+  return { label, buy: 0, sell: 0, net: 0, sectors: FLOW_SECTORS.map(() => 0), fytd: 0, cytd: 0 };
+}
+
+async function scsPost<T>(endpoint: string, dateMDY: string): Promise<T[] | null> {
+  const res = await fetch(`${SCS_BASE_URL}/${endpoint}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    },
+    body: JSON.stringify({ date1: dateMDY, date2: dateMDY }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) {
+    console.warn(`[fipi-lipi] scstrade ${endpoint} returned ${res.status} for ${dateMDY}`);
+    return null;
+  }
+  const json = (await res.json()) as { d?: T[] };
+  return json.d ?? null;
+}
+
+async function scrapeOneDay(date: string): Promise<FipiLipiDay | null> {
+  const [year, month, day] = date.split("-");
+  const dateMDY = `${month}/${day}/${year}`;
+
+  const [categoryRows, sectorRows] = await Promise.all([
+    scsPost<ScsCategoryRow>("loadmainsumdetails", dateMDY),
+    scsPost<ScsSectorRow>("loadfipisector", dateMDY),
+  ]);
+  // An empty array (not null) means the endpoint responded fine but has
+  // nothing for this date yet — e.g. today, before NCCPL/SCS publish the
+  // day's close. Treat that the same as "no data" rather than a real
+  // all-zero trading day.
+  if (!categoryRows || categoryRows.length === 0) return null;
+
+  const fipiRows = new Map<string, CategoryRow>(FIPI_CATEGORIES.map((label) => [label, emptyCategoryRow(label)]));
+  const lipiRows = new Map<string, CategoryRow>(LIPI_CATEGORIES.map((label) => [label, emptyCategoryRow(label)]));
+
+  for (const rec of categoryRows) {
+    const fipiLabel = matchKeyword(rec.FLType, FIPI_KEYWORDS, "");
+    const target = fipiLabel ? fipiRows : lipiRows;
+    const label = fipiLabel || matchKeyword(rec.FLType, LIPI_KEYWORDS, "Other");
+    const row = target.get(label) ?? emptyCategoryRow(label);
+    row.buy += rec.FLBuyValue * 1_000_000;
+    row.sell += Math.abs(rec.FLSellValue) * 1_000_000;
+    row.net += rec.FLNetValueUSD * 1_000_000;
+    target.set(label, row);
   }
 
+  // Sector data isn't split per FIPI sub-category (Corporate/Individual/Overseas) —
+  // only a combined "FIPI" row — so it lands on the FIPI total, not the sub-rows.
+  const sectorNames: string[] = [...FLOW_SECTORS];
+  const fipiSectorTotals = FLOW_SECTORS.map(() => 0);
+  for (const rec of sectorRows ?? []) {
+    const sectorIdx = sectorNames.indexOf(matchKeyword(rec.FLSectorName, SECTOR_KEYWORDS, "Others"));
+    const idx = sectorIdx === -1 ? sectorNames.indexOf("Others") : sectorIdx;
+    if (rec.FLTypeNew.trim().toUpperCase() === "FIPI") {
+      fipiSectorTotals[idx] += rec.FLNetValueUSD * 1_000_000;
+      continue;
+    }
+    const label = matchKeyword(rec.FLTypeNew, LIPI_KEYWORDS, "Other");
+    const row = lipiRows.get(label);
+    if (row) row.sectors[idx] += rec.FLNetValueUSD * 1_000_000;
+  }
+
+  const fipiList = FIPI_CATEGORIES.map((label) => fipiRows.get(label)!);
+  const lipiList = LIPI_CATEGORIES.map((label) => lipiRows.get(label)!);
+
+  const fipiNet = totalRow("Net", fipiList);
+  fipiNet.sectors = fipiSectorTotals;
+  const lipiNet = totalRow("Net", lipiList);
+
+  return { date, fipi: fipiList, fipiNet, lipi: lipiList, lipiNet };
+}
+
+async function scrapeNccplRegular(dates: string[]): Promise<FipiLipiDay[] | null> {
+  const results = await Promise.all(
+    dates.map((date) =>
+      scrapeOneDay(date).catch((err) => {
+        console.warn(`[fipi-lipi] scstrade.com fetch failed for ${date}:`, err);
+        return null;
+      })
+    )
+  );
+  const days = results.filter((d): d is FipiLipiDay => d != null);
   return days.length > 0 ? days : null;
 }
 

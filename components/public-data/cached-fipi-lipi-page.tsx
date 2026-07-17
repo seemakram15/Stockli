@@ -16,7 +16,7 @@ export function CachedFipiLipiPage() {
   const [currency, setCurrency] = React.useState<FlowCurrency>("USD");
   const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt } =
     usePersistentResource<FipiLipiData>({
-      cacheKey: "public:fipi-lipi-v3",
+      cacheKey: "public:fipi-lipi-v7",
       url: "/api/public/fipi-lipi",
       refreshInterval: 30 * 60_000,
     });

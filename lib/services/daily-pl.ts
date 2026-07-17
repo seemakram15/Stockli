@@ -8,6 +8,8 @@ import type { DailyPL, Holding, Transaction } from "@/lib/types";
 
 export interface CalendarDay {
   date: string; // YYYY-MM-DD (UTC day of the candle)
+  /** Stock's own closing PRICE that day (per share) — never sum this across
+   * symbols, it's not a value. Use `marketValue` for that. */
   close: number;
   /** Stock's own daily % move (close vs previous close). */
   changePct: number;
@@ -15,6 +17,8 @@ export interface CalendarDay {
   dayPL: number;
   /** Position daily return %. */
   dayPLPct: number;
+  /** Position market value that day in PKR (shares held × close price; 0 when no position). */
+  marketValue: number;
 }
 
 export interface StockCalendar {
@@ -88,6 +92,7 @@ export async function getStockCalendar(
           changePct: prev ? ((c.close - prev) / prev) * 100 : 0,
           dayPL: 0,
           dayPLPct: 0,
+          marketValue: 0,
         };
       })
       .filter((day) => day.date < today || (day.date === today && includeToday));
@@ -136,7 +141,7 @@ export async function getStockCalendar(
     const dayPLPct = basis > 0 ? (dayPL / basis) * 100 : 0;
     const changePct = prevClose ? ((c.close - prevClose) / prevClose) * 100 : 0;
 
-    days.push({ date, close: c.close, changePct, dayPL, dayPLPct });
+    days.push({ date, close: c.close, changePct, dayPL, dayPLPct, marketValue: curMV });
     prevClose = c.close;
   }
 
@@ -187,13 +192,16 @@ export async function getPortfolioCalendar(
         byDate.get(day.date) ??
         ({
           date: day.date,
+          // Per-symbol closing PRICE isn't meaningful summed across symbols —
+          // portfolio-level value lives in `marketValue` instead.
           close: 0,
           changePct: 0,
           dayPL: 0,
           dayPLPct: 0,
+          marketValue: 0,
         } satisfies CalendarDay);
-      existing.close += day.close;
       existing.dayPL += day.dayPL;
+      existing.marketValue += day.marketValue;
       byDate.set(day.date, existing);
     }
   }
@@ -281,6 +289,7 @@ function aggregatePersistedRows(
       changePct: row.openValue ? (row.dayPL / row.openValue) * 100 : 0,
       dayPL: row.dayPL,
       dayPLPct: row.openValue ? (row.dayPL / row.openValue) * 100 : 0,
+      marketValue: row.closeValue,
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
