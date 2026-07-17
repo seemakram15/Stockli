@@ -1,15 +1,23 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 // Scoped to this map component instead of the root layout, so pages that
 // never render a map don't ship Leaflet's CSS.
 import "leaflet/dist/leaflet.css";
 import {
   Activity,
+  Globe,
   Globe2,
+  Map as MapIcon,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
+
+const HeatGlobe = dynamic(
+  () => import("@/components/market/world-heat-globe").then((m) => ({ default: m.WorldHeatGlobe })),
+  { ssr: false, loading: () => <div className="absolute inset-0 animate-pulse bg-[#061a24]" /> }
+);
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { IconChip } from "@/components/ui/accent";
 import {
@@ -58,8 +66,8 @@ const WORLD_REGION_FILTERS: Array<{
 const MAP_DATA_URL = "/maps/world-countries-10km.geo.json";
 const WORLD_REGION_BOUNDS: Record<WorldRegionFilter, readonly [readonly [number, number], readonly [number, number]]> = {
   all: [
-    [8, -12],
-    [64, 155],
+    [-60, -170],
+    [80, 180],
   ],
   "asia-pacific": [
     [-48, 58],
@@ -83,8 +91,8 @@ const WORLD_REGION_BOUNDS_COMPACT: Partial<
   Record<WorldRegionFilter, readonly [readonly [number, number], readonly [number, number]]>
 > = {
   all: [
-    [10, -2],
-    [62, 145],
+    [-60, -170],
+    [80, 180],
   ],
 } as const;
 
@@ -96,6 +104,7 @@ export function WorldMarketHeatMap({
   compact?: boolean;
 }) {
   const [activeRegion, setActiveRegion] = React.useState<WorldRegionFilter>("all");
+  const [globeMode, setGlobeMode] = React.useState(false);
 
   const quotes = React.useMemo(
     () => data.quotes.filter((quote) => quote.countryCode),
@@ -167,22 +176,37 @@ export function WorldMarketHeatMap({
     <div className="overflow-hidden rounded-[28px] border border-sky-100 bg-white shadow-soft">
       <div
         className={cn(
-          "relative overflow-hidden bg-[#d8e6f5]",
+          "relative overflow-hidden",
+          globeMode ? "bg-[#061a24]" : "bg-[#d8e6f5]",
           compact ? "min-h-[340px] sm:min-h-[460px]" : "min-h-[420px] sm:min-h-[620px]"
         )}
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.75),transparent_26%),radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.42),transparent_24%)]" />
-        <LeafletCountryHeatMap
-          quotesByCode={quotesByCode}
-          activeRegion={activeRegion}
-          compact={compact}
-        />
+        {globeMode ? (
+          <HeatGlobe quotes={visibleQuotes} />
+        ) : (
+          <>
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.75),transparent_26%),radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.42),transparent_24%)]" />
+            <LeafletCountryHeatMap
+              quotesByCode={quotesByCode}
+              activeRegion={activeRegion}
+              compact={compact}
+            />
+            <ScaleLegend min={legendRange.min} max={legendRange.max} />
+          </>
+        )}
 
         <div className="pointer-events-none absolute right-4 top-4 z-20 rounded-full border border-white/75 bg-white/92 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm">
           {visibleQuotes.length} exchanges shown
         </div>
 
-        <ScaleLegend min={legendRange.min} max={legendRange.max} />
+        <button
+          type="button"
+          onClick={() => setGlobeMode((v) => !v)}
+          className="absolute bottom-4 right-4 z-20 flex items-center gap-2 rounded-full border border-white/75 bg-white/92 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white"
+        >
+          {globeMode ? <MapIcon className="size-4" /> : <Globe className="size-4" />}
+          {globeMode ? "Flat map" : "3D Globe"}
+        </button>
       </div>
     </div>
   );
@@ -429,38 +453,8 @@ function LeafletCountryHeatMap({
         },
       }).addTo(current.map);
 
-      const labelMarkers: import("leaflet").Marker[] = [];
-      geoJsonLayer.eachLayer((layer) => {
-        const featureLayer = layer as import("leaflet").Layer & {
-          feature?: CountryFeature;
-          getBounds?: () => import("leaflet").LatLngBounds;
-        };
-        const code = featureLayer.feature?.properties?.A3 ?? "";
-        const quote = quotesByCode.get(code);
-        if (!quote || !matchesRegion(quote, activeRegion)) return;
-
-        const position = getCountryLabelPosition(featureLayer.feature);
-
-        if (!position) return;
-
-        labelMarkers.push(
-          L.marker(position, {
-            interactive: false,
-            keyboard: false,
-            zIndexOffset: 900,
-            icon: L.divIcon({
-              className: "world-heat-country-label",
-              html: buildCountryMapLabel(quote),
-              iconAnchor: [0, 0],
-            }),
-          })
-        );
-      });
-
-      const labelLayer = L.layerGroup(labelMarkers).addTo(current.map);
-
       current.geoJsonLayer = geoJsonLayer;
-      current.labelLayer = labelLayer;
+      current.labelLayer = null;
       fitRegion(current.map, activeRegion, compact);
       current.map.invalidateSize(false);
     }
@@ -687,10 +681,6 @@ function buildCountryPopup(quote: GlobalMarketQuote) {
   return `
     ${buildCountryCard(quote)}
   `;
-}
-
-function buildCountryMapLabel(quote: GlobalMarketQuote) {
-  return `<span class="world-heat-country-label__text">${escapeHtml(quote.country ?? quote.name)}</span>`;
 }
 
 type GeoPoint = [number, number];

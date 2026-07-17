@@ -9,7 +9,9 @@ import {
   ArrowUpRight,
   Brain,
   Clock3,
+  Globe,
   Loader2,
+  Map,
   RadioTower,
   ShieldAlert,
   Sparkles,
@@ -50,6 +52,17 @@ const WorldMonitorMap = dynamic(
   }
 );
 
+const WorldGlobe = dynamic(
+  () =>
+    import("@/components/explore/world-globe").then((module) => ({
+      default: module.WorldGlobe,
+    })),
+  {
+    ssr: false,
+    loading: () => <div className="absolute inset-0 animate-pulse bg-slate-950/90" />,
+  }
+);
+
 const DEFAULT_VIEW: WorldPulseView = "asia";
 const DEFAULT_TIME_RANGE: WorldPulseTimeRange = "48h";
 const DEFAULT_LAYER: WorldPulseLayer = "conflicts";
@@ -75,6 +88,7 @@ export function WorldMonitorDashboard() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = React.useTransition();
+  const [globeMode, setGlobeMode] = React.useState(false);
 
   const view = parseView(searchParams.get("view"));
   const timeRange = parseTimeRange(searchParams.get("timeRange"));
@@ -282,7 +296,20 @@ export function WorldMonitorDashboard() {
                 {WORLD_PULSE_LAYER_META[layer].description}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setGlobeMode((v) => !v)}
+                className={cn(
+                  "flex h-10 items-center gap-2 rounded-2xl border px-4 text-sm font-semibold transition",
+                  globeMode
+                    ? "border-sky-300/35 bg-sky-400/20 text-sky-100"
+                    : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
+                )}
+              >
+                {globeMode ? <Map className="size-4" /> : <Globe className="size-4" />}
+                {globeMode ? "Flat map" : "3D Globe"}
+              </button>
               {WORLD_PULSE_TIME_RANGES.map((item) => {
                 const active = item === timeRange;
                 return (
@@ -304,8 +331,12 @@ export function WorldMonitorDashboard() {
             </div>
           </div>
 
-          <div className="relative min-h-[540px] overflow-hidden lg:min-h-[700px]">
-            <WorldMonitorMap data={data} activeLayer={layer} />
+          <div className={cn("relative overflow-hidden transition-all", globeMode ? "min-h-[80vh]" : "min-h-[540px] lg:min-h-[700px]")}>
+            {globeMode ? (
+              <WorldGlobe data={data} activeLayer={layer} />
+            ) : (
+              <WorldMonitorMap data={data} activeLayer={layer} />
+            )}
 
             <div className="absolute left-4 top-4 z-10 w-[min(17rem,calc(100%-2rem))] rounded-[1.6rem] border border-white/10 bg-slate-950/82 p-4 backdrop-blur-xl">
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">

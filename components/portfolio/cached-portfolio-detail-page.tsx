@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/page-header";
 import { AddTradeDialog } from "@/components/portfolio/add-trade-dialog";
 import { PortfolioSettings } from "@/components/portfolio/portfolio-settings";
 import { TransactionsPanel } from "@/components/portfolio/transactions-panel";
+import { DividendsPanel } from "@/components/portfolio/dividends-panel";
 import { SmartBackLink } from "@/components/smart-back-link";
 import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { MarketStatusBadge } from "@/components/status-badges";
@@ -91,6 +92,10 @@ export function CachedPortfolioDetailPage({
   const holdingsBySymbol = Object.fromEntries(
     holdings.map((h) => [h.symbol.toUpperCase(), h.quantity])
   );
+  const avgBuyPriceBySymbol = Object.fromEntries(
+    holdings.map((h) => [h.symbol.toUpperCase(), h.avg_buy_price])
+  );
+  const taxSettings = data?.portfolio.taxSettings;
   const { liveHoldings } = useLiveHoldings(holdings);
   const liveByHoldingId = new Map(liveHoldings.map((h) => [h.id, h]));
 
@@ -184,7 +189,7 @@ export function CachedPortfolioDetailPage({
                 demo={demo}
                 userId={userId}
               />
-              <AddTradeDialog portfolioId={pf.id} userId={userId} holdingsBySymbol={holdingsBySymbol} />
+              <AddTradeDialog portfolioId={pf.id} userId={userId} holdingsBySymbol={holdingsBySymbol} avgBuyPriceBySymbol={avgBuyPriceBySymbol} taxSettings={taxSettings} />
             </>
           }
         />
@@ -226,7 +231,7 @@ export function CachedPortfolioDetailPage({
           icon={<Wallet className="size-6" />}
           title="No holdings in this portfolio"
           description="Record your first buy to start tracking P/L."
-          action={<AddTradeDialog portfolioId={pf.id} userId={userId} holdingsBySymbol={holdingsBySymbol} />}
+          action={<AddTradeDialog portfolioId={pf.id} userId={userId} holdingsBySymbol={holdingsBySymbol} avgBuyPriceBySymbol={avgBuyPriceBySymbol} taxSettings={taxSettings} />}
         />
       ) : (
         <>
@@ -240,6 +245,10 @@ export function CachedPortfolioDetailPage({
                       <TabsTrigger value="transactions">
                         Transactions ({transactions.length})
                       </TabsTrigger>
+                      {(data?.portfolio.dividendIncome?.received.length ?? 0) > 0 ||
+                      (data?.portfolio.dividendIncome?.upcoming.length ?? 0) > 0 ? (
+                        <TabsTrigger value="dividends">Dividends</TabsTrigger>
+                      ) : null}
                     </TabsList>
                   </div>
                   {hasHoldings && (
@@ -253,6 +262,14 @@ export function CachedPortfolioDetailPage({
                       currentPriceBySymbol={currentPriceBySymbol}
                     />
                   </TabsContent>
+                  {data?.portfolio.dividendIncome && data?.portfolio.taxSettings && (
+                    <TabsContent value="dividends" className="mt-2">
+                      <DividendsPanel
+                        dividendIncome={data.portfolio.dividendIncome}
+                        taxSettings={data.portfolio.taxSettings}
+                      />
+                    </TabsContent>
+                  )}
                 </Tabs>
               </CardContent>
             </Card>
