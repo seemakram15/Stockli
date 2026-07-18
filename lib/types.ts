@@ -135,6 +135,7 @@ export interface CdcParsedData {
 }
 
 export interface ReceivedDividend {
+  id?: string;
   symbol: string;
   companyName?: string;
   creditedOn: string;

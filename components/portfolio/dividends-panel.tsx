@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Banknote, Upload, TrendingUp, Receipt, Landmark, Coins } from "lucide-react";
+import { Banknote, Upload, TrendingUp, Receipt, Landmark, Coins, Trash2 } from "lucide-react";
+import { markPortfolioMutated } from "@/lib/cache/portfolio-mutations";
 import {
   Table,
   TableBody,
@@ -13,9 +14,21 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { formatPKR, formatDate, formatNumber } from "@/lib/format";
 import { ImportDividendsModal } from "@/components/portfolio/import-dividends-modal";
-import type { DividendIncomeSummary, TaxSettings } from "@/lib/types";
+import { deleteCdcDividend } from "@/lib/actions/dividends";
+import type { DividendIncomeSummary, TaxSettings, ReceivedDividend } from "@/lib/types";
 
 function SummaryCard({
   label,
@@ -57,10 +70,21 @@ export function DividendsPanel({
   portfolioId: string;
 }) {
   const [importOpen, setImportOpen] = React.useState(false);
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const { received, upcoming, totalGross, totalWHT, totalZakat, totalNet } = dividendIncome;
   const hasReceived = received.length > 0;
   const hasUpcoming = upcoming.length > 0;
   const showZakat = totalZakat > 0;
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    try {
+      await deleteCdcDividend(id, portfolioId);
+      markPortfolioMutated({ portfolioId });
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <>
@@ -122,7 +146,16 @@ export function DividendsPanel({
                           <p className="mt-0.5 truncate text-xs text-muted-foreground">{r.companyName}</p>
                         )}
                       </div>
-                      <span className="shrink-0 text-xs text-muted-foreground">{formatDate(r.creditedOn)}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-muted-foreground">{formatDate(r.creditedOn)}</span>
+                        {r.id && (
+                          <DeleteDividendButton
+                            record={r}
+                            deleting={deletingId === r.id}
+                            onConfirm={() => handleDelete(r.id!)}
+                          />
+                        )}
+                      </div>
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-y-2 text-sm">
                       <div>
@@ -168,6 +201,7 @@ export function DividendsPanel({
                       <TableHead className="text-right">WHT</TableHead>
                       {showZakat && <TableHead className="text-right">Zakat</TableHead>}
                       <TableHead className="text-right">Amount Paid</TableHead>
+                      <TableHead className="w-8" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -197,6 +231,15 @@ export function DividendsPanel({
                         )}
                         <TableCell className="text-right tabular-nums font-semibold text-gain">
                           {formatPKR(r.netAmount)}
+                        </TableCell>
+                        <TableCell className="w-8 text-center">
+                          {r.id && (
+                            <DeleteDividendButton
+                              record={r}
+                              deleting={deletingId === r.id}
+                              onConfirm={() => handleDelete(r.id!)}
+                            />
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -258,5 +301,50 @@ export function DividendsPanel({
         </p>
       </div>
     </>
+  );
+}
+
+function DeleteDividendButton({
+  record,
+  deleting,
+  onConfirm,
+}: {
+  record: ReceivedDividend;
+  deleting: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <button
+          disabled={deleting}
+          className="text-muted-foreground hover:text-loss disabled:opacity-40 transition-colors"
+          title="Delete dividend"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete dividend record?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently remove the{" "}
+            <span className="font-medium text-foreground">{record.symbol}</span> dividend of{" "}
+            <span className="font-medium text-foreground">{formatPKR(record.netAmount)}</span> paid on{" "}
+            <span className="font-medium text-foreground">{formatDate(record.creditedOn)}</span>.
+            This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            className="bg-loss text-white hover:bg-loss/90"
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

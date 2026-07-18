@@ -10,84 +10,69 @@ function normalizeDateStr(d: string): string {
   return d;
 }
 
-function afterLabel(text: string, label: string): string {
-  const idx = text.indexOf(label);
-  if (idx === -1) return "";
-  return text.slice(idx + label.length).trimStart();
-}
-
-function firstToken(s: string): string {
-  return s.match(/^[\S]+/)?.[0] ?? "";
-}
-
 export function parseCdcText(rawText: string): Omit<CdcParsedData, "symbol" | "symbolConfidence"> | null {
-  const text = rawText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  // unpdf extracts text as flat space-separated — normalize to single spaces
+  const text = rawText.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ");
 
-  // Company name: first all-caps heading before "DIVIDEND / ZAKAT"
-  const companyMatch = text.match(/^([A-Z][A-Z\s\(\)&\-\.,]+?)\s*\nDIVIDEND\s*[\/\\]\s*ZAKAT/m);
+  // Company name: all-caps block before "DIVIDEND / ZAKAT"
+  const companyMatch = text.match(/([A-Z][A-Z0-9\s\(\)&\-\.,]+?)\s+DIVIDEND\s*[\/\\]\s*ZAKAT/);
   if (!companyMatch) return null;
   const companyName = companyMatch[1].trim();
 
-  // Date of Issue & Financial Year — values are on the line after the column header row
-  const dateHeaderMatch = text.match(/Date of Issue\s+Financial Year[^\n]*\n([^\n]+)/);
+  // Issue date & financial year — values follow the column header block
+  // e.g. "Date of Issue Financial Year Rate Per Security ZCCA Code Asset Code 07-11-2025 2024-25 Rs. 5.0000"
+  const dateHeaderMatch = text.match(/Date of Issue\s+Financial Year[^0-9]*(\d{1,2}-\d{2}-\d{4})\s+(\S+)/);
   let issueDate = "";
   let financialYear = "";
   if (dateHeaderMatch) {
-    const parts = dateHeaderMatch[1].trim().split(/\s+/);
-    issueDate = normalizeDateStr(parts[0] ?? "");
-    financialYear = parts[1] ?? "";
+    issueDate = normalizeDateStr(dateHeaderMatch[1]);
+    financialYear = dateHeaderMatch[2];
   }
 
-  // Rate Per Security — Rs. X.XXXX appears on the same value row
-  const rateMatch = text.match(/Date of Issue\s+Financial Year[^\n]*\n[^\n]*Rs\.\s*([\d,]+\.?\d*)/);
+  // Rate per security — Rs. value on the same block
+  const rateMatch = text.match(/Date of Issue.*?Rs\.\s*([\d,]+\.?\d*)/);
   const ratePerSecurity = rateMatch ? parsePkrNumber(rateMatch[1]) : 0;
 
-  // Warrant No. & No. of Securities
-  const warrantMatch = text.match(/Warrant No\.\s+No\. of Securities[^\n]*\n([^\n]+)/);
+  // Warrant no & no. of securities
+  // e.g. "Warrant No. No. of Securities Securities Liable to Zakat 95042528 20 20"
+  const warrantMatch = text.match(/Warrant No\.\s+No\. of Securities[^0-9]*(\d+)\s+(\d+)/);
   let warrantNo = "";
   let noOfSecurities = 0;
   if (warrantMatch) {
-    const parts = warrantMatch[1].trim().split(/\s+/);
-    warrantNo = parts[0] ?? "";
-    noOfSecurities = parseInt(parts[1] ?? "0", 10) || 0;
+    warrantNo = warrantMatch[1];
+    noOfSecurities = parseInt(warrantMatch[2], 10) || 0;
   }
 
-  // Gross amount — last number on the "Securities not Liable to Zakat … Amount of Dividend" value row
-  const grossMatch = text.match(/Amount of Dividend \(Rs\.\)\s*\n([^\n]+)/);
+  // Gross amount — two numbers follow: [securities-not-liable-count] [dividend-amount]
+  // e.g. "Securities not Liable to Zakat Amount of Dividend (Rs.) 0 100.00"
+  const grossMatch = text.match(/Amount of Dividend \(Rs\.\)\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)/);
   let grossAmount = 0;
   if (grossMatch) {
-    const parts = grossMatch[1].trim().split(/\s+/);
-    grossAmount = parsePkrNumber(parts[parts.length - 1] ?? "0");
+    grossAmount = parsePkrNumber(grossMatch[2]);
   }
 
-  // Zakat & Tax Deducted
-  const zakatTaxMatch = text.match(/Zakat Deducted \(Rs\.\)\s+Tax Deducted \(Rs\.\)\s*\n([^\n]+)/);
+  // Zakat & tax deducted
+  // e.g. "Zakat Deducted (Rs.) Tax Deducted (Rs.) 0.00 30.00"
+  const zakatTaxMatch = text.match(/Zakat Deducted \(Rs\.\)\s+Tax Deducted \(Rs\.\)\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)/);
   let zakatDeducted = 0;
   let taxDeducted = 0;
   if (zakatTaxMatch) {
-    const parts = zakatTaxMatch[1].trim().split(/\s+/);
-    zakatDeducted = parsePkrNumber(parts[0] ?? "0");
-    taxDeducted = parsePkrNumber(parts[1] ?? "0");
+    zakatDeducted = parsePkrNumber(zakatTaxMatch[1]);
+    taxDeducted = parsePkrNumber(zakatTaxMatch[2]);
   }
 
-  // Amount Paid (Net)
-  const netMatch = text.match(/Amount Paid \(Rs\.\)\s*\n([^\n]+)/);
-  const netAmount = netMatch ? parsePkrNumber(firstToken(netMatch[1])) : 0;
+  // Net amount paid
+  const netMatch = text.match(/Amount Paid \(Rs\.\)\s+([\d,]+\.?\d*)/);
+  const netAmount = netMatch ? parsePkrNumber(netMatch[1]) : 0;
 
-  // Payment Status & Payment Date
-  const paymentMatch = text.match(/Payment Status\s+Payment Date\s*\n([^\n]+)/);
+  // Payment status & date
+  // e.g. "Payment Status Payment Date Paid 10-11-2025"
+  const paymentMatch = text.match(/Payment Status\s+Payment Date\s+(\S+)\s+(\d{1,2}-\d{2}-\d{4})/);
   let paymentStatus = "Paid";
   let paymentDate = "";
   if (paymentMatch) {
-    const parts = paymentMatch[1].trim().split(/\s+/);
-    paymentStatus = parts[0] ?? "Paid";
-    paymentDate = normalizeDateStr(parts[1] ?? "");
-  }
-
-  // Fallback: if payment date still empty try "Payment Date\n<date>"
-  if (!paymentDate) {
-    const fallback = afterLabel(text, "Payment Date\n");
-    paymentDate = normalizeDateStr(firstToken(fallback));
+    paymentStatus = paymentMatch[1];
+    paymentDate = normalizeDateStr(paymentMatch[2]);
   }
 
   if (!paymentDate || !companyName) return null;

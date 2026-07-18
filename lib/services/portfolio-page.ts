@@ -91,6 +91,7 @@ function buildCdcSummary(
   currentHoldings: import("@/lib/types").Holding[]
 ): DividendIncomeSummary {
   const received: ReceivedDividend[] = cdcRows.map((r) => ({
+    id: r.id,
     symbol: r.symbol,
     companyName: r.company_name,
     creditedOn: r.payment_date,

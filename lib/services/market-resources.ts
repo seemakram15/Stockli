@@ -12,7 +12,7 @@ import { getMarketRows } from "@/lib/services/prices";
 
 const USER_AGENT =
   "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.qzz.io)";
-const REQUEST_TIMEOUT_MS = 12_000;
+const REQUEST_TIMEOUT_MS = 8_000;
 const DAILY_TTL_SECONDS = 30 * 60;
 const DAILY_STALE_SECONDS = 7 * 24 * 60 * 60;
 
@@ -420,7 +420,11 @@ export async function getPivotPointsData(): Promise<PivotPointsData> {
 }
 
 async function loadBoardMeetingsData(): Promise<BoardMeetingsData> {
-  const primaryRows = await tryLoadSscBoardMeetings();
+  const [primaryRows, fallbackHtml] = await Promise.all([
+    tryLoadSscBoardMeetings(),
+    tryFetchSource(SOURCES.boardMeetingsFallback),
+  ]);
+
   if (primaryRows.length > 0) {
     return {
       rows: primaryRows,
@@ -430,9 +434,9 @@ async function loadBoardMeetingsData(): Promise<BoardMeetingsData> {
     };
   }
 
-  const fallbackHtml = await fetchSource(SOURCES.boardMeetingsFallback);
+  const rows = fallbackHtml ? parseBoardMeetingsTables(fallbackHtml, "KSE Stocks") : [];
   return {
-    rows: parseBoardMeetingsTables(fallbackHtml, "KSE Stocks"),
+    rows,
     updatedAt: new Date().toISOString(),
     sourceUrl: SOURCES.boardMeetingsFallback,
     sourceLabel: "KSE Stocks",
@@ -483,7 +487,11 @@ async function tryLoadSscBoardMeetings(): Promise<BoardMeetingRow[]> {
 }
 
 async function loadBookClosuresData(): Promise<BookClosuresData> {
-  const primaryRows = await tryLoadSscBookClosures();
+  const [primaryRows, fallbackHtml] = await Promise.all([
+    tryLoadSscBookClosures(),
+    tryFetchSource(SOURCES.bookClosuresFallback),
+  ]);
+
   if (primaryRows.length > 0) {
     return {
       rows: primaryRows,
@@ -493,9 +501,9 @@ async function loadBookClosuresData(): Promise<BookClosuresData> {
     };
   }
 
-  const fallbackHtml = await fetchSource(SOURCES.bookClosuresFallback);
+  const rows = fallbackHtml ? parseKseBookClosures(fallbackHtml) : [];
   return {
-    rows: parseKseBookClosures(fallbackHtml),
+    rows,
     updatedAt: new Date().toISOString(),
     sourceUrl: SOURCES.bookClosuresFallback,
     sourceLabel: "KSE Stocks",
@@ -503,7 +511,11 @@ async function loadBookClosuresData(): Promise<BookClosuresData> {
 }
 
 async function loadDividendHistoryData(): Promise<DividendHistoryData> {
-  const primaryHtml = await tryFetchSource(SOURCES.dividendPrimary);
+  const [primaryHtml, fallbackHtml] = await Promise.all([
+    tryFetchSource(SOURCES.dividendPrimary),
+    tryFetchSource(SOURCES.dividendFallback),
+  ]);
+
   const primaryRows = primaryHtml ? parseDividendTables(primaryHtml, "PSX") : [];
   if (primaryRows.length > 0) {
     return {
@@ -514,9 +526,9 @@ async function loadDividendHistoryData(): Promise<DividendHistoryData> {
     };
   }
 
-  const fallbackHtml = await fetchSource(SOURCES.dividendFallback);
+  const rows = fallbackHtml ? parseDividendTables(fallbackHtml, "KSE Stocks") : [];
   return {
-    rows: parseDividendTables(fallbackHtml, "KSE Stocks"),
+    rows,
     updatedAt: new Date().toISOString(),
     sourceUrl: SOURCES.dividendFallback,
     sourceLabel: "KSE Stocks",

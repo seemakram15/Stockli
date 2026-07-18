@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { PDFParse } = require("pdf-parse") as { PDFParse: new (opts: { data: Buffer }) => { getText(): Promise<{ text: string }> } };
+import { extractText, getDocumentProxy } from "unpdf";
 import { createClient } from "@/lib/supabase/server";
 import { parseCdcText } from "@/lib/services/cdc-parser";
 import type { CdcParsedData } from "@/lib/types";
@@ -76,10 +75,10 @@ export async function POST(request: Request) {
   const results: ParsedFileResult[] = await Promise.all(
     files.map(async (file) => {
       try {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const parser = new PDFParse({ data: buffer });
-        const parsed = await parser.getText();
-        const base = parseCdcText(parsed.text);
+        const buffer = await file.arrayBuffer();
+        const pdf = await getDocumentProxy(new Uint8Array(buffer));
+        const { text } = await extractText(pdf, { mergePages: true });
+        const base = parseCdcText(text);
 
         if (!base) {
           return {
@@ -99,10 +98,12 @@ export async function POST(request: Request) {
             symbolConfidence: resolved?.confidence ?? "none",
           } satisfies CdcParsedData,
         };
-      } catch {
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[parse] PDF processing error:", msg);
         return {
           fileName: file.name,
-          error: "Failed to read PDF file.",
+          error: `Failed to read PDF: ${msg}`,
         };
       }
     })
