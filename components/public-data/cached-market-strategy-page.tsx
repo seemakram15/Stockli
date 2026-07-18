@@ -68,7 +68,6 @@ export function CachedMarketStrategyPage() {
         }
         actions={
           <>
-            <DataDelayBadge />
             <CacheStatusBadge
               updatedAt={data?.updatedAt}
               cachedAt={cachedAt}

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { writePersistentResourceCache } from "@/lib/hooks/use-persistent-resource";
+import { markPortfolioMutated } from "@/lib/cache/portfolio-mutations";
 import type { PortfolioCommandPageData } from "@/lib/services/portfolio-command-page";
 import type { PortfoliosPageData } from "@/lib/services/portfolios-page";
 
@@ -73,15 +74,19 @@ export function ManualDataRefreshButton({
   const [message, setMessage] = React.useState("Ready to load the latest market data.");
   const [errors, setErrors] = React.useState<string[]>([]);
 
+  const [done, setDone] = React.useState(false);
+
   const reset = React.useCallback(() => {
     setSteps(INITIAL_STEPS);
     setMessage("Ready to load the latest market data.");
     setErrors([]);
+    setDone(false);
   }, []);
 
   async function runRefresh() {
-    setOpen(true);
+    if (running) return;
     setRunning(true);
+    setDone(false);
     setErrors([]);
     setMessage("Connecting to the latest market feeds...");
     setSteps(INITIAL_STEPS);
@@ -92,19 +97,12 @@ export function ManualDataRefreshButton({
       await runStep("backend", "Bringing in the latest PSX prices", async () => {
         const response = await fetch("/api/background/warmup", {
           method: "POST",
-          headers: {
-            accept: "application/json",
-            "content-type": "application/json",
-          },
+          headers: { accept: "application/json", "content-type": "application/json" },
           body: JSON.stringify({ mode: "manual", force: true, scope: "backend-only" }),
         });
-        if (!response.ok) {
-          throw new Error(`Backend refresh failed (${response.status})`);
-        }
+        if (!response.ok) throw new Error(`Backend refresh failed (${response.status})`);
         const json = (await response.json()) as { ok?: boolean; error?: string };
-        if (!json.ok) {
-          throw new Error(json.error || "Backend refresh failed.");
-        }
+        if (!json.ok) throw new Error(json.error || "Backend refresh failed.");
       });
 
       await runStep("dashboard", "Refreshing your dashboard, portfolios, and stock pages", async () => {
@@ -116,12 +114,14 @@ export function ManualDataRefreshButton({
           updatedAt: dashboardData.updatedAt,
         } satisfies PortfoliosPageData);
 
+        markPortfolioMutated({ userId });
+
         const portfolioJobs = dashboardData.dashboard.portfolios.map((portfolio) => ({
           key: `private:portfolio:${userId}:${portfolio.id}`,
           url: `/api/private/portfolios/${encodeURIComponent(portfolio.id)}`,
         }));
         const stockJobs = Array.from(
-          new Set(dashboardData.dashboard.holdings.map((holding) => holding.symbol.toUpperCase()))
+          new Set(dashboardData.dashboard.holdings.map((h) => h.symbol.toUpperCase()))
         ).map((symbol) => ({
           key: `private:stock:${userId}:${symbol}`,
           url: `/api/private/stocks/${encodeURIComponent(symbol)}`,
@@ -146,6 +146,7 @@ export function ManualDataRefreshButton({
       });
 
       setErrors(failures);
+      setDone(true);
       if (failures.length > 0) {
         setMessage("Your main data is updated. A few optional feeds need another try.");
         toast.warning("Latest data loaded with a few feed warnings.");
@@ -153,6 +154,11 @@ export function ManualDataRefreshButton({
         setMessage("Everything is up to date.");
         toast.success("Latest market data is ready.");
       }
+
+      setTimeout(() => {
+        setOpen(false);
+        reset();
+      }, 1800);
     } catch (error) {
       const text = error instanceof Error ? error.message : "We could not refresh live data right now.";
       setMessage(text);
@@ -181,12 +187,9 @@ export function ManualDataRefreshButton({
     <>
       <Button
         type="button"
-        variant="outline"
         size="sm"
-        onClick={() => {
-          reset();
-          setOpen(true);
-        }}
+        className="bg-gradient-to-r from-violet-500 to-fuchsia-500 font-semibold text-white shadow-md shadow-violet-500/25 transition-all hover:from-violet-500 hover:to-fuchsia-400 hover:text-white hover:shadow-violet-500/35"
+        onClick={() => setOpen(true)}
         disabled={running}
       >
         <RotateCw className={running ? "size-4 animate-spin" : "size-4"} />
@@ -205,28 +208,23 @@ export function ManualDataRefreshButton({
           <DialogHeader>
             <DialogTitle>Refreshing live data</DialogTitle>
             <DialogDescription>
-              We will refresh prices, portfolio screens, market pages, and the saved copy on this device.
+              Updating prices, portfolio screens, market pages, and the saved copy on this device.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-5">
-            <div className="rounded-xl border border-border bg-muted/20 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Last cached
-              </p>
-              <p className="mt-1 text-sm font-semibold">
-                {cachedAt ? formatCacheTime(cachedAt) : "No saved dashboard cache yet"}
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-muted/25 px-4 py-6 text-center">
-              <RefreshCw
-                className={running ? "size-10 animate-spin text-primary" : "size-10 text-primary"}
-              />
+          <div className="space-y-4">
+            <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-muted/25 px-4 py-5 text-center">
+              {done && errors.length === 0 ? (
+                <CheckCircle2 className="size-10 text-gain" />
+              ) : (
+                <RefreshCw className={running ? "size-10 animate-spin text-primary" : "size-10 text-primary"} />
+              )}
               <p className="mt-3 text-base font-semibold">{message}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                You can keep using the app while this runs.
-              </p>
+              {running && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Your screens are updating as each step completes.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -237,9 +235,9 @@ export function ManualDataRefreshButton({
                 >
                   <StepIcon state={step.state} />
                   <span className="min-w-0 flex-1 text-sm">{step.label}</span>
-                  <span className="text-xs capitalize text-muted-foreground">
-                    {step.state}
-                  </span>
+                  {step.state !== "pending" && (
+                    <span className="text-xs capitalize text-muted-foreground">{step.state}</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -253,25 +251,20 @@ export function ManualDataRefreshButton({
             )}
 
             <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setOpen(false);
-                  reset();
-                }}
-                disabled={running}
-              >
-                Close
-              </Button>
-              <Button
-                type="button"
-                onClick={runRefresh}
-                disabled={running}
-              >
-                <RotateCw className={running ? "size-4 animate-spin" : "size-4"} />
-                Start refresh
-              </Button>
+              {!running && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => { setOpen(false); reset(); }}
+                >
+                  Close
+                </Button>
+              )}
+              {!running && !done && (
+                <Button type="button" onClick={runRefresh}>
+                  Start refresh
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>

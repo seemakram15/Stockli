@@ -1,6 +1,6 @@
 import "server-only";
 import { isSupabaseAdminConfigured } from "@/lib/config";
-import { isMarketOpen, isTradingDay, marketStatus, shouldRefreshPsxData } from "@/lib/psx/market-hours";
+import { isMarketOpen, isTradingDay, lastTradingDayInPkt, marketStatus, shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import { getMemoryCache, setMemoryCache } from "@/lib/cache/memory";
 import { getRedis, getRedisClients } from "@/lib/cache/redis";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -393,7 +393,7 @@ function resolveDailyPlDate(
   marketRows: MarketWatchRow[]
 ): string | null {
   if (marketRows.length === 0) {
-    return isMarketOpen(startedAt) ? isoDateInPkt(startedAt) : null;
+    return isMarketOpen(startedAt) ? isoDateInPkt(startedAt) : lastTradingDayInPkt(startedAt);
   }
 
   const latestCapturedAt = marketRows
@@ -402,11 +402,11 @@ function resolveDailyPlDate(
     .sort((a, b) => b - a)[0];
 
   if (!Number.isFinite(latestCapturedAt)) {
-    return isMarketOpen(startedAt) ? isoDateInPkt(startedAt) : null;
+    return isMarketOpen(startedAt) ? isoDateInPkt(startedAt) : lastTradingDayInPkt(startedAt);
   }
 
   const snapshotDate = new Date(latestCapturedAt);
-  return isTradingDay(snapshotDate) ? isoDateInPkt(snapshotDate) : null;
+  return isTradingDay(snapshotDate) ? isoDateInPkt(snapshotDate) : lastTradingDayInPkt(snapshotDate);
 }
 
 async function readFundamentalsArchiveCursor() {

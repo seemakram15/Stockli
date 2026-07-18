@@ -10,7 +10,6 @@ import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { NotificationBell } from "@/components/shell/notification-bell";
 import { UserMenu } from "@/components/shell/user-menu";
 import { DemoBanner } from "@/components/shell/demo-banner";
-import { DataDelayBadge } from "@/components/status-badges";
 import { BackgroundCacheWarmup } from "@/components/background-cache-warmup";
 import { PsxCacheLifecycle } from "@/components/cache/psx-cache-lifecycle";
 import { PrivateCacheLifecycle } from "@/components/cache/private-cache-lifecycle";
@@ -74,7 +73,6 @@ export default async function AppLayout({
               </div>
               <div className="hidden min-w-0 flex-1 lg:block" />
             </div>
-            <DataDelayBadge className="hidden xl:inline-flex" />
             <GlobalSearch mode="desktop" />
             <NotificationBell userId={user.id} />
             <ThemeToggle />

@@ -40,7 +40,6 @@ export function CachedMufapPage({ kind }: { kind: "mutual" | "etfs" }) {
         description={description}
         actions={
           <>
-            <DataDelayBadge />
             <CacheStatusBadge
               updatedAt={data?.updatedAt}
               cachedAt={cachedAt}

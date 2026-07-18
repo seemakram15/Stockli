@@ -151,6 +151,15 @@ export function isTradingDay(date: Date = new Date()): boolean {
   return tradingSessionsForDate(pktParts(date)).length > 0;
 }
 
+export function lastTradingDayInPkt(date: Date = new Date()): string | null {
+  let parts = pktParts(date);
+  for (let i = 0; i < 14; i++) {
+    parts = addPktDays(parts, -1);
+    if (tradingSessionsForDate(parts).length > 0) return pktDateString(parts);
+  }
+  return null;
+}
+
 /** True only during regular continuous market trading. */
 export function isMarketOpen(date: Date = new Date()): boolean {
   const parts = pktParts(date);
@@ -201,14 +210,14 @@ export function marketStatus(date: Date = new Date()): {
   if (isHoliday(date)) {
     return {
       status: "holiday",
-      label: "Closed — holiday",
+      label: "Closed",
       nextRefreshAt: nextPsxRefreshAt(date)?.toISOString() ?? null,
     };
   }
   if (!PSX_TRADING_DAYS.includes(parts.weekday)) {
     return {
       status: "weekend",
-      label: "Closed — weekend",
+      label: "Closed",
       nextRefreshAt: nextPsxRefreshAt(date)?.toISOString() ?? null,
     };
   }
@@ -218,16 +227,15 @@ export function marketStatus(date: Date = new Date()): {
     if (mins >= session.start && mins <= session.end) {
       return {
         status: session.kind,
-        label: session.kind === "open" ? "Market open" : "Pre-open",
+        label: session.kind === "open" ? "Open" : "Pre-open",
         nextRefreshAt: null,
       };
     }
   }
 
-  const hasLaterSession = tradingSessionsForDate(parts).some((session) => mins < session.start);
   return {
     status: "closed",
-    label: hasLaterSession ? "Closed — between sessions" : "Closed",
+    label: "Closed",
     nextRefreshAt: nextPsxRefreshAt(date)?.toISOString() ?? null,
   };
 }

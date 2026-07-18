@@ -331,7 +331,7 @@ function PortfolioOverviewBand({
                 Open portfolios
               </Link>
             </Button>
-            <Button type="button" onClick={onRefresh} variant="outline" className="h-9 gap-1.5 bg-card/70 px-3 text-sm backdrop-blur">
+            <Button type="button" onClick={onRefresh} className="h-9 gap-1.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 text-sm font-semibold text-white shadow-md shadow-violet-500/25 transition-all hover:from-violet-500 hover:to-fuchsia-400 hover:text-white hover:shadow-violet-500/35">
               <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
               Refresh
             </Button>

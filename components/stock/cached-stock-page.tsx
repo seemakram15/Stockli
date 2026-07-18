@@ -161,7 +161,6 @@ function StockPageView({
               <IconChip accent="emerald"><LineChart /></IconChip>
               <CardTitle>Price</CardTitle>
             </div>
-            <DataDelayBadge />
           </CardHeader>
           <CardContent>
             <PriceChart candles={candles} intraday={intraday} />

@@ -23,7 +23,7 @@ import { LiveSummaryCards } from "@/components/live-summary-cards";
 import { useLiveHoldings } from "@/lib/hooks/use-live-holdings";
 import { PageHeader } from "@/components/page-header";
 import { CreatePortfolioDialog } from "@/components/portfolio/create-portfolio-dialog";
-import { MarketStatusBadge } from "@/components/status-badges";
+import { DataDelayBadge, MarketStatusBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -182,6 +182,15 @@ export function CachedPortfolioCommandPage({
     }
   }, [lastCachedAt, userId, refreshNow]);
 
+  const emptyHoldingsRetryRef = React.useRef(false);
+  React.useEffect(() => {
+    if (emptyHoldingsRetryRef.current || !data) return;
+    if (data.dashboard.portfolios.length > 0 && data.dashboard.holdings.length === 0) {
+      emptyHoldingsRetryRef.current = true;
+      void refreshNow();
+    }
+  }, [data, refreshNow]);
+
   // Hooks must run unconditionally, so compute a safe holdings source before
   // the loading-state early return below.
   const { liveHoldings } = useLiveHoldings(data?.dashboard.holdings ?? EMPTY_HOLDINGS);
@@ -231,6 +240,7 @@ export function CachedPortfolioCommandPage({
         description={description}
         actions={
           <>
+            <DataDelayBadge />
             <MarketStatusBadge status={market.status} label={market.label} />
             <ManualDataRefreshButton
               userId={userId}

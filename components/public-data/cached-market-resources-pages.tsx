@@ -364,7 +364,6 @@ export function CachedPivotPointsPage() {
               isFromDeviceCache={resource.isFromDeviceCache}
               isRefreshing={resource.isRefreshing}
             />
-            <DataDelayBadge />
           </>
         }
       />
@@ -572,7 +571,6 @@ function ResourceShell<T>({
               isFromDeviceCache={resource.isFromDeviceCache}
               isRefreshing={resource.isRefreshing}
             />
-            <DataDelayBadge />
             {sourceUrl ? (
               <Button asChild variant="outline" size="sm">
                 <a href={sourceUrl} target="_blank" rel="noreferrer">

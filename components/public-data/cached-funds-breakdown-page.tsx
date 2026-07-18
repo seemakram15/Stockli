@@ -44,7 +44,6 @@ export function CachedFundsBreakdownPage() {
         description="Each fund's stock holdings with live PSX daily change and Rs 100k P/L estimate."
         actions={
           <>
-            <DataDelayBadge />
             <CacheStatusBadge
               updatedAt={data?.updatedAt}
               cachedAt={cachedAt}
@@ -53,8 +52,8 @@ export function CachedFundsBreakdownPage() {
             />
             <Button
               type="button"
-              variant="outline"
               size="sm"
+              className="bg-gradient-to-r from-violet-500 to-fuchsia-500 font-semibold text-white shadow-md shadow-violet-500/25 transition-all hover:from-violet-500 hover:to-fuchsia-400 hover:text-white hover:shadow-violet-500/35"
               onClick={handleRefresh}
               disabled={refreshing}
             >

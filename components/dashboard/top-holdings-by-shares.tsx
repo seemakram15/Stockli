@@ -7,7 +7,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { formatNumber } from "@/lib/format";
+import { formatPKR } from "@/lib/format";
 import type { HoldingWithMetrics } from "@/lib/types";
 
 const COLORS = [
@@ -20,13 +20,13 @@ const COLORS = [
 
 export function TopHoldingsByShares({ holdings }: { holdings: HoldingWithMetrics[] }) {
   const rows = aggregateHoldings(holdings).slice(0, 8);
-  const maxShares = Math.max(...rows.map((row) => row.shares), 0);
-  if (rows.length === 0 || maxShares <= 0) return null;
+  const maxValue = Math.max(...rows.map((row) => row.value), 0);
+  if (rows.length === 0 || maxValue <= 0) return null;
 
   const chart = {
     width: 760,
     height: 280,
-    left: 64,
+    left: 80,
     right: 24,
     top: 26,
     bottom: 58,
@@ -34,8 +34,8 @@ export function TopHoldingsByShares({ holdings }: { holdings: HoldingWithMetrics
   const plotWidth = chart.width - chart.left - chart.right;
   const plotHeight = chart.height - chart.top - chart.bottom;
   const chartBottom = chart.top + plotHeight;
-  const niceMax = niceCeil(maxShares);
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => Math.round(niceMax * ratio));
+  const niceMax = niceCeil(maxValue);
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => niceMax * ratio);
   const step = plotWidth / rows.length;
   const candleWidth = Math.max(26, Math.min(44, step * 0.42));
 
@@ -50,16 +50,16 @@ export function TopHoldingsByShares({ holdings }: { holdings: HoldingWithMetrics
         <AccordionTrigger className="py-3">
           <span className="flex flex-1 items-center gap-2">
             <CandlestickChart className="size-4 text-primary" />
-            <span className="font-semibold">Top holdings by shares</span>
+            <span className="font-semibold">Top holdings by value</span>
             <span className="ml-auto text-xs font-normal text-muted-foreground">Top 8</span>
           </span>
         </AccordionTrigger>
         <AccordionContent className="pt-1 pb-4">
-          <MobileHoldingsBars rows={rows} maxShares={maxShares} />
+          <MobileHoldingsBars rows={rows} maxValue={maxValue} />
           <div className="hidden rounded-xl border border-border bg-background/70 p-2 sm:block">
         <svg
           role="img"
-          aria-label="Top holdings by share count candle chart"
+          aria-label="Top holdings by market value bar chart"
           viewBox={`0 0 ${chart.width} ${chart.height}`}
           className="h-auto w-full"
         >
@@ -94,12 +94,12 @@ export function TopHoldingsByShares({ holdings }: { holdings: HoldingWithMetrics
                   strokeOpacity="0.8"
                 />
                 <text
-                  x={chart.left - 10}
+                  x={chart.left - 8}
                   y={y + 4}
                   textAnchor="end"
-                  className="fill-muted-foreground text-[11px] tabular-nums"
+                  className="fill-muted-foreground text-[10px] tabular-nums"
                 >
-                  {formatNumber(tick, 0)}
+                  {compactPKR(tick)}
                 </text>
               </g>
             );
@@ -107,7 +107,7 @@ export function TopHoldingsByShares({ holdings }: { holdings: HoldingWithMetrics
 
           {rows.map((row, index) => {
             const x = chart.left + step * index + step / 2;
-            const valueY = chartBottom - (row.shares / niceMax) * plotHeight;
+            const valueY = chartBottom - (row.value / niceMax) * plotHeight;
             const bodyHeight = Math.max(18, chartBottom - valueY);
             const bodyTop = chartBottom - bodyHeight;
             const wickTop = Math.max(chart.top + 4, bodyTop - 14);
@@ -147,9 +147,9 @@ export function TopHoldingsByShares({ holdings }: { holdings: HoldingWithMetrics
                   x={x}
                   y={Math.max(chart.top + 12, wickTop - 8)}
                   textAnchor="middle"
-                  className="fill-foreground text-[11px] font-semibold tabular-nums"
+                  className="fill-foreground text-[10px] font-semibold tabular-nums"
                 >
-                  {formatNumber(row.shares, 0)}
+                  {compactPKR(row.value)}
                 </text>
                 <text
                   x={x}
@@ -167,7 +167,7 @@ export function TopHoldingsByShares({ holdings }: { holdings: HoldingWithMetrics
             y={chart.height - 6}
             className="fill-muted-foreground text-[10px]"
           >
-            Shares held across all portfolios
+            Market value (Rs.) across all portfolios
           </text>
         </svg>
           </div>
@@ -179,22 +179,22 @@ export function TopHoldingsByShares({ holdings }: { holdings: HoldingWithMetrics
 
 function MobileHoldingsBars({
   rows,
-  maxShares,
+  maxValue,
 }: {
-  rows: { symbol: string; shares: number }[];
-  maxShares: number;
+  rows: { symbol: string; value: number }[];
+  maxValue: number;
 }) {
   return (
     <div className="space-y-3 rounded-xl border border-border bg-background/70 p-3 sm:hidden">
       {rows.map((row, index) => {
-        const width = `${Math.max(12, (row.shares / maxShares) * 100)}%`;
+        const width = `${Math.max(12, (row.value / maxValue) * 100)}%`;
         const color = COLORS[index % COLORS.length];
         return (
           <div key={row.symbol} className="space-y-1.5">
             <div className="flex items-center justify-between gap-3 text-xs">
               <span className="font-semibold">{row.symbol}</span>
               <span className="tabular-nums text-muted-foreground">
-                {formatNumber(row.shares, 0)} shares
+                {formatPKR(row.value)}
               </span>
             </div>
             <div className="h-9 overflow-hidden rounded-lg border border-border bg-muted/30">
@@ -202,7 +202,7 @@ function MobileHoldingsBars({
                 className="flex h-full min-w-12 items-center justify-end rounded-md pr-2 text-[11px] font-semibold text-white shadow-sm"
                 style={{ width, background: color }}
               >
-                {formatNumber(row.shares, 0)}
+                {compactPKR(row.value)}
               </div>
             </div>
           </div>
@@ -216,15 +216,21 @@ function aggregateHoldings(holdings: HoldingWithMetrics[]) {
   const bySymbol = new Map<string, number>();
   for (const holding of holdings) {
     const symbol = holding.symbol.toUpperCase();
-    bySymbol.set(symbol, (bySymbol.get(symbol) ?? 0) + holding.quantity);
+    bySymbol.set(symbol, (bySymbol.get(symbol) ?? 0) + holding.marketValue);
   }
   return Array.from(bySymbol.entries())
-    .map(([symbol, shares]) => ({ symbol, shares }))
-    .sort((a, b) => b.shares - a.shares);
+    .map(([symbol, value]) => ({ symbol, value }))
+    .sort((a, b) => b.value - a.value);
 }
 
 function niceCeil(value: number) {
   if (value <= 0) return 1;
   const magnitude = 10 ** Math.floor(Math.log10(value));
   return Math.ceil(value / magnitude) * magnitude;
+}
+
+function compactPKR(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
+  return `${Math.round(value)}`;
 }

@@ -150,7 +150,6 @@ export function CachedMFTopHoldingsPage() {
         }
         actions={
           <>
-            <DataDelayBadge />
             <CacheStatusBadge
               updatedAt={data?.updatedAt}
               cachedAt={cachedAt}

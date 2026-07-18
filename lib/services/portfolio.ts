@@ -150,7 +150,8 @@ async function getHoldingsForPortfolioIds(ids: string[]): Promise<Holding[]> {
   const portfolioIds = ids.filter(Boolean);
   if (portfolioIds.length === 0) return [];
   const supabase = await createClient();
-  const { data } = await supabase.from("holdings").select("*").in("portfolio_id", portfolioIds);
+  const { data, error } = await supabase.from("holdings").select("*").in("portfolio_id", portfolioIds);
+  if (error) throw new Error(`Holdings query failed: ${error.message}`);
   return (data as Holding[] | null) ?? [];
 }
 

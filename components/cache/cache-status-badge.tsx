@@ -22,7 +22,7 @@ export function CacheStatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm",
+        "hidden sm:inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm",
         className
       )}
       title={timestamp ? `Updated ${formatDateTime(timestamp)}` : undefined}

@@ -55,7 +55,6 @@ export function CachedGlobalMarketPage({
         description={data?.description ?? description}
         actions={
           <>
-            <DataDelayBadge />
             <CacheStatusBadge
               updatedAt={latestUpdatedAt(data)}
               cachedAt={cachedAt}

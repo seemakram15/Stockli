@@ -41,13 +41,13 @@ export function MobileNav({
           <Menu className="size-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-72 max-w-[calc(100vw-2rem)] p-0">
+      <SheetContent side="left" className="flex w-72 max-w-[calc(100vw-2rem)] flex-col p-0">
         <SheetHeader className="border-b border-border px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))]">
           <SheetTitle asChild>
             <Logo />
           </SheetTitle>
         </SheetHeader>
-        <div className="flex-1 px-3 py-4">
+        <div className="flex-1 overflow-y-auto px-3 py-4">
           <NavLinks
             onNavigate={(event, href) => {
               if (pathname === href || pathname.startsWith(`${href}/`)) {
