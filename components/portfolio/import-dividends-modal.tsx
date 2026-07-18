@@ -57,6 +57,18 @@ export function ImportDividendsModal({ open, onOpenChange, portfolioId }: Props)
 
     try {
       const res = await fetch("/api/dividends/parse", { method: "POST", body: form });
+      if (!res.ok) {
+        const text = await res.text().catch(() => `HTTP ${res.status}`);
+        const msg = (() => { try { return JSON.parse(text)?.error ?? `Server error ${res.status}`; } catch { return `Server error ${res.status}`; } })();
+        setEntries((prev) =>
+          prev.map((entry) =>
+            pdfs.includes(entry.file)
+              ? { ...entry, state: { status: "error", message: msg } }
+              : entry
+          )
+        );
+        return;
+      }
       const json: { results: ParsedFileResult[] } = await res.json();
 
       setEntries((prev) =>
@@ -69,11 +81,12 @@ export function ImportDividendsModal({ open, onOpenChange, portfolioId }: Props)
           return { ...entry, state: { status: "done", result } };
         })
       );
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Request failed";
       setEntries((prev) =>
         prev.map((entry) =>
           pdfs.includes(entry.file)
-            ? { ...entry, state: { status: "error", message: "Network error" } }
+            ? { ...entry, state: { status: "error", message: msg } }
             : entry
         )
       );

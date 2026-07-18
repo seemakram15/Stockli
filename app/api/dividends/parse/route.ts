@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
+const { PDFParse } = require("pdf-parse") as { PDFParse: new (opts: { data: Buffer }) => { getText(): Promise<{ text: string }> } };
 import { createClient } from "@/lib/supabase/server";
 import { parseCdcText } from "@/lib/services/cdc-parser";
 import type { CdcParsedData } from "@/lib/types";
@@ -77,7 +77,8 @@ export async function POST(request: Request) {
     files.map(async (file) => {
       try {
         const buffer = Buffer.from(await file.arrayBuffer());
-        const parsed = await pdfParse(buffer);
+        const parser = new PDFParse({ data: buffer });
+        const parsed = await parser.getText();
         const base = parseCdcText(parsed.text);
 
         if (!base) {

@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["pdf-parse"],
+  serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
   // Pin the workspace root explicitly — a stray package-lock.json in the
   // home directory otherwise makes Turbopack infer the wrong root and
   // intermittently fail to resolve newly added files under @/*.
