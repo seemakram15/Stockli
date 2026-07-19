@@ -87,30 +87,47 @@ export async function runSystemNotificationJobs({
   psxRefreshError,
 }: WarmupNotificationOptions) {
   const results: Record<string, unknown> = {};
-  const [marketEvent, kseEvent, portfolioEvent, watchlistEvent, macroEvent, feedEvent] = await Promise.allSettled([
-    createMarketSituationNotification(admin, now),
-    createKse100ChangeNotification(admin, now),
-    createPortfolioPulseNotifications(admin, now, quotes, triggerUserId),
-    createWatchlistMoveNotifications(admin, now, quotes, triggerUserId),
-    createGlobalMacroNotifications(admin),
-    psxRefreshError ? createFeedIssueNotification(admin, now, psxRefreshError) : Promise.resolve(null),
-  ]);
 
-  results.marketSituation =
-    marketEvent.status === "fulfilled" ? marketEvent.value : String(marketEvent.reason);
-  results.kse100 =
-    kseEvent.status === "fulfilled" ? kseEvent.value : String(kseEvent.reason);
-  results.portfolioPulse =
-    portfolioEvent.status === "fulfilled" ? portfolioEvent.value : String(portfolioEvent.reason);
-  results.watchlistMoves =
-    watchlistEvent.status === "fulfilled" ? watchlistEvent.value : String(watchlistEvent.reason);
-  results.globalMacro =
-    macroEvent.status === "fulfilled" ? macroEvent.value : String(macroEvent.reason);
+  // Market status + feed issues always run first — these are time-critical.
+  try { results.marketSituation = await createMarketSituationNotification(admin, now); }
+  catch (e) { results.marketSituation = String(e); }
+
   if (psxRefreshError) {
-    results.marketFeed =
-      feedEvent.status === "fulfilled" ? feedEvent.value : String(feedEvent.reason);
+    try { results.marketFeed = await createFeedIssueNotification(admin, now, psxRefreshError); }
+    catch (e) { results.marketFeed = String(e); }
   }
+
+  // Analytics jobs (KSE-100, portfolio, watchlist, macro) are skipped in the first 30 min
+  // after session open so the market-open notification arrives alone. They catch up on the
+  // next cron tick (15 min later). Jobs run sequentially so push notifications reach the
+  // user a few seconds apart rather than all at once.
+  if (minutesSinceSessionOpen(now) < 30) return results;
+
+  try { results.kse100 = await createKse100ChangeNotification(admin, now); }
+  catch (e) { results.kse100 = String(e); }
+
+  try { results.watchlistMoves = await createWatchlistMoveNotifications(admin, now, quotes, triggerUserId); }
+  catch (e) { results.watchlistMoves = String(e); }
+
+  try { results.portfolioPulse = await createPortfolioPulseNotifications(admin, now, quotes, triggerUserId); }
+  catch (e) { results.portfolioPulse = String(e); }
+
+  try { results.globalMacro = await createGlobalMacroNotifications(admin); }
+  catch (e) { results.globalMacro = String(e); }
+
   return results;
+}
+
+function minutesSinceSessionOpen(now: Date): number {
+  const { weekday, hour, minute } = pktParts(now);
+  const total = hour * 60 + minute;
+  if (weekday === 5) {
+    if (total >= 14 * 60 + 32) return total - (14 * 60 + 32);
+    if (total >= 9 * 60 + 17) return total - (9 * 60 + 17);
+    return Infinity;
+  }
+  if (total >= 9 * 60 + 32) return total - (9 * 60 + 32);
+  return Infinity;
 }
 
 async function createMarketSituationNotification(admin: SupabaseClient, now: Date) {
@@ -228,24 +245,22 @@ async function createPortfolioPulseNotifications(
 
   let created = 0;
   const bucket = twoHourBucket(now);
-  await Promise.all(
-    Array.from(totals.entries()).map(async ([userId, total]) => {
-      if (Math.abs(total.dayPl) < 1) return;
-      const move = formatSignedMoney(total.dayPl);
-      const holdingLabel = total.positions === 1 ? "holding" : "holdings";
-      const direction = total.dayPl >= 0 ? "up" : "down";
-      const result = await createNotification(admin, {
-        userId,
-        type: "PORTFOLIO",
-        title: `Your portfolio is ${direction} ${move} today`,
-        body: `Across ${total.positions} ${holdingLabel}, today's move is ${move} based on the latest PSX prices.`,
-        href: "/dashboard",
-        eventKey: `portfolio-pulse:${userId}:${pktDate(now)}:${bucket}`,
-        eventPayload: total,
-      });
-      if (result.created) created += 1;
-    })
-  );
+  for (const [userId, total] of totals.entries()) {
+    if (Math.abs(total.dayPl) < 1) continue;
+    const move = formatSignedMoney(total.dayPl);
+    const holdingLabel = total.positions === 1 ? "holding" : "holdings";
+    const direction = total.dayPl >= 0 ? "up" : "down";
+    const result = await createNotification(admin, {
+      userId,
+      type: "PORTFOLIO",
+      title: `Your portfolio is ${direction} ${move} today`,
+      body: `Across ${total.positions} ${holdingLabel}, today's move is ${move} based on the latest PSX prices.`,
+      href: "/dashboard",
+      eventKey: `portfolio-pulse:${userId}:${pktDate(now)}:${bucket}`,
+      eventPayload: total,
+    });
+    if (result.created) created += 1;
+  }
 
   return { created };
 }
@@ -292,29 +307,27 @@ async function createWatchlistMoveNotifications(
   if (pairs.length === 0) return { created: 0 };
 
   let created = 0;
-  await Promise.all(
-    pairs.map(async ({ userId, symbol }) => {
-      const quote = quoteMap.get(symbol);
-      if (!quote || Math.abs(quote.changePct) < WATCHLIST_MOVE_THRESHOLD_PCT) return;
-      const direction = quote.change >= 0 ? "up" : "down";
-      const result = await createNotification(admin, {
-        userId,
-        type: "WATCHLIST",
-        title: `${symbol} is ${direction} ${formatPct(Math.abs(quote.changePct))} today`,
-        body: `${symbol} on your watchlist is trading at Rs ${money(quote.price)} (${formatSignedMoney(quote.change)} today).`,
+  for (const { userId, symbol } of pairs) {
+    const quote = quoteMap.get(symbol);
+    if (!quote || Math.abs(quote.changePct) < WATCHLIST_MOVE_THRESHOLD_PCT) continue;
+    const direction = quote.change >= 0 ? "up" : "down";
+    const result = await createNotification(admin, {
+      userId,
+      type: "WATCHLIST",
+      title: `${symbol} is ${direction} ${formatPct(Math.abs(quote.changePct))} today`,
+      body: `${symbol} on your watchlist is trading at Rs ${money(quote.price)} (${formatSignedMoney(quote.change)} today).`,
+      symbol,
+      href: `/stock/${symbol}`,
+      eventKey: `watchlist-move:${userId}:${symbol}:${pktDate(now)}:${direction}`,
+      eventPayload: {
         symbol,
-        href: `/stock/${symbol}`,
-        eventKey: `watchlist-move:${userId}:${symbol}:${pktDate(now)}:${direction}`,
-        eventPayload: {
-          symbol,
-          price: quote.price,
-          change: quote.change,
-          changePct: quote.changePct,
-        },
-      });
-      if (result.created) created += 1;
-    })
-  );
+        price: quote.price,
+        change: quote.change,
+        changePct: quote.changePct,
+      },
+    });
+    if (result.created) created += 1;
+  }
 
   return { created };
 }

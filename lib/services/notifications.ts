@@ -9,6 +9,37 @@ export interface NotificationFeed {
   unread: number;
 }
 
+/** Unread notification count only — one lightweight query, no items returned. */
+export async function getUnreadCount(): Promise<number> {
+  if (await isSampleMode()) return 2;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return 0;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("notifications_seen_at")
+    .eq("id", user.id)
+    .maybeSingle();
+  const seenAt = (profile?.notifications_seen_at as string) ?? "1970-01-01T00:00:00Z";
+
+  const [{ count: ownCount }, { count: globalCount }] = await Promise.all([
+    supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gt("created_at", seenAt),
+    supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .is("user_id", null)
+      .gte("created_at", user.created_at)
+      .gt("created_at", seenAt),
+  ]);
+
+  return Math.min((ownCount ?? 0) + (globalCount ?? 0), 99);
+}
+
 /** Recent notifications (own + global) + unread count for the current user. */
 export async function getNotifications(): Promise<NotificationFeed> {
   if (await isSampleMode()) {

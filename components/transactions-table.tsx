@@ -41,39 +41,35 @@ export function TransactionsTable({
 
   return (
     <>
-      <div className="space-y-3 p-3 sm:hidden">
+      <div className="space-y-2 p-3 sm:hidden">
         {transactions.map((t) => (
-          <div key={t.id} className="rounded-xl border border-border bg-card p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <span
-                  className={cn(
-                    "rounded-full px-2 py-0.5 text-xs font-medium",
-                    TYPE_STYLES[t.type]
-                  )}
-                >
+          <div key={t.id} className="rounded-xl border border-border/60 bg-card px-4 py-3 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold", TYPE_STYLES[t.type])}>
                   {t.type}
                 </span>
                 {showSymbol && (
-                  <Link href={`/stock/${t.symbol}`} className="mt-2 block font-semibold hover:text-primary">
+                  <Link
+                    href={`/stock/${t.symbol}`}
+                    className="truncate text-base font-black tracking-tight text-emerald-700 dark:text-emerald-500"
+                  >
                     {t.symbol}
                   </Link>
                 )}
               </div>
-              <p className="shrink-0 text-right text-xs text-muted-foreground">
-                {formatDate(t.transacted_at)}
-              </p>
+              <p className="shrink-0 text-xs text-muted-foreground">{formatDate(t.transacted_at)}</p>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-              <MobileMetric label="Quantity" value={t.quantity ? formatNumber(t.quantity, 0) : "—"} />
-              <MobileMetric label="Price" value={t.price ? formatPKR(t.price) : "—"} align="right" />
-              <MobileMetric label="Total" value={t.quantity && t.price ? formatPKR(t.quantity * t.price) : "—"} />
-              <MobileMetric
-                label={showBuyPL ? "Total Buy P/L" : "Fees"}
-                value={renderTrailingMetric(t, showBuyPL, currentPriceBySymbol)}
-                align="right"
-              />
+            <div className="mt-1.5 flex items-center justify-between gap-2">
+              <span className="text-sm tabular-nums text-muted-foreground" style={{ wordBreak: "break-word" }}>
+                {t.quantity && t.price
+                  ? `${formatNumber(t.quantity, 0)} × ${formatNumber(t.price, 2)} = ${formatPKR(t.quantity * t.price)}`
+                  : "—"}
+              </span>
+              <span className="shrink-0 text-sm font-semibold tabular-nums">
+                {renderTrailingMetric(t, showBuyPL, currentPriceBySymbol)}
+              </span>
             </div>
           </div>
         ))}

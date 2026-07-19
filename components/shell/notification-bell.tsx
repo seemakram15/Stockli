@@ -27,6 +27,36 @@ export function NotificationBell({ userId: _userId }: { userId: string }) {
   const [open, setOpen] = React.useState(false);
   const [items, setItems] = React.useState<AppNotification[]>([]);
   const [unread, setUnread] = React.useState(0);
+  const [countLoaded, setCountLoaded] = React.useState(false);
+
+  // Fetch just the unread count on mount — one cheap query, no notification items.
+  // The full list only loads when the popover is opened.
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch("/api/notifications/unread")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!cancelled && data && typeof data.unread === "number") {
+          setUnread(data.unread);
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setCountLoaded(true); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Listen for push-received messages from the service worker to bump the badge
+  // in real time when a notification arrives while the app is open.
+  React.useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    function onMessage(event: MessageEvent) {
+      if (event.data?.type === "push-received") {
+        setUnread((u) => u + 1);
+      }
+    }
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+  }, []);
 
   async function fetchFeed() {
     try {
@@ -44,26 +74,25 @@ export function NotificationBell({ userId: _userId }: { userId: string }) {
     setOpen(next);
     if (next) {
       await fetchFeed();
-      if (unread > 0) {
-        setUnread(0);
-        try {
-          await markNotificationsSeen();
-        } catch {
-          // will resync on next open
-        }
+      setUnread(0);
+      try {
+        await markNotificationsSeen();
+      } catch {
+        // will resync on next open
       }
     }
   }
 
-  // Suppress unused-variable warning: userId is kept in props for API compatibility
   void _userId;
+
+  const showBadge = countLoaded && unread > 0;
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
-          {unread > 0 ? <BellRing className="size-4" /> : <Bell className="size-4" />}
-          {unread > 0 && (
+          {showBadge ? <BellRing className="size-4" /> : <Bell className="size-4" />}
+          {showBadge && (
             <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-loss px-1 text-[10px] font-semibold text-loss-foreground">
               {unread > 9 ? "9+" : unread}
             </span>

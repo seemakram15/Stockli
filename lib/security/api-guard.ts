@@ -29,7 +29,7 @@ const BOT_UA_PATTERNS = [
   "masscan",
 ];
 
-function isKnownScraper(ua: string): boolean {
+export function isKnownScraper(ua: string): boolean {
   const lower = ua.toLowerCase();
   return BOT_UA_PATTERNS.some((p) => lower.includes(p));
 }

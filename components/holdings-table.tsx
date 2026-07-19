@@ -35,18 +35,46 @@ export function HoldingsTable({
   userId?: string | null;
 }) {
   const { liveHoldings: rows } = useLiveHoldings(holdings);
+  const [mobileView, setMobileView] = React.useState<"detailed" | "compact">("compact");
+
+  const MobileToggle = (
+    <div className="flex items-center px-3 pb-1 pt-2 sm:hidden">
+      <div
+        className="relative flex h-8 cursor-pointer select-none items-center rounded-full bg-muted p-0.5"
+        onClick={() => setMobileView((v) => (v === "compact" ? "detailed" : "compact"))}
+      >
+        <div
+          className={cn(
+            "absolute top-0.5 h-7 w-[calc(50%-2px)] rounded-full bg-primary transition-transform duration-200",
+            mobileView === "detailed" ? "translate-x-[calc(100%+4px)]" : "translate-x-0.5",
+          )}
+        />
+        <span className={cn("relative z-10 w-20 text-center text-xs font-semibold transition-colors", mobileView === "compact" ? "text-primary-foreground" : "text-muted-foreground")}>
+          Compact
+        </span>
+        <span className={cn("relative z-10 w-20 text-center text-xs font-semibold transition-colors", mobileView === "detailed" ? "text-primary-foreground" : "text-muted-foreground")}>
+          Detailed
+        </span>
+      </div>
+    </div>
+  );
 
   if (compact) {
     return (
       <>
-        <div className="space-y-3 p-3 sm:hidden">
-          {rows.map((h) => (
-            <MobileHoldingCard
-              key={h.id}
-              holding={h}
-              portfolioName={showPortfolio ? portfolioNames?.[h.portfolio_id] : undefined}
-            />
-          ))}
+        {MobileToggle}
+        <div className="space-y-2 p-3 sm:hidden">
+          {rows.map((h) =>
+            mobileView === "compact" ? (
+              <MobileHoldingCardCompact key={h.id} holding={h} portfolioName={showPortfolio ? portfolioNames?.[h.portfolio_id] : undefined} />
+            ) : (
+              <MobileHoldingCard
+                key={h.id}
+                holding={h}
+                portfolioName={showPortfolio ? portfolioNames?.[h.portfolio_id] : undefined}
+              />
+            ),
+          )}
         </div>
 
         <div className="hidden overflow-x-auto scrollbar-thin sm:block">
@@ -92,26 +120,34 @@ export function HoldingsTable({
 
   return (
     <>
-      <div className="space-y-3 p-3 sm:hidden">
-        {rows.map((h) => (
-          <MobileHoldingCard
-            key={h.id}
-            holding={h}
-            portfolioName={showPortfolio ? portfolioNames?.[h.portfolio_id] : undefined}
-            actions={
-              rowActions ? (
-                <HoldingRowActions
-                  portfolioId={h.portfolio_id}
-                  holdingId={h.id}
-                  symbol={h.symbol}
-                  quantity={h.quantity}
-                  demo={rowActions.demo}
-                  userId={userId}
-                />
-              ) : null
-            }
-          />
-        ))}
+      {MobileToggle}
+      <div className="space-y-2 p-3 sm:hidden">
+        {rows.map((h) => {
+          const actions = rowActions ? (
+            <HoldingRowActions
+              portfolioId={h.portfolio_id}
+              holdingId={h.id}
+              symbol={h.symbol}
+              quantity={h.quantity}
+              demo={rowActions.demo}
+              userId={userId}
+            />
+          ) : null;
+          return mobileView === "compact" ? (
+            <MobileHoldingCardCompact
+              key={h.id}
+              holding={h}
+              portfolioName={showPortfolio ? portfolioNames?.[h.portfolio_id] : undefined}
+            />
+          ) : (
+            <MobileHoldingCard
+              key={h.id}
+              holding={h}
+              portfolioName={showPortfolio ? portfolioNames?.[h.portfolio_id] : undefined}
+              actions={actions}
+            />
+          );
+        })}
       </div>
 
       <div className="hidden overflow-x-auto scrollbar-thin sm:block">
@@ -209,91 +245,152 @@ function MobileHoldingCard({
 }) {
   const dayClass = plColorClass(holding.dayChange);
   const totalClass = plColorClass(holding.unrealizedPL);
+  const tickerSize =
+    holding.symbol.length > 6
+      ? "text-2xl"
+      : holding.symbol.length > 4
+        ? "text-3xl"
+        : "text-4xl";
 
   return (
-    <article className="overflow-hidden rounded-xl border border-border bg-card p-3 shadow-sm">
-      <div className="grid grid-cols-[4.6rem_minmax(0,1fr)_minmax(0,1.08fr)_minmax(0,1fr)] gap-2.5">
-        <Link href={`/stock/${holding.symbol}`} className="min-w-0">
-          <p className="truncate text-2xl font-bold tracking-tight text-primary">
-            {holding.symbol}
-          </p>
-          <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            Current
-          </p>
-          <p className="text-xl font-medium leading-tight tabular-nums text-foreground">
-            {formatNumber(holding.livePrice, 2)}
-          </p>
-          {portfolioName ? (
-            <p className="mt-2 truncate text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
-              {portfolioName}
+    <article className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+      {/* Header: ticker + current price + actions */}
+      <div className="flex items-center justify-between px-4 py-3.5">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href={`/stock/${holding.symbol}`} className="shrink-0">
+            <span
+              className={cn(
+                "font-black tracking-tight",
+                tickerSize,
+                "bg-gradient-to-r from-violet-400 via-cyan-300 to-amber-400 bg-clip-text text-transparent",
+              )}
+            >
+              {holding.symbol}
+            </span>
+          </Link>
+          <div className="min-w-0">
+            <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">
+              {portfolioName ?? "Current"}
             </p>
-          ) : null}
-        </Link>
-
-        <div className="min-w-0 space-y-2">
-          <MobilePositionMetric label="Total cost" value={formatPKR(holding.costBasis)} />
-          <MobilePositionMetric label="Avg buy" value={formatNumber(holding.avg_buy_price, 2)} />
-          <MobilePositionMetric label="Shares" value={formatNumber(holding.quantity, 0)} />
+            <p className="text-lg font-semibold leading-tight tabular-nums text-foreground">
+              {formatNumber(holding.livePrice, 2)}
+            </p>
+          </div>
         </div>
+        {actions && (
+          <div className="shrink-0 [&_button]:size-8 [&_button]:rounded-full [&_button]:bg-muted/60">
+            {actions}
+          </div>
+        )}
+      </div>
 
-        <div className="min-w-0 space-y-2">
-          <MobilePositionMetric label="Mkt value" value={formatPKR(holding.marketValue)} />
-          <MobilePositionMetric
-            label="Day's P/L"
-            value={
-              <span>
-                <span className="block">{formatPKR(holding.dayChange, { sign: true })}</span>
-                <span className="block">{formatPercent(holding.dayChangePct)}</span>
-              </span>
-            }
-            valueClassName={dayClass}
-          />
+      <AmberRule />
+
+      {/* Row 1: Avg Buy | Shares */}
+      <div className="grid grid-cols-2">
+        <div className="px-4 py-2.5">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">Avg Buy</p>
+          <p className="tabular-nums font-semibold text-foreground">{formatNumber(holding.avg_buy_price, 2)}</p>
         </div>
+        <div className="border-l border-amber-500/20 px-4 py-2.5">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">Shares</p>
+          <p className="tabular-nums font-semibold text-foreground">{formatNumber(holding.quantity, 0)}</p>
+        </div>
+      </div>
 
-        <div className="flex min-w-0 flex-col items-end gap-2">
-          {actions ? (
-            <div className="rounded-full bg-muted/80 [&_button]:size-8">
-              {actions}
-            </div>
-          ) : (
-            <div className="h-8" aria-hidden />
-          )}
-          <MobilePositionMetric
-            label="Total P/L"
-            value={
-              <span>
-                <span className="block">{formatPKR(holding.unrealizedPL, { sign: true })}</span>
-                <span className="block">{formatPercent(holding.unrealizedPLPct)}</span>
-              </span>
-            }
-            valueClassName={totalClass}
-            align="right"
-          />
+      <AmberRule />
+
+      {/* Row 2: Day's P/L | Total P/L */}
+      <div className="grid grid-cols-2">
+        <div className="px-4 py-2.5">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">Day&apos;s P/L</p>
+          <p className={cn("font-semibold leading-tight tabular-nums", dayClass)}>
+            {formatPKR(holding.dayChange, { sign: true })}{" "}
+            <span className="text-xs font-medium">({formatPercent(holding.dayChangePct)})</span>
+          </p>
+        </div>
+        <div className="border-l border-amber-500/20 px-4 py-2.5">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">Total P/L</p>
+          <p className={cn("font-semibold leading-tight tabular-nums", totalClass)}>
+            {formatPKR(holding.unrealizedPL, { sign: true })}{" "}
+            <span className="text-xs font-medium">({formatPercent(holding.unrealizedPLPct)})</span>
+          </p>
+        </div>
+      </div>
+
+      <AmberRule />
+
+      {/* Row 3: Total Cost | Mkt Value */}
+      <div className="grid grid-cols-2">
+        <div className="px-4 py-2.5 pb-4">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">Total Cost</p>
+          <p className="tabular-nums font-semibold text-foreground">{formatPKR(holding.costBasis)}</p>
+        </div>
+        <div className="border-l border-amber-500/20 px-4 py-2.5 pb-4">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">Mkt Value</p>
+          <p className="tabular-nums font-semibold text-foreground">{formatPKR(holding.marketValue)}</p>
         </div>
       </div>
     </article>
   );
 }
 
-function MobilePositionMetric({
-  label,
-  value,
-  align = "left",
-  valueClassName,
+function MobileHoldingCardCompact({
+  holding,
+  portfolioName,
 }: {
-  label: string;
-  value: React.ReactNode;
-  align?: "left" | "right";
-  valueClassName?: string;
+  holding: HoldingWithMetrics;
+  portfolioName?: string;
 }) {
+  const dayClass = plColorClass(holding.dayChange);
+  const tickerSize =
+    holding.symbol.length > 6
+      ? "text-lg"
+      : holding.symbol.length > 4
+        ? "text-xl"
+        : "text-2xl";
+
+  void portfolioName;
+
   return (
-    <div className={align === "right" ? "text-right" : ""}>
-      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className={cn("break-words text-[clamp(0.78rem,3vw,0.95rem)] font-medium leading-tight tabular-nums text-foreground", valueClassName)}>
-        {value}
-      </p>
-    </div>
+    <article className="flex flex-col gap-1 rounded-xl border border-border/60 bg-card px-4 py-3 shadow-sm">
+      <div className="flex items-center justify-between">
+        <Link href={`/stock/${holding.symbol}`} className="shrink-0">
+          <span
+            className={cn(
+              "font-black tracking-tight",
+              tickerSize,
+              "text-emerald-700 dark:text-emerald-500",
+            )}
+          >
+            {holding.symbol}
+          </span>
+        </Link>
+        <span className="font-semibold tabular-nums text-foreground">
+          {formatPKR(holding.marketValue)}
+        </span>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-muted-foreground tabular-nums">
+          {formatNumber(holding.quantity, 0)} × {formatNumber(holding.livePrice, 2)}
+        </span>
+        <span className={cn("text-sm font-semibold tabular-nums", dayClass)}>
+          {formatPKR(holding.dayChange, { sign: true })}{" "}
+          <span className="text-xs font-medium">({formatPercent(holding.dayChangePct)})</span>
+        </span>
+      </div>
+    </article>
+  );
+}
+
+function AmberRule() {
+  return (
+    <div
+      className="h-px w-full"
+      style={{
+        background: "linear-gradient(to right, transparent, rgba(245,158,11,0.55), transparent)",
+        boxShadow: "0 0 8px rgba(245,158,11,0.18)",
+      }}
+    />
   );
 }
