@@ -156,7 +156,7 @@ function IOSSafariSteps() {
       <div className="flex flex-col items-center rounded-xl border border-border bg-muted/30 p-4">
         <Share2 className="mb-2 size-8 text-blue-500" />
         <p className="text-xs text-muted-foreground">
-          Tap the Share icon in Safari's bottom bar
+          Tap the Share icon in Safari&apos;s bottom bar
         </p>
       </div>
       <div className="space-y-3">

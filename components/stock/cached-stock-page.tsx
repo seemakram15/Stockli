@@ -8,7 +8,7 @@ import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { IconChip } from "@/components/ui/accent";
 import { CreateAlertDialog } from "@/components/alerts/create-alert-dialog";
-import { DataDelayBadge, MarketStatusBadge } from "@/components/status-badges";
+import { MarketStatusBadge } from "@/components/status-badges";
 import { EmptyState } from "@/components/empty-state";
 import { LiveQuote } from "@/components/live-quote";
 import { PageLoadingState } from "@/components/loading/page-loading-state";

@@ -171,19 +171,3 @@ function computeBuyTransactionPL(transaction: Transaction, currentPrice: number 
   return livePrice * quantity - (buyPrice * quantity + fees);
 }
 
-function MobileMetric({
-  label,
-  value,
-  align = "left",
-}: {
-  label: string;
-  value: React.ReactNode;
-  align?: "left" | "right";
-}) {
-  return (
-    <div className={align === "right" ? "text-right" : ""}>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="font-medium tabular-nums">{value}</p>
-    </div>
-  );
-}

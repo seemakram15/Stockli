@@ -6,7 +6,6 @@ import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { PageHeader } from "@/components/page-header";
-import { DataDelayBadge } from "@/components/status-badges";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import { identifyAmcBrand } from "@/lib/amc-brands";
 import { cn } from "@/lib/utils";

@@ -18,7 +18,6 @@ import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { MarketStrategyBoard } from "@/components/market/market-strategy-board";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
-import { DataDelayBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
 import { formatPKR } from "@/lib/format";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";

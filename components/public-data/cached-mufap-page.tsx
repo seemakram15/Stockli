@@ -7,7 +7,6 @@ import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { MufapFundsBoard } from "@/components/market/mufap-funds-board";
 import { EtfTable } from "@/components/market/etf-table";
 import { PageHeader } from "@/components/page-header";
-import { DataDelayBadge } from "@/components/status-badges";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { MufapFundsData } from "@/lib/services/mufap";
