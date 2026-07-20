@@ -319,41 +319,41 @@ function StockDividendHistory({ dividends }: { dividends: CdcDividend[] }) {
       <CardContent className="px-0 pb-0 sm:px-2">
         <div className="space-y-3 px-4 sm:hidden">
           {dividends.map((d) => (
-            <div key={d.id} className="rounded-xl border border-border bg-muted/30 p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{formatDate(d.payment_date)}</span>
-                {d.financial_year && (
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                    FY{d.financial_year}
-                  </span>
-                )}
+            <div key={d.id} className="rounded-xl border border-border bg-card p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {d.financial_year && (
+                    <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">FY{d.financial_year}</Badge>
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground shrink-0">{formatDate(d.payment_date)}</span>
               </div>
-              <div className="mt-2 grid grid-cols-2 gap-y-1.5 text-sm">
-                <div>
-                  <p className="text-[11px] text-muted-foreground">Rate / share</p>
+              <div className="mt-3 grid grid-cols-2 gap-y-0 border-t border-border text-sm">
+                <div className="border-b border-r border-border px-0 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Rate / Share</p>
                   <p className="tabular-nums font-medium">{formatPKR(Number(d.rate_per_security))}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-[11px] text-muted-foreground">Securities</p>
+                <div className="border-b border-border py-2 pl-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Securities</p>
                   <p className="tabular-nums font-medium">{formatNumber(Number(d.no_of_securities), 0)}</p>
                 </div>
-                <div>
-                  <p className="text-[11px] text-muted-foreground">Gross</p>
-                  <p className="tabular-nums">{formatPKR(Number(d.gross_amount))}</p>
+                <div className="border-b border-r border-border py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Gross Dividend</p>
+                  <p className="tabular-nums font-medium">{formatPKR(Number(d.gross_amount))}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-[11px] text-muted-foreground">WHT</p>
-                  <p className="tabular-nums text-loss">{formatPKR(Number(d.tax_deducted))}</p>
+                <div className="border-b border-border py-2 pl-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Tax (WHT)</p>
+                  <p className="tabular-nums font-medium text-loss">{formatPKR(Number(d.tax_deducted))}</p>
                 </div>
-                {Number(d.zakat_deducted) > 0 && (
-                  <div>
-                    <p className="text-[11px] text-muted-foreground">Zakat</p>
-                    <p className="tabular-nums text-muted-foreground">{formatPKR(Number(d.zakat_deducted))}</p>
-                  </div>
-                )}
-                <div className={Number(d.zakat_deducted) > 0 ? "text-right" : "col-span-2 text-right"}>
-                  <p className="text-[11px] text-muted-foreground">Amount paid</p>
-                  <p className="tabular-nums font-semibold text-gain">{formatPKR(Number(d.net_amount))}</p>
+                <div className="border-r border-border py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Zakat</p>
+                  <p className="tabular-nums font-medium text-muted-foreground">
+                    {Number(d.zakat_deducted) > 0 ? formatPKR(Number(d.zakat_deducted)) : "—"}
+                  </p>
+                </div>
+                <div className="py-2 pl-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Amount Paid</p>
+                  <p className="tabular-nums text-base font-semibold text-gain">{formatPKR(Number(d.net_amount))}</p>
                 </div>
               </div>
             </div>

@@ -108,7 +108,7 @@ export function StockFundHolders({ symbol }: { symbol: string }) {
                       style={{ backgroundColor: group.color }}
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold leading-snug">{group.fullName}</p>
+                      <p className="truncate text-sm font-semibold leading-snug">{group.shortName}</p>
                       <p className="text-xs text-muted-foreground">
                         {group.funds.length} fund{group.funds.length !== 1 ? "s" : ""}
                       </p>
@@ -123,25 +123,18 @@ export function StockFundHolders({ symbol }: { symbol: string }) {
                 </AccordionTrigger>
 
                 <AccordionContent className="pb-1 pt-1">
-                  <div className="space-y-0.5 pl-2">
+                  <div className="pl-2">
+                    <div className="grid grid-cols-[1fr_56px] border-b border-border/50 px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                      <span>Fund</span>
+                      <span className="text-right">% Held</span>
+                    </div>
                     {group.funds.map((fund) => (
                       <div
                         key={`${fund.amc}||${fund.fundName}`}
-                        className="grid grid-cols-[1fr_4.5rem] items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted/40"
+                        className="grid grid-cols-[1fr_56px] items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted/40"
                       >
                         <p className="min-w-0 truncate text-sm text-foreground/80">{fund.fundName}</p>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold tabular-nums">{fund.percentage.toFixed(1)}%</p>
-                          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${Math.max(4, (fund.percentage / maxPct) * 100)}%`,
-                                backgroundColor: group.color,
-                              }}
-                            />
-                          </div>
-                        </div>
+                        <p className="text-right text-sm font-semibold tabular-nums">{fund.percentage.toFixed(1)}%</p>
                       </div>
                     ))}
                   </div>

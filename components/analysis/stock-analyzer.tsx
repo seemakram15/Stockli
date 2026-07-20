@@ -346,14 +346,14 @@ export function StockAnalyzer() {
                     aria-selected={active}
                     onClick={() => setMode(value)}
                     className={cn(
-                      "flex h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition sm:text-base",
+                      "flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-center text-xs font-semibold transition sm:gap-2 sm:px-3 sm:text-sm",
                       active
                         ? "bg-background text-foreground shadow-sm ring-1 ring-border"
                         : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
                     )}
                   >
                     <Icon className="size-4 shrink-0" />
-                    <span className="truncate">{label}</span>
+                    <span className="leading-tight">{label}</span>
                   </button>
                 );
               })}
@@ -735,8 +735,8 @@ function AnalyzeResult({
 
       <div className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
         <SeriesPanelCard
-          title="Price History"
-          subtitle="Best available cached price-like series for this stock."
+          title="Price Trend"
+          subtitle="End-of-day closing price series from cached financial data."
           series={priceSeries}
           color={POSITIVE}
         />
@@ -1261,39 +1261,41 @@ function StockPicker({
           className="h-12 pl-10 text-base"
         />
       </div>
-      <div className="max-h-64 overflow-y-auto rounded-2xl border bg-card p-1 shadow-soft">
-        {loading ? (
-          <div className="flex items-center justify-center gap-2 p-4 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin text-violet-500" />
-            Loading ready stocks...
-          </div>
-        ) : companies.length ? (
-          companies.slice(0, 70).map((company) => (
-            <button
-              key={`${company.id}-${company.symbol}`}
-              type="button"
-              onClick={() => {
-                onChange(company.symbol);
-                onQueryChange("");
-              }}
-              className={cn(
-                "flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-muted",
-                value === company.symbol && "bg-violet-500/10 text-violet-600 dark:text-violet-300"
-              )}
-            >
-              <span className="min-w-0">
-                <span className="block font-semibold">{company.symbol}</span>
-                <span className="block truncate text-sm text-muted-foreground">{company.name}</span>
-              </span>
-              <span className="hidden max-w-40 truncate rounded-full border px-2 py-0.5 text-xs text-muted-foreground sm:inline">
-                {company.sector}
-              </span>
-            </button>
-          ))
-        ) : (
-          <p className="p-4 text-center text-sm text-muted-foreground">No matching stocks.</p>
-        )}
-      </div>
+      {query.trim() ? (
+        <div className="max-h-64 overflow-y-auto rounded-2xl border bg-card p-1 shadow-soft">
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 p-4 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin text-violet-500" />
+              Loading ready stocks...
+            </div>
+          ) : companies.length ? (
+            companies.slice(0, 70).map((company) => (
+              <button
+                key={`${company.id}-${company.symbol}`}
+                type="button"
+                onClick={() => {
+                  onChange(company.symbol);
+                  onQueryChange("");
+                }}
+                className={cn(
+                  "flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-muted",
+                  value === company.symbol && "bg-violet-500/10 text-violet-600 dark:text-violet-300"
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block font-semibold">{company.symbol}</span>
+                  <span className="block truncate text-sm text-muted-foreground">{company.name}</span>
+                </span>
+                <span className="hidden max-w-40 truncate rounded-full border px-2 py-0.5 text-xs text-muted-foreground sm:inline">
+                  {company.sector}
+                </span>
+              </button>
+            ))
+          ) : (
+            <p className="p-4 text-center text-sm text-muted-foreground">No matching stocks.</p>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

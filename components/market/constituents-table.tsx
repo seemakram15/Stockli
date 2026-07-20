@@ -61,22 +61,16 @@ export function ConstituentsTable({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <FilterPanel
-          title="Constituent filters"
-          summary={`${rows.length} of ${constituents.length}`}
-          className="w-full sm:max-w-xs"
-        >
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Filter constituents…"
-              className="pl-9"
-            />
-          </div>
-        </FilterPanel>
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter constituents…"
+            className="pl-9"
+          />
+        </div>
         <span className="shrink-0 text-xs text-muted-foreground">
           {rows.length} of {constituents.length}
         </span>
@@ -87,32 +81,31 @@ export function ConstituentsTable({
           <Link
             key={c.symbol}
             href={`/stock/${c.symbol}`}
-            className="block rounded-xl border border-border bg-card p-3 hover:border-primary/40"
+            className="block rounded-xl border border-border bg-card px-4 py-4 hover:border-primary/40"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-semibold">{c.symbol}</p>
+                <p className="text-base font-semibold">{c.symbol}</p>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">{c.name}</p>
               </div>
-              <div className="text-right">
-                <p className="font-medium tabular-nums">{formatPKR(c.current)}</p>
-                <PriceChange change={c.change} pct={c.changePct} />
-              </div>
+              <p className="shrink-0 whitespace-nowrap tabular-nums text-base font-medium">{formatPKR(c.current)}</p>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-xs text-muted-foreground">Weight</p>
-                <p className="font-medium tabular-nums">{formatNumber(c.weight, 2)}%</p>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: `${Math.max(4, (c.weight / maxWeight) * 100)}%` }}
-                  />
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <div className="flex gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Weight</p>
+                  <p className="tabular-nums text-sm font-medium">{formatNumber(c.weight, 2)}%</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Volume</p>
+                  <p className="tabular-nums text-sm font-medium">{formatCompact(c.volume)}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Volume</p>
-                <p className="font-medium tabular-nums">{formatCompact(c.volume)}</p>
+              <div className="flex flex-col items-end gap-0.5">
+                <span className={cn("tabular-nums text-sm", plColorClass(c.change))}>
+                  {formatPKR(c.change, { sign: true })}
+                </span>
+                <ChangeBadge pct={c.changePct} className="text-xs" />
               </div>
             </div>
           </Link>

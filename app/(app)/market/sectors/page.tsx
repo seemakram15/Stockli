@@ -1,12 +1,13 @@
+import * as React from "react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { BarChart3 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SmartBackLink } from "@/components/smart-back-link";
 import { SectorPerformanceDirectory } from "@/components/market/sector-performance-directory";
+import { SectorIndexPicker } from "@/components/market/sector-index-picker";
+import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { DataDelayBadge } from "@/components/status-badges";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 import {
   getMarketSectorIndexLabel,
   MARKET_SECTOR_INDEXES,
@@ -17,6 +18,21 @@ import { getSectorPerformance } from "@/lib/services/market";
 export const metadata: Metadata = { title: "Sector Performance" };
 export const dynamic = "force-dynamic";
 
+async function SectorData({ selectedIndex }: { selectedIndex: string }) {
+  const sectors = await getSectorPerformance(selectedIndex);
+
+  if (!sectors.length) {
+    return (
+      <div className="flex min-h-40 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
+        <BarChart3 className="mr-2 size-4" />
+        Sector data is temporarily unavailable.
+      </div>
+    );
+  }
+
+  return <SectorPerformanceDirectory data={sectors} selectedIndex={selectedIndex} />;
+}
+
 export default async function SectorPerformancePage({
   searchParams,
 }: {
@@ -25,7 +41,6 @@ export default async function SectorPerformancePage({
   const { index } = await searchParams;
   const selectedIndex = normalizeMarketSectorIndex(index) ?? "KSE100";
   const selectedLabel = getMarketSectorIndexLabel(selectedIndex);
-  const sectors = await getSectorPerformance(selectedIndex);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -41,36 +56,20 @@ export default async function SectorPerformancePage({
       />
 
       <Card variant="feature" className="overflow-hidden">
-        <CardContent className="flex flex-wrap gap-2 p-3 sm:p-4">
-          {MARKET_SECTOR_INDEXES.map((option) => {
-            const active = option.symbol === selectedIndex;
-            const href = `/market/sectors?index=${option.symbol}`;
-            return (
-              <Link
-                key={option.symbol}
-                href={href}
-                className={cn(
-                  "inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-medium transition",
-                  active
-                    ? "border-transparent bg-gradient-to-r from-teal-500 to-cyan-400 text-white shadow-sm shadow-teal-500/25"
-                    : "border-border bg-background hover:border-teal-500/40 hover:bg-muted/40"
-                )}
-              >
-                {option.label}
-              </Link>
-            );
-          })}
+        <CardContent className="p-3 sm:p-4">
+          <SectorIndexPicker
+            options={MARKET_SECTOR_INDEXES.map((o) => ({ symbol: o.symbol, label: o.label }))}
+            selected={selectedIndex}
+          />
         </CardContent>
       </Card>
 
-      {sectors.length ? (
-        <SectorPerformanceDirectory data={sectors} selectedIndex={selectedIndex} />
-      ) : (
-        <div className="flex min-h-40 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
-          <BarChart3 className="mr-2 size-4" />
-          Sector data is temporarily unavailable.
-        </div>
-      )}
+      <React.Suspense
+        key={selectedIndex}
+        fallback={<PageLoadingState message="Loading sector performance..." variant="sector-list" />}
+      >
+        <SectorData selectedIndex={selectedIndex} />
+      </React.Suspense>
     </div>
   );
 }

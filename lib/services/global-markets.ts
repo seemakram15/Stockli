@@ -58,9 +58,14 @@ export interface GlobalMarketData {
 }
 
 const YAHOO_CHART_BASE = "https://query2.finance.yahoo.com/v8/finance/chart";
+const CRYPTO_COIN_IDS = [
+  "bitcoin", "ethereum", "tether", "ripple", "binancecoin", "solana",
+  "usd-coin", "dogecoin", "cardano", "tron", "hyperliquid", "sui",
+  "chainlink", "avalanche-2", "stellar", "toncoin", "shiba-inu",
+  "hedera-hashgraph", "litecoin", "polkadot",
+];
 const COINGECKO_MARKETS =
-  "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h";
-const COINGECKO_TRENDING = "https://api.coingecko.com/api/v3/search/trending";
+  `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(CRYPTO_COIN_IDS.join(","))}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`;
 const GLOBAL_MARKET_TTL_SECONDS = 60;
 const GLOBAL_MARKET_STALE_SECONDS = 15 * 60;
 
@@ -270,29 +275,12 @@ async function getCryptoMarketData(): Promise<GlobalMarketData> {
   const meta = getGlobalMarketMeta("crypto");
 
   try {
-    const [topRows, trending] = await Promise.all([
-      fetchCoinGeckoMarketRows(COINGECKO_MARKETS),
-      fetchCoinGeckoTrending(),
-    ]);
-    const topIds = new Set(topRows.map((row) => row.id));
-    const missingTrendingIds = trending
-      .map((item) => item.id)
-      .filter((id) => id && !topIds.has(id))
-      .slice(0, 10);
-    const extraTrendingRows = missingTrendingIds.length
-      ? await fetchCoinGeckoMarketRows(
-          `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(
-            missingTrendingIds.join(",")
-          )}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`
-        )
-      : [];
-    const trendRankById = new Map(trending.map((item) => [item.id, item.rank]));
-    const rows = dedupeCoinRows([...topRows, ...extraTrendingRows]);
+    const rows = await fetchCoinGeckoMarketRows(COINGECKO_MARKETS);
 
     const quotes: GlobalMarketQuote[] = rows.map((row) => ({
       symbol: row.symbol.toUpperCase(),
       name: row.name,
-      type: trendRankById.has(row.id) ? "Trending Crypto" : "Crypto",
+      type: "Crypto",
       currency: "USD",
       price: row.current_price,
       previousClose: row.current_price - row.price_change_24h,
@@ -303,7 +291,7 @@ async function getCryptoMarketData(): Promise<GlobalMarketData> {
       volume: row.total_volume,
       source: "CoinGecko",
       updatedAt: row.last_updated,
-      trendRank: trendRankById.get(row.id) ?? null,
+      trendRank: null,
     }));
     return buildMarketData({
       universe: "crypto",

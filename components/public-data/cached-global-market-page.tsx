@@ -77,8 +77,14 @@ export function CachedGlobalMarketPage({
               ? `All country exchanges ranked by today's move. ${data.sourceLabel}`
               : undefined
           }
-          useTableOnMobile={market === "world"}
+          useTableOnMobile={false}
           rowNoun={market === "world" ? "exchange" : "market"}
+          prioritySymbols={
+            market === "commodities" ? ["GC=F","SI=F","HG=F","CL=F","BZ=F","PL=F","PA=F","NG=F","ZC=F","ZW=F","ZS=F","KC=F","CT=F","SB=F"] :
+            market === "oil" ? ["CL=F","BZ=F","NG=F","RB=F","HO=F"] :
+            market === "crypto" ? ["BTC","ETH","USDT","XRP","BNB","SOL","USDC","DOGE","ADA","TRX","HYPE","SUI","LINK","AVAX","XLM","TON","SHIB","HBAR","LTC","DOT"] :
+            undefined
+          }
         />
       ) : isLoading ? (
         <PageLoadingState message={`Loading ${title}...`} variant="global-market" />

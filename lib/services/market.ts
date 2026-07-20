@@ -74,6 +74,7 @@ export interface SectorPerformance {
 
 export interface SectorStockPerformance {
   symbol: string;
+  name: string | null;
   price: number;
   change: number;
   changePct: number;
@@ -177,8 +178,15 @@ export async function getSectorPerformance(
   indexSymbol?: string | null
 ): Promise<SectorPerformance[]> {
   const rows = await getMarketRows();
-  const filtered = await filterRowsForIndex(rows, indexSymbol);
-  return buildSectorPerformance(filtered);
+  const symbol = normalizeMarketSectorIndex(indexSymbol);
+  const constituents = symbol ? await getIndexConstituentsCached(symbol) : [];
+  const nameMap = Object.fromEntries(
+    constituents.map((c) => [c.symbol.toUpperCase(), c.name ?? null])
+  );
+  const filtered = symbol
+    ? rows.filter((r) => r.symbol.toUpperCase() in nameMap)
+    : rows;
+  return buildSectorPerformance(filtered, nameMap);
 }
 
 /** Market performer + sector analytics from a single market-watch read. */
@@ -228,7 +236,7 @@ async function filterRowsForIndex(rows: MarketWatchRow[], indexSymbol?: string |
   return rows.filter((row) => allowed.has(row.symbol.toUpperCase()));
 }
 
-function buildSectorPerformance(rows: MarketWatchRow[]): SectorPerformance[] {
+function buildSectorPerformance(rows: MarketWatchRow[], nameMap: Record<string, string | null> = {}): SectorPerformance[] {
   const map = new Map<
     string,
     {
@@ -253,6 +261,7 @@ function buildSectorPerformance(rows: MarketWatchRow[]): SectorPerformance[] {
     cur.volume += row.volume ?? 0;
     cur.stocks.push({
       symbol: row.symbol,
+      name: nameMap[row.symbol.toUpperCase()] ?? null,
       price: row.current,
       change: row.change,
       changePct: row.changePct,
@@ -274,7 +283,7 @@ function buildSectorPerformance(rows: MarketWatchRow[]): SectorPerformance[] {
       advancers: v.advancers,
       decliners: v.decliners,
       volume: v.volume,
-      stocks: v.stocks.sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct)),
+      stocks: v.stocks.sort((a, b) => b.changePct - a.changePct),
     }))
     .sort((a, b) => Math.abs(b.avgChangePct) - Math.abs(a.avgChangePct));
 }

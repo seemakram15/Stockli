@@ -6,7 +6,6 @@ import Link from "next/link";
 import { IconChip, type Accent } from "@/components/ui/accent";
 import { StatCard } from "@/components/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FilterPanel } from "@/components/ui/filter-panel";
 import { Input } from "@/components/ui/input";
 import { WorldMarketHeatMap } from "@/components/market/world-market-heat-map";
 import { getMarketDisplaySymbol } from "@/lib/market-symbols";
@@ -36,7 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { GlobalMarketData, GlobalMarketQuote } from "@/lib/services/global-markets";
 
-type SortKey = "name" | "price" | "changePct" | "volume" | "type" | "country";
+type SortKey = "name" | "price" | "changePct" | "volume" | "type" | "country" | "priority";
 
 export function GlobalMarketBoard({
   data,
@@ -47,6 +46,7 @@ export function GlobalMarketBoard({
   sectionDescription,
   useTableOnMobile = false,
   rowNoun = "market",
+  prioritySymbols,
 }: {
   data: GlobalMarketData;
   showMap?: boolean;
@@ -56,11 +56,12 @@ export function GlobalMarketBoard({
   sectionDescription?: string;
   useTableOnMobile?: boolean;
   rowNoun?: string;
+  prioritySymbols?: string[];
 }) {
   const [query, setQuery] = React.useState("");
   const [type, setType] = React.useState("all");
   const [region, setRegion] = React.useState("all");
-  const [sortKey, setSortKey] = React.useState<SortKey>("changePct");
+  const [sortKey, setSortKey] = React.useState<SortKey>(prioritySymbols ? "priority" : "changePct");
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
 
   const types = React.useMemo(
@@ -86,7 +87,7 @@ export function GlobalMarketBoard({
         const matchesRegion = region === "all" || quote.region === region;
         return matchesQuery && matchesType && matchesRegion;
       })
-      .sort((a, b) => compareQuotes(a, b, sortKey, sortDir));
+      .sort((a, b) => compareQuotes(a, b, sortKey, sortDir, prioritySymbols));
   }, [data.quotes, query, region, sortDir, sortKey, type]);
   const filterSummary = `${rows.length} ${rowNoun}${rows.length === 1 ? "" : "s"} · ${
     type === "all" ? "All types" : type
@@ -160,45 +161,30 @@ export function GlobalMarketBoard({
             </a>
           </div>
 
-          <FilterPanel title="Market filters" summary={filterSummary}>
-            <div className="grid gap-2 sm:grid-cols-3">
-              <label className="relative sm:col-span-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search symbol, country..."
-                  className="pl-9"
-                />
-              </label>
-              <Select value={type} onValueChange={setType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All types</SelectItem>
-                  {types.map((item) => (
-                    <SelectItem key={item} value={item}>
-                      {item}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={region} onValueChange={setRegion}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Region" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All regions</SelectItem>
-                  {regions.map((item) => (
-                    <SelectItem key={item} value={item}>
-                      {item}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </FilterPanel>
+          <div className="flex gap-2">
+            <label className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search symbol, country..."
+                className="pl-9"
+              />
+            </label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger className="sm:w-36">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                {types.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {item}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent
           className={cn(
@@ -332,9 +318,8 @@ function MarketMobileCard({
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+      <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
         <MobileMarketMetric label="Type" value={quote.type} />
-        <MobileMarketMetric label="Country" value={quote.country ?? quote.region ?? "Global"} align="right" />
         <MobileMarketMetric label="Change" value={formatSigned(quote.change)} tone={quote.change} />
         <MobileMarketMetric label="Volume" value={formatCompact(quote.volume)} align="right" />
       </div>
@@ -406,8 +391,16 @@ function compareQuotes(
   a: GlobalMarketQuote,
   b: GlobalMarketQuote,
   key: SortKey,
-  dir: "asc" | "desc"
+  dir: "asc" | "desc",
+  prioritySymbols?: string[]
 ) {
+  if (key === "priority" && prioritySymbols) {
+    const ai = prioritySymbols.indexOf(a.symbol);
+    const bi = prioritySymbols.indexOf(b.symbol);
+    const ap = ai === -1 ? prioritySymbols.length : ai;
+    const bp = bi === -1 ? prioritySymbols.length : bi;
+    return ap - bp;
+  }
   const factor = dir === "asc" ? 1 : -1;
   if (key === "name") return a.name.localeCompare(b.name) * factor;
   if (key === "type") return a.type.localeCompare(b.type) * factor;
@@ -429,11 +422,7 @@ function unique(values: string[]) {
 }
 
 function displayTicker(quote: GlobalMarketQuote) {
-  const clean = getMarketDisplaySymbol(quote.symbol, quote.displaySymbol);
-  if (quote.country) return `${clean} · ${quote.country}`;
-  if (quote.region) return `${clean} · ${quote.region}`;
-  if (quote.name) return `${clean} · ${quote.name}`;
-  return clean;
+  return getMarketDisplaySymbol(quote.symbol, quote.displaySymbol);
 }
 
 function shortMarketLabel(quote: GlobalMarketQuote) {

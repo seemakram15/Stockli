@@ -5,7 +5,6 @@ import {
   BarChart3,
   ChartColumn,
   CheckCircle2,
-  ChevronDown,
   ChevronsUpDown,
   Clock3,
   Database,
@@ -15,6 +14,12 @@ import {
   TableProperties,
   UsersRound,
 } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -356,7 +361,7 @@ function FinancialTabView({
       ) : null}
 
       {data.tables.length ? (
-        <div className="space-y-4">
+        <Accordion type="multiple" defaultValue={data.tables.map((t) => t.title)} className="space-y-3">
           {data.tables.map((table) => (
             <FinancialTableView
               key={table.title}
@@ -367,7 +372,7 @@ function FinancialTabView({
               selectedPeriods={selectedPeriods}
             />
           ))}
-        </div>
+        </Accordion>
       ) : (
         <EmptyState
           icon={<Database className="size-6" />}
@@ -541,97 +546,98 @@ function FinancialTableView({
   const showActions = tabId !== "overview";
 
   return (
-    <details className="group rounded-xl border bg-background shadow-sm" open>
-      <summary className="flex cursor-pointer list-none flex-col gap-1 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h4 className="font-semibold">{table.title}</h4>
-          {table.subtitle ? <p className="text-sm text-muted-foreground">{table.subtitle}</p> : null}
+    <AccordionItem value={table.title} className="overflow-hidden rounded-xl border bg-background shadow-sm">
+      <AccordionTrigger className="flex-row-reverse gap-3 border-b px-4 py-3 hover:no-underline data-[state=open]:border-b data-[state=closed]:border-b-0">
+        <div className="flex flex-1 flex-col gap-1 text-left sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h4 className="font-semibold">{table.title}</h4>
+            {table.subtitle ? <p className="text-sm text-muted-foreground">{table.subtitle}</p> : null}
+          </div>
+          <Badge variant="outline" className="w-fit">{table.rows.filter((row) => !row.isSection).length} rows</Badge>
         </div>
-        <span className="inline-flex items-center gap-2">
-          <Badge variant="outline">{table.rows.filter((row) => !row.isSection).length} rows</Badge>
-          <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
-        </span>
-      </summary>
+      </AccordionTrigger>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] border-collapse text-sm">
-          <thead>
-            <tr className="border-b bg-muted/40">
-              <th className="px-3 py-2 text-left font-semibold sm:sticky sm:left-0 sm:z-10 sm:bg-muted">
-                Metric
-              </th>
-              {showActions ? (
-                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">
-                  Actions
+      <AccordionContent className="pb-0">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[820px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b bg-muted/40">
+                <th className="px-3 py-2 text-left font-semibold sm:sticky sm:left-0 sm:z-10 sm:bg-muted">
+                  Metric
                 </th>
-              ) : null}
-              <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Trend</th>
-              {visibleYears.map((year) => (
-                <th key={year} className="px-3 py-2 text-right font-semibold">
-                  {year}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {table.rows.map((row, index) =>
-              row.isSection ? (
-                <tr key={`${table.title}-section-${row.label}-${index}`} className="border-b bg-muted/40">
-                  <td
-                    colSpan={visibleYears.length + (showActions ? 3 : 2)}
-                    className="px-3 py-2 font-semibold"
-                  >
-                    {row.label}
-                  </td>
-                </tr>
-              ) : (
-                <tr
-                  key={`${table.title}-${row.section ?? "row"}-${row.label}-${index}`}
-                  className={cn(
-                    "border-b last:border-0 hover:bg-muted/30",
-                    row.isBold && "font-semibold"
-                  )}
-                >
-                  <td
+                {showActions ? (
+                  <th className="px-3 py-2 text-left font-semibold text-muted-foreground">
+                    Actions
+                  </th>
+                ) : null}
+                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Trend</th>
+                {visibleYears.map((year) => (
+                  <th key={year} className="px-3 py-2 text-right font-semibold">
+                    {year}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {table.rows.map((row, index) =>
+                row.isSection ? (
+                  <tr key={`${table.title}-section-${row.label}-${index}`} className="border-b bg-muted/40">
+                    <td
+                      colSpan={visibleYears.length + (showActions ? 3 : 2)}
+                      className="px-3 py-2 font-semibold"
+                    >
+                      {row.label}
+                    </td>
+                  </tr>
+                ) : (
+                  <tr
+                    key={`${table.title}-${row.section ?? "row"}-${row.label}-${index}`}
                     className={cn(
-                      "max-w-[280px] px-3 py-2 sm:sticky sm:left-0 sm:z-10 sm:bg-background",
+                      "border-b last:border-0 hover:bg-muted/30",
                       row.isBold && "font-semibold"
                     )}
                   >
-                    <span className={cn("block", row.isBold && "font-semibold")}>{row.label}</span>
-                    {row.unit ? (
-                      <span className="text-xs text-muted-foreground">{row.unit}</span>
-                    ) : null}
-                  </td>
-                  {showActions ? (
-                    <td className="px-3 py-2">
-                      <MetricRowActions
-                        tabId={tabId}
-                        symbol={symbol}
-                        company={company}
-                        tableTitle={table.title}
-                        row={row}
-                      />
-                    </td>
-                  ) : null}
-                  <td className="px-3 py-2">
-                    <Sparkline values={row.sparkline} />
-                  </td>
-                  {visibleYears.map((year) => (
                     <td
-                      key={year}
-                      className={cn("px-3 py-2 text-right tabular-nums", row.isBold && "font-semibold")}
+                      className={cn(
+                        "max-w-[280px] px-3 py-2 sm:sticky sm:left-0 sm:z-10 sm:bg-background",
+                        row.isBold && "font-semibold"
+                      )}
                     >
-                      {formatFinancialValue(row.values[year])}
+                      <span className={cn("block", row.isBold && "font-semibold")}>{row.label}</span>
+                      {row.unit ? (
+                        <span className="text-xs text-muted-foreground">{row.unit}</span>
+                      ) : null}
                     </td>
-                  ))}
-                </tr>
-              )
-            )}
-          </tbody>
-        </table>
-      </div>
-    </details>
+                    {showActions ? (
+                      <td className="px-3 py-2">
+                        <MetricRowActions
+                          tabId={tabId}
+                          symbol={symbol}
+                          company={company}
+                          tableTitle={table.title}
+                          row={row}
+                        />
+                      </td>
+                    ) : null}
+                    <td className="px-3 py-2">
+                      <Sparkline values={row.sparkline} />
+                    </td>
+                    {visibleYears.map((year) => (
+                      <td
+                        key={year}
+                        className={cn("px-3 py-2 text-right tabular-nums", row.isBold && "font-semibold")}
+                      >
+                        {formatFinancialValue(row.values[year])}
+                      </td>
+                    ))}
+                  </tr>
+                )
+              )}
+            </tbody>
+          </table>
+        </div>
+      </AccordionContent>
+    </AccordionItem>
   );
 }
 

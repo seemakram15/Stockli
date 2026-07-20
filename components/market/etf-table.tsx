@@ -38,7 +38,43 @@ export function EtfTable({ data }: { data: MufapFundsData }) {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
-      <div className="overflow-x-auto scrollbar-thin">
+      {/* Mobile cards */}
+      <div className="divide-y divide-border sm:hidden">
+        {sorted.map((fund) => (
+          <div key={fund.fundId ?? fund.name} className="px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <AmcBrandMark label={fund.amc} size="sm" logoUrl={fund.amcLogoUrl} />
+              <div className="min-w-0">
+                {fund.fundId ? (
+                  <Link href={`/market/etfs/${fund.fundId}`} className="font-semibold leading-snug hover:underline">
+                    {fund.name}
+                  </Link>
+                ) : (
+                  <span className="font-semibold leading-snug">{fund.name}</span>
+                )}
+                <p className="text-xs text-muted-foreground">{fund.amcShort || fund.amc}</p>
+              </div>
+            </div>
+            <div className="mt-2.5 grid grid-cols-5 gap-1">
+              {[
+                { label: "NAV", value: fund.nav != null ? formatNumber(fund.nav, 4) : "—", colored: false },
+                { label: "1 Day", value: fund.d1 != null ? formatPercent(fund.d1) : "—", raw: fund.d1 },
+                { label: "MTD", value: fund.mtd != null ? formatPercent(fund.mtd) : "—", raw: fund.mtd },
+                { label: "YTD", value: fund.ytd != null ? formatPercent(fund.ytd) : "—", raw: fund.ytd },
+                { label: "365D", value: fund.d365 != null ? formatPercent(fund.d365) : "—", raw: fund.d365 },
+              ].map(({ label, value, raw }) => (
+                <div key={label}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+                  <p className={cn("mt-0.5 tabular-nums text-xs font-semibold", raw !== undefined ? plColorClass(raw ?? null) : "")}>{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden overflow-x-auto scrollbar-thin sm:block">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
