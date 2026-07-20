@@ -11,7 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FilterPanel } from "@/components/ui/filter-panel";
 import { Input } from "@/components/ui/input";
 import { ChangeBadge } from "@/components/change-badge";
 import { formatPKR, formatCompact, formatNumber, plColorClass } from "@/lib/format";

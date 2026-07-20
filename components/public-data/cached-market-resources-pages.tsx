@@ -16,7 +16,6 @@ import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { PageHeader } from "@/components/page-header";
-import { DataDelayBadge } from "@/components/status-badges";
 import { AccentPill, IconChip, type Accent } from "@/components/ui/accent";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

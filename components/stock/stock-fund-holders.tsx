@@ -64,8 +64,6 @@ export function StockFundHolders({ symbol }: { symbol: string }) {
       : "";
 
   const amcGroups = groupByAmc(data.funds);
-  const maxPct = Math.max(...data.funds.map((f) => f.percentage), 1);
-
   return (
     <Accordion
       type="single"

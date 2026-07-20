@@ -8,7 +8,6 @@ import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { FundsBreakdownBoard } from "@/components/market/funds-breakdown-board";
 import { PageHeader } from "@/components/page-header";
-import { DataDelayBadge } from "@/components/status-badges";
 import { Button } from "@/components/ui/button";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import type { FundsBreakdownData } from "@/lib/services/funds-breakdown";

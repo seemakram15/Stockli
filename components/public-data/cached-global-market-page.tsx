@@ -13,7 +13,6 @@ import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { GlobalMarketBoard } from "@/components/market/global-market-board";
 import { PageHeader } from "@/components/page-header";
-import { DataDelayBadge } from "@/components/status-badges";
 import { type Accent } from "@/components/ui/accent";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import type { GlobalMarketData, MarketUniverse } from "@/lib/services/global-markets";

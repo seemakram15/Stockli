@@ -60,16 +60,11 @@ export function GlobalMarketBoard({
 }) {
   const [query, setQuery] = React.useState("");
   const [type, setType] = React.useState("all");
-  const [region, setRegion] = React.useState("all");
   const [sortKey, setSortKey] = React.useState<SortKey>(prioritySymbols ? "priority" : "changePct");
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
 
   const types = React.useMemo(
     () => unique(data.quotes.map((quote) => quote.type).filter(Boolean)),
-    [data.quotes]
-  );
-  const regions = React.useMemo(
-    () => unique(data.quotes.map((quote) => quote.region).filter(Boolean) as string[]),
     [data.quotes]
   );
 
@@ -84,14 +79,11 @@ export function GlobalMarketBoard({
           quote.type.toLowerCase().includes(q) ||
           quote.country?.toLowerCase().includes(q);
         const matchesType = type === "all" || quote.type === type;
-        const matchesRegion = region === "all" || quote.region === region;
-        return matchesQuery && matchesType && matchesRegion;
+        return matchesQuery && matchesType;
       })
       .sort((a, b) => compareQuotes(a, b, sortKey, sortDir, prioritySymbols));
-  }, [data.quotes, query, region, sortDir, sortKey, type]);
-  const filterSummary = `${rows.length} ${rowNoun}${rows.length === 1 ? "" : "s"} · ${
-    type === "all" ? "All types" : type
-  }`;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.quotes, query, sortDir, sortKey, type, prioritySymbols]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
