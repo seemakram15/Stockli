@@ -12,5 +12,17 @@
         "PATH": "/Users/tk-lpt-1153/.nvm/versions/node/v22.23.1/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
       }
     }
+  ],
+  "configurations_mobile": [
+    {
+      "name": "mobile",
+      "runtimeExecutable": "/Users/tk-lpt-1153/.nvm/versions/node/v22.23.1/bin/node",
+      "runtimeArgs": ["node_modules/.bin/expo", "start", "--port", "8081"],
+      "port": 8081,
+      "cwd": "mobile",
+      "env": {
+        "PATH": "/Users/tk-lpt-1153/.nvm/versions/node/v22.23.1/bin:/usr/local/bin:/usr/bin:/bin"
+      }
+    }
   ]
 }
