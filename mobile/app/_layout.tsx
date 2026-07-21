@@ -64,6 +64,16 @@ export default function RootLayout() {
         name="search"
         options={{ presentation: "card", animation: "slide_from_right" }}
       />
+      <Stack.Screen name="watchlist" options={{ presentation: "card", animation: "slide_from_right" }} />
+      <Stack.Screen name="alerts" options={{ presentation: "card", animation: "slide_from_right" }} />
+      <Stack.Screen name="fundamentals" options={{ presentation: "card", animation: "slide_from_right" }} />
+      <Stack.Screen name="pivot-points" options={{ presentation: "card", animation: "slide_from_right" }} />
+      <Stack.Screen name="stock-analyzer" options={{ presentation: "card", animation: "slide_from_right" }} />
+      <Stack.Screen name="board-meetings" options={{ presentation: "card", animation: "slide_from_right" }} />
+      <Stack.Screen name="book-closures" options={{ presentation: "card", animation: "slide_from_right" }} />
+      <Stack.Screen name="dividend-history" options={{ presentation: "card", animation: "slide_from_right" }} />
+      <Stack.Screen name="useful-links" options={{ presentation: "card", animation: "slide_from_right" }} />
+      <Stack.Screen name="youtubers" options={{ presentation: "card", animation: "slide_from_right" }} />
       <Stack.Screen name="+not-found" />
     </Stack>
   );

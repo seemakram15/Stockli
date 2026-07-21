@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, Pressable, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronRight, Bell, ShieldCheck, User, LogOut, Moon } from "lucide-react-native";
+import { router } from "expo-router";
 import { colors } from "@/lib/theme";
 import { Card } from "@/components/ui/ThemedView";
 import { ThemedText } from "@/components/ui/ThemedText";
@@ -8,9 +9,9 @@ import { useSession } from "@/hooks/useSession";
 import { supabase } from "@/lib/supabase";
 
 const SETTINGS_ROWS = [
-  { label: "Notifications", icon: Bell, color: colors.accent },
-  { label: "Tax Settings", icon: ShieldCheck, color: colors.gain },
-  { label: "Appearance", icon: Moon, color: colors.sky },
+  { label: "Price Alerts", icon: Bell, color: colors.accent, route: "/alerts" },
+  { label: "Tax Settings", icon: ShieldCheck, color: colors.gain, route: null },
+  { label: "Appearance", icon: Moon, color: colors.sky, route: null },
 ];
 
 export default function AccountScreen() {
@@ -63,6 +64,7 @@ export default function AccountScreen() {
               return (
                 <Pressable
                   key={row.label}
+                  onPress={() => row.route && router.push(row.route as never)}
                   className={`flex-row items-center gap-3 px-4 py-3.5 active:bg-surface-2 ${i < SETTINGS_ROWS.length - 1 ? "border-b border-border" : ""}`}
                 >
                   <View className="size-9 items-center justify-center rounded-xl" style={{ backgroundColor: row.color + "20" }}>
