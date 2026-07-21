@@ -32,6 +32,7 @@ export const NAV_ITEMS = [
   { href: "/market", label: "Market", icon: "TrendingUp" },
   { href: "/analysis/fundamentals", label: "Tools", icon: "FileText" },
   { href: "/explore/useful-links", label: "Explore", icon: "PlaySquare" },
+  { href: "/news", label: "Latest News", icon: "Newspaper" },
   { href: "/watchlist", label: "Watchlist", icon: "Star" },
   { href: "/alerts", label: "Alerts", icon: "Bell" },
 ] as const;

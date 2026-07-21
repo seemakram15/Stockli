@@ -34,6 +34,7 @@ import {
   Link2,
   PlaySquare,
   Settings,
+  Newspaper,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -68,6 +69,7 @@ const ICONS: Record<string, LucideIcon> = {
   Link2,
   PlaySquare,
   Settings,
+  Newspaper,
 };
 
 /** Swaps the nav icon for a spinner while that link's navigation is pending. */
