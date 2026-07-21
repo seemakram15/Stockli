@@ -49,7 +49,7 @@ function MoverRow({ item, c, rank }: { item: Mover; c: ReturnType<typeof useColo
     >
       <Text style={{ fontSize: 12, fontWeight: "700", color: c.muted, width: 16 }}>{rank}</Text>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 14, fontWeight: "700", color: c.fg }}>{item.symbol}</Text>
+        <Text style={{ fontSize: 14, fontWeight: "700", color: c.fg }} numberOfLines={1}>{item.symbol}</Text>
         {item.company_name
           ? <Text style={{ fontSize: 11, color: c.muted, marginTop: 1 }} numberOfLines={1}>{item.company_name}</Text>
           : null}
@@ -59,7 +59,7 @@ function MoverRow({ item, c, rank }: { item: Mover; c: ReturnType<typeof useColo
         backgroundColor: up ? c.gainDim : c.lossDim,
       }}>
         <Text style={{ fontSize: 12, fontWeight: "700", color: up ? c.gain : c.loss }}>
-          {up ? "+" : ""}{formatPercent(item.changePct)}
+          {formatPercent(item.changePct)}
         </Text>
       </View>
     </TouchableOpacity>
@@ -76,13 +76,13 @@ export default function DashboardScreen() {
   const { data: quotes = [] } = usePrices(allSymbols);
 
   const market = (marketData as any)?.data;
-  const indices: IndexCard[] = (market?.indices ?? [])
+  const indices: IndexCard[] = (market?.cards ?? [])
     .filter((i: any) => ["KSE100", "KSE30", "KMI30"].includes(i.symbol))
     .map((i: any) => ({ ...i, label: i.symbol === "KSE100" ? "KSE 100" : i.symbol === "KSE30" ? "KSE 30" : "KMI 30" }));
 
-  const rows: Mover[] = market?.rows ?? [];
-  const gainers = [...rows].sort((a, b) => b.changePct - a.changePct).slice(0, 5);
-  const losers = [...rows].sort((a, b) => a.changePct - b.changePct).slice(0, 5);
+  const performers = market?.analytics?.performers ?? {};
+  const gainers: Mover[] = (performers.advancers ?? []).slice(0, 5).map((r: any) => ({ symbol: r.symbol, company_name: null, changePct: r.changePct }));
+  const losers: Mover[] = (performers.decliners ?? []).slice(0, 5).map((r: any) => ({ symbol: r.symbol, company_name: null, changePct: r.changePct }));
 
   const quoteMap = new Map((quotes as any[]).map((q) => [q.symbol, q]));
   let totalValue = 0, totalCost = 0;

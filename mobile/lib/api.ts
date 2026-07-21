@@ -8,8 +8,10 @@ async function authHeaders(): Promise<Record<string, string>> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+const MOBILE_UA = "StockliApp/1.0 (Mobile; React-Native)";
+
 async function get<T>(path: string, isPrivate = false): Promise<T> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = { "Content-Type": "application/json", "User-Agent": MOBILE_UA };
   if (isPrivate) Object.assign(headers, await authHeaders());
   const res = await fetch(`${BASE}${path}`, { headers });
   if (!res.ok) throw new Error(`${res.status} ${path}`);
@@ -17,7 +19,7 @@ async function get<T>(path: string, isPrivate = false): Promise<T> {
 }
 
 async function post<T>(path: string, body: unknown, isPrivate = false): Promise<T> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = { "Content-Type": "application/json", "User-Agent": MOBILE_UA };
   if (isPrivate) Object.assign(headers, await authHeaders());
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
