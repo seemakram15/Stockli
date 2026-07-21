@@ -16,7 +16,7 @@ export function CachedFipiLipiPage() {
   const [currency, setCurrency] = React.useState<FlowCurrency>("USD");
   const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt } =
     usePersistentResource<FipiLipiData>({
-      cacheKey: "public:fipi-lipi-v7",
+      cacheKey: "public:fipi-lipi-v9",
       url: "/api/public/fipi-lipi",
       refreshInterval: 30 * 60_000,
     });
@@ -50,12 +50,6 @@ export function CachedFipiLipiPage() {
               Showing representative sample figures — the live NCCPL feed is not connected yet.
             </p>
           )}
-          {data.source === "mixed" && (
-            <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-              Recent trading days are live NCCPL data; older days are still representative samples.
-            </p>
-          )}
-
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatCard
               label="Foreign net (latest)"

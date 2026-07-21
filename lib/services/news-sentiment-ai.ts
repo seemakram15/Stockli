@@ -2,54 +2,150 @@ import "server-only";
 import { config, isZaiConfigured } from "@/lib/config";
 import type { PsxSentiment } from "@/lib/services/world-news";
 
-// Parameters used to judge Pakistan impact:
-// 1. Oil/energy prices  — Pakistan is a net importer; price rise = negative
-// 2. US Fed / rates     — higher global rates = capital outflow from Pakistan
-// 3. IMF decisions      — direct Pakistan programme impact
-// 4. USD strength       — stronger dollar = PKR pressure = negative
-// 5. Regional conflict  — Middle East/South Asia instability = investor risk-off
-// 6. Global trade       — tariffs/sanctions on Pakistan trade partners
-// 7. Commodities        — wheat (imports), cotton (exports), gold
-// 8. CPEC / China       — Pakistan's largest FDI partner
-// 9. Saudi/UAE          — largest remittance sources for Pakistan
-// 10. Pakistan domestic — floods, elections, policy rate, PSX, KSE, SBP
+// ── AI system prompt ──────────────────────────────────────────────────────────
 
-const SYSTEM = `You are a Pakistan economy and stock market analyst.
+const SYSTEM = `You are a PSX (Pakistan Stock Exchange) market analyst.
 
-For each news article, decide:
-1. Does it have a DIRECT or STRONG INDIRECT impact on Pakistan's economy or stock market (PSX/KSE)?
-2. If yes, is that impact POSITIVE or NEGATIVE for Pakistan?
+For each news article decide:
+1. Does it have a DIRECT or STRONG INDIRECT impact on Pakistan economy or PSX/KSE?
+2. If yes — is that impact POSITIVE or NEGATIVE for Pakistan markets?
 
-Criteria to judge impact:
-- OIL/ENERGY: Price rise = negative (Pakistan imports oil). Price drop = positive.
-- US FEDERAL RESERVE: Rate hike = negative (capital outflow, PKR pressure). Rate cut = positive.
-- IMF: Deal/tranche approval = positive. Delay/concern = negative.
-- USD STRENGTH: Dollar surges = negative (PKR weakens, imports costlier). Dollar falls = positive.
-- REGIONAL CONFLICT: Escalation (Middle East, India-Pakistan) = negative (investor risk-off, oil spike).
-  Ceasefire/peace = positive.
-- GLOBAL TRADE/TARIFFS: Tariffs on Pakistan's export partners (US, EU, China) = negative for Pakistan exports.
-  Trade deals opening markets = positive.
-- COMMODITIES: Wheat price rise = negative (Pakistan imports wheat). Cotton price rise = positive (Pakistan exports cotton).
-  Gold price rise = neutral/slightly positive (remittance-linked).
-- CHINA/CPEC: China economic trouble = negative (CPEC delays). China growth = positive.
-- SAUDI/UAE: Instability = negative (remittances drop). Economic strength = positive.
-- PAKISTAN DOMESTIC: Floods/disasters = negative. Elections/stability = context-dependent.
-  SBP rate cut = positive. Inflation rise = negative. PSX/KSE gains = positive.
-  Political crisis = negative.
-- GLOBAL RECESSION: Negative (exports drop, remittances drop).
-- SANCTIONS ON PAKISTAN PARTNERS: Negative.
+WHAT IMPACTS PSX (classify these):
+OIL/FUEL: Price drop = positive (Pakistan imports oil). Price rise = negative.
+  Also any domestic petrol/diesel price announcement — minister talks, OGRA notification, pump price adjustment.
+SBP/RATE: Rate cut = positive (cheaper credit, market rally). Rate hike = negative.
+IMF: Tranche/deal/approval = positive. Delay/review concern = negative.
+PKR/USD: Rupee strengthens = positive. Rupee falls = negative.
+INFLATION: Falls = positive. Rises = negative.
+EXTERNAL DEBT: New loan/relief = positive. Missed payment/default risk = negative.
+CREDIT RATING: Upgrade = positive. Downgrade = negative.
+REMITTANCES: Rising = positive. Falling = negative.
+SECURITY: Terror attack/blast in Pakistan = negative. Operation success = positive.
+POWER/ENERGY: Circular debt resolution = positive. Tariff hike/load shedding = negative.
+REGIONAL CONFLICT: India-Pakistan tension/nuclear/missile = negative. Ceasefire = positive.
+FATF: Whitelist/removed from grey list = positive. Grey/black list = negative.
+TEXTILE/EXPORTS: Rising exports = positive. Trade deficit widening = negative.
+PRIVATIZATION: PSO/PIA/OGDC stake sale = positive. Delay = slightly negative.
+CHINA/CPEC: New investment/project = positive. Delay/cancellation = negative.
+GLOBAL MARKETS: Risk-on rally = positive. Crash/risk-off = negative.
+BANKING: Strong earnings/credit growth = positive. NPL rise/loss = negative.
+GOLD: Rising gold price = slightly positive (Pakistani households hold gold).
+COMMODITIES: Wheat/cotton price shifts — wheat up = negative (import cost), cotton up = positive (export).
 
-Rules:
-- Only tag if there is a CLEAR, DIRECT connection to Pakistan. Do NOT tag general world news with no Pakistan link.
-- Return EXACTLY one JSON object mapping each article's "id" to "positive", "negative", or null (null = no Pakistan impact).
-- No explanations, only the JSON object.`;
+RULES:
+- Tag ONLY if there is a CLEAR connection to Pakistan or global factors that move PSX.
+- News about petroleum minister talking to pump owners about price adjustment = DIRECTLY impacts inflation + consumer sentiment = TAG IT.
+- General UK/Europe politics with zero Pakistan angle = null.
+- Return EXACTLY one JSON object: { "article_id": "positive"|"negative"|null }`;
 
-type SentimentMap = Record<string, PsxSentiment | null>;
+// ── Keyword fallback ──────────────────────────────────────────────────────────
+
+const PAK_KW = [
+  // Pakistan direct
+  "pakistan","psx","kse","karachi","islamabad","lahore","rupee","pkr","sbp","cpec",
+  "pmln","pti","imran","nawaz","sindh","punjab","balochistan","punjab","federal budget",
+  // Fuel / domestic energy
+  "petrol","petroleum","diesel","fuel price","pump price","ogra","cng price","motor spirit",
+  "petrol levy","hsd","high-speed diesel","petroleum minister","petroleum division",
+  // Macro
+  "inflation","interest rate","dollar","imf","forex reserve","external debt","credit rating",
+  "federal reserve","fed rate","remittance","circular debt","load shedding","loadshedding",
+  // Sector
+  "textile","cotton","hbl","mcb","ubl","abl","fatf","moody","fitch","privatization",
+  "pia","pso","ogdc","sngpl","ssgc","engro","fauji","world bank","adb",
+  // Global that moves PSX
+  "oil price","crude oil","brent","opec","gold price","wheat price","trade war","tariff",
+  "china economy","saudi","uae","gulf","nato","nuclear","missile",
+];
+
+const KW_POSITIVE = [
+  // Rate / monetary
+  "rate cut","sbp cuts","policy rate cut","sbp rate reduction","interest rate cut",
+  "monetary easing","imf deal","imf tranche","imf approval","imf disbursement","imf programme approved",
+  // Energy / fuel relief
+  "petrol price cut","petrol price down","petrol price reduced","diesel price cut",
+  "fuel price cut","fuel prices drop","ogra reduces","petroleum prices reduced",
+  "oil falls","crude falls","oil drops","oil price down","oil prices ease",
+  // Currency / reserves
+  "rupee strengthens","rupee gains","pkr strengthens","dollar falls","dollar weakens",
+  "forex reserve increase","reserves rise","current account surplus",
+  // Macro positive
+  "inflation eases","inflation falls","inflation drops","cpi falls","deflation",
+  "gdp growth","economic growth","exports rise","trade surplus","export target achieved",
+  // Fiscal / debt
+  "imf loan","imf relief","debt restructuring","world bank loan","adb loan",
+  "eurobond issued","sukuk issued","credit rating upgrade","rating upgrade","outlook positive",
+  // Security / stability
+  "ceasefire","peace deal","security restored","operation successful","militants eliminated",
+  "fatf whitelist","removed from grey list","fatf positive","compliance improved",
+  // Capital / investment
+  "cpec investment","chinese investment","fdi inflow","foreign investment","privatization proceeds",
+  "ipo","stake sale","new project","investment conference","sbp reserves increase",
+  // Markets / sector
+  "kse gains","psx gains","psx positive","psx up","kse-100 up","index gains",
+  "remittance rise","remittances increase","banking profits","strong earnings",
+  "circular debt resolved","power sector reform","electricity tariff reduced",
+  "textile exports rise","cotton price rise",
+];
+
+const KW_NEGATIVE = [
+  // Rate / monetary
+  "rate hike","sbp hikes","policy rate hike","interest rate hike","monetary tightening",
+  "imf delay","imf concern","imf review stalled","imf program suspended","imf conditions",
+  // Energy / fuel cost
+  "petrol price hike","petrol price increase","petrol price up","petrol prices raised",
+  "diesel price hike","fuel price hike","fuel price increase","ogra increases",
+  "oil surges","crude surges","oil price rise","brent rises","oil rally","opec cut",
+  // Currency / reserves
+  "rupee falls","rupee weakens","pkr falls","dollar rises","dollar surge","dollar strengthens",
+  "forex reserve fall","reserves drop","import cover falls","current account deficit widens",
+  // Macro negative
+  "inflation surge","inflation rises","inflation high","cpi rises","stagflation",
+  "gdp contraction","recession","economic slowdown","fiscal deficit",
+  // Debt / fiscal
+  "debt default","default risk","missed payment","debt servicing pressure",
+  "credit rating downgrade","rating downgrade","outlook negative","sovereign downgrade",
+  "capital outflow","capital flight",
+  // Security / stability
+  "terror attack","bomb blast","terrorist attack","explosion in","killed in attack",
+  "political crisis","political instability","dharna","protests in islamabad",
+  "court orders arrest","government falls","no-confidence",
+  "fatf grey list","money laundering concerns","aml failure",
+  // Power / energy
+  "circular debt increases","load shedding increases","electricity tariff hike","power shortage",
+  "loadshedding","power cuts","gas shortage","energy crisis",
+  // Trade / external
+  "trade deficit widens","exports fall","textile exports fall","sanctions on pakistan",
+  "trade war impact","tariff on pakistan",
+  // Markets / sector
+  "kse falls","psx falls","psx negative","kse-100 down","index falls",
+  "banking losses","npl rise","non-performing loan","remittances fall","remittance drop",
+];
+
+function keywordFallback(
+  articles: { id: string; title: string; description: string }[]
+): Record<string, PsxSentiment | null> {
+  const map: Record<string, PsxSentiment | null> = {};
+  for (const a of articles) {
+    const t = `${a.title} ${a.description}`.toLowerCase();
+    const hasPakLink = PAK_KW.some((k) => t.includes(k));
+    if (!hasPakLink) { map[a.id] = null; continue; }
+    const pos = KW_POSITIVE.filter((k) => t.includes(k)).length;
+    const neg = KW_NEGATIVE.filter((k) => t.includes(k)).length;
+    if (pos > neg) map[a.id] = "positive";
+    else if (neg > pos) map[a.id] = "negative";
+    else map[a.id] = null;
+  }
+  return map;
+}
+
+// ── AI classifier ─────────────────────────────────────────────────────────────
 
 export async function classifyPakistanImpact(
   articles: { id: string; title: string; description: string }[]
-): Promise<SentimentMap> {
-  if (!isZaiConfigured || articles.length === 0) return {};
+): Promise<Record<string, PsxSentiment | null>> {
+  if (articles.length === 0) return {};
+  if (!isZaiConfigured) return keywordFallback(articles);
 
   const input = articles.map((a) => ({
     id: a.id,
@@ -82,19 +178,19 @@ export async function classifyPakistanImpact(
       }
     );
 
-    if (!res.ok) return {};
+    if (!res.ok) return keywordFallback(articles);
 
     const json = await res.json();
     const raw = json?.choices?.[0]?.message?.content ?? "{}";
     const parsed: Record<string, unknown> = JSON.parse(raw);
 
-    const map: SentimentMap = {};
+    const map: Record<string, PsxSentiment | null> = {};
     for (const [id, val] of Object.entries(parsed)) {
       if (val === "positive" || val === "negative") map[id] = val;
       else map[id] = null;
     }
     return map;
   } catch {
-    return {};
+    return keywordFallback(articles);
   }
 }

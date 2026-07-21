@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Bell, BellRing, Activity, Info, CircleAlert, WalletCards, Star } from "lucide-react";
+import { Bell, BellRing, Activity, Info, CircleAlert, WalletCards, Star, Newspaper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ const ICONS: Record<NotificationType, typeof Bell> = {
   SYSTEM: Info,
   PORTFOLIO: WalletCards,
   WATCHLIST: Star,
+  NEWS: Newspaper,
 };
 
 export function NotificationBell({ userId: _userId }: { userId: string }) {

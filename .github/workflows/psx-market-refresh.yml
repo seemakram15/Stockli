@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Skip outside PSX market windows
+      - name: Compute PKT windows
         id: window
         env:
           TZ: Asia/Karachi
@@ -20,6 +20,7 @@ jobs:
           minute="$(date +%M)"
           total_minutes=$((10#$hour * 60 + 10#$minute))
           should_run=false
+          notify_run=false
 
           if [ "$weekday" -ge 1 ] && [ "$weekday" -le 4 ]; then
             if [ "$total_minutes" -ge 555 ] && [ "$total_minutes" -le 930 ]; then
@@ -33,7 +34,15 @@ jobs:
             fi
           fi
 
+          # Notification sweep runs 07:00-22:59 PKT every day, but only when the
+          # full market refresh is not running (the refresh already includes the
+          # notification jobs).
+          if [ "$should_run" = "false" ] && [ "$total_minutes" -ge 420 ] && [ "$total_minutes" -le 1379 ]; then
+            notify_run=true
+          fi
+
           echo "should_run=$should_run" >> "$GITHUB_OUTPUT"
+          echo "notify_run=$notify_run" >> "$GITHUB_OUTPUT"
           echo "PKT now: $(date '+%Y-%m-%d %H:%M:%S %Z')"
 
       - name: Trigger Stockli backend refresh
@@ -45,6 +54,15 @@ jobs:
             -H "Authorization: Bearer ${CRON_SECRET}" \
             "https://mystockli.qzz.io/api/cron/refresh"
 
+      - name: Trigger notification sweep
+        if: steps.window.outputs.notify_run == 'true'
+        env:
+          CRON_SECRET: ${{ secrets.STOCKLI_CRON_SECRET }}
+        run: |
+          curl --fail --show-error --silent \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://mystockli.qzz.io/api/cron/notifications"
+
       - name: Skip note
-        if: steps.window.outputs.should_run != 'true'
-        run: echo "Outside active PSX session window, skipping refresh."
+        if: steps.window.outputs.should_run != 'true' && steps.window.outputs.notify_run != 'true'
+        run: echo "Outside active windows (PKT quiet hours), skipping."

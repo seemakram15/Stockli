@@ -97,7 +97,14 @@ async function sendPushRows(
             tag: payload.tag,
             type: payload.type,
             symbol: payload.symbol,
-          })
+          }),
+          {
+            // Deliver promptly on phones/desktops, and drop instead of piling
+            // up if the device stays offline past an hour — stale market pings
+            // arriving in a burst the next morning are worse than none.
+            TTL: 60 * 60,
+            urgency: payload.type === "ALERT" || payload.type === "NEWS" ? "high" : "normal",
+          }
         );
         sent += 1;
         await admin

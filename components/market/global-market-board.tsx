@@ -47,6 +47,9 @@ export function GlobalMarketBoard({
   useTableOnMobile = false,
   rowNoun: _rowNoun = "market",
   prioritySymbols,
+  priceCardSymbols,
+  hideCountry = false,
+  chartSlot,
 }: {
   data: GlobalMarketData;
   showMap?: boolean;
@@ -57,6 +60,9 @@ export function GlobalMarketBoard({
   useTableOnMobile?: boolean;
   rowNoun?: string;
   prioritySymbols?: string[];
+  priceCardSymbols?: string[];
+  hideCountry?: boolean;
+  chartSlot?: React.ReactNode;
 }) {
   const [query, setQuery] = React.useState("");
   const [type, setType] = React.useState("all");
@@ -93,8 +99,36 @@ export function GlobalMarketBoard({
     }
   }
 
+  const priceCards = React.useMemo(() => {
+    if (!priceCardSymbols?.length) return [];
+    return priceCardSymbols
+      .map((sym) => data.quotes.find((q) => q.symbol === sym))
+      .filter((q): q is NonNullable<typeof q> => q != null && q.price != null);
+  }, [priceCardSymbols, data.quotes]);
+
   return (
     <div className="space-y-4">
+      {priceCards.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          {priceCards.map((q) => (
+            <StatCard
+              key={q.symbol}
+              label={q.name}
+              value={formatMarketPrice(q.price, q.currency)}
+              tone={q.changePct == null ? "default" : q.changePct > 0 ? "gain" : q.changePct < 0 ? "loss" : "default"}
+              accent={accent}
+              icon={q.changePct != null && q.changePct >= 0 ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}
+              sub={
+                q.changePct != null ? (
+                  <span className={cn("text-xs font-medium", q.changePct > 0 ? "text-emerald-500" : q.changePct < 0 ? "text-rose-500" : "text-muted-foreground")}>
+                    {q.changePct > 0 ? "+" : ""}{q.changePct?.toFixed(2)}% today
+                  </span>
+                ) : undefined
+              }
+            />
+          ))}
+        </div>
+      )}
       {!hideSummaryStats ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard
@@ -129,6 +163,8 @@ export function GlobalMarketBoard({
       ) : null}
 
       {showMap && <WorldMarketHeatMap data={data} />}
+
+      {chartSlot}
 
       <Card>
         <CardHeader className="gap-3">
@@ -205,7 +241,7 @@ export function GlobalMarketBoard({
                 <TableRow>
                   <SortableHead label="Market" active={sortKey === "name"} onClick={() => toggleSort("name")} />
                   <SortableHead label="Type" active={sortKey === "type"} onClick={() => toggleSort("type")} />
-                  <SortableHead label="Country" active={sortKey === "country"} onClick={() => toggleSort("country")} />
+                  {!hideCountry && <SortableHead label="Country" active={sortKey === "country"} onClick={() => toggleSort("country")} />}
                   <SortableHead label="Price" active={sortKey === "price"} onClick={() => toggleSort("price")} align="right" />
                   <SortableHead label="Change" active={sortKey === "changePct"} onClick={() => toggleSort("changePct")} align="right" />
                   <SortableHead label="Volume" active={sortKey === "volume"} onClick={() => toggleSort("volume")} align="right" />
@@ -240,7 +276,7 @@ export function GlobalMarketBoard({
                         </div>
                       ) : null}
                     </TableCell>
-                    <TableCell>{quote.country ?? quote.region ?? "Global"}</TableCell>
+                    {!hideCountry && <TableCell>{quote.country ?? quote.region ?? "Global"}</TableCell>}
                     <TableCell className="text-right tabular-nums">
                       {formatMarketPrice(quote.price, quote.currency)}
                     </TableCell>
@@ -262,7 +298,7 @@ export function GlobalMarketBoard({
                 ))}
                 {rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={hideCountry ? 6 : 7} className="h-24 text-center text-sm text-muted-foreground">
                       No markets match the current filters.
                     </TableCell>
                   </TableRow>

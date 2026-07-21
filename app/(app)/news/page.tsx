@@ -5,7 +5,7 @@ export const revalidate = 900;
 
 export const metadata = {
   title: "Latest News | Stockli",
-  description: "Live global and national news filtered for Pakistan stock market impact",
+  description: "Live global and national news with PSX market impact analysis",
 };
 
 export default async function NewsPage() {
@@ -13,5 +13,10 @@ export default async function NewsPage() {
     fetchWorldNews(),
     fetchNationalNews(),
   ]);
-  return <NewsBoard worldArticles={worldArticles} nationalArticles={nationalArticles} />;
+  return (
+    <NewsBoard
+      worldArticles={worldArticles}
+      nationalArticles={nationalArticles}
+    />
+  );
 }

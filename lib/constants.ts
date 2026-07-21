@@ -39,6 +39,11 @@ export const NAV_ITEMS = [
 
 export const TOOL_NAV_ITEMS = [
   {
+    href: "/analysis/prediction",
+    label: "Next Day Prediction",
+    icon: "TrendingUp",
+  },
+  {
     href: "/analysis/stock-analyzer",
     label: "Stock Analyzer",
     icon: "LineChart",

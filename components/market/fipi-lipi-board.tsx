@@ -133,10 +133,10 @@ export function FipiLipiBoard({
 
             <GroupBody
               title="FIPI"
-              subtitle="Foreign investors"
+              subtitle="Foreign investors — sector-wise"
               color="var(--color-sky-500, #0ea5e9)"
-              rows={day.fipi}
-              total={day.fipiNet}
+              rows={[]}
+              total={{ ...day.fipiNet, label: "FIPI (All Foreign)" }}
               fmt={fmt}
             />
             <GroupBody
@@ -150,6 +150,8 @@ export function FipiLipiBoard({
           </table>
         </div>
       </div>
+
+      <ForeignBreakdown rows={day.fipi} total={day.fipiNet} fmt={fmt} fyLabel={data.fyLabel} cyLabel={data.cyLabel} />
 
       <SectorGlossary />
     </div>
@@ -269,6 +271,60 @@ function Th({ children, className }: { children: React.ReactNode; className?: st
     >
       {children}
     </th>
+  );
+}
+
+function ForeignBreakdown({
+  rows,
+  total,
+  fmt,
+  fyLabel,
+  cyLabel,
+}: {
+  rows: CategoryRow[];
+  total: CategoryRow;
+  fmt: (usd: number) => string;
+  fyLabel: string;
+  cyLabel: string;
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="px-3 py-2" style={{ background: "color-mix(in srgb, var(--color-sky-500, #0ea5e9) 7%, transparent)" }}>
+        <span className="text-[11px] font-bold uppercase tracking-wide text-sky-500">Foreign Investor Breakdown</span>
+        <span className="ml-2 text-[11px] text-muted-foreground">
+          FIPI split by investor type — NCCPL publishes this without sector detail
+        </span>
+      </div>
+      <div className="overflow-x-auto scrollbar-thin">
+        <table className="w-full min-w-[32rem] border-collapse text-xs">
+          <thead>
+            <tr className="border-b border-border bg-muted/40">
+              <Th className="min-w-[9.5rem] text-left">Investor</Th>
+              <Th>Buy</Th>
+              <Th>Sell</Th>
+              <Th className="border-x-2 border-primary/30 bg-primary/10 text-foreground">Net</Th>
+              <Th className="bg-muted/60">{fyLabel}</Th>
+              <Th className="bg-muted/60">{cyLabel}</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...rows, total].map((row, i) => {
+              const isTotal = i === rows.length;
+              return (
+                <tr key={row.label} className={cn("border-t border-border/40", isTotal ? "bg-muted/40 font-bold" : "hover:bg-muted/20")}>
+                  <td className="px-3 py-1.5 text-left">{isTotal ? "FIPI (All Foreign)" : row.label}</td>
+                  <Num value={row.buy} fmt={fmt} muted />
+                  <Num value={-row.sell} fmt={fmt} muted />
+                  <Num value={row.net} fmt={fmt} className="border-x-2 border-primary/30 bg-primary/10 text-sm font-bold" />
+                  <Num value={row.fytd} fmt={fmt} className="bg-muted/40" />
+                  <Num value={row.cytd} fmt={fmt} className="bg-muted/40" />
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 

@@ -40,7 +40,7 @@ const USD_PKR_FALLBACK = 278.5;
 
 export async function getFipiLipiData(): Promise<FipiLipiData> {
   const { value } = await getStaleCached({
-    key: "market:fipi-lipi-v7",
+    key: "market:fipi-lipi-v9",
     ttlSeconds: FIPI_TTL_SECONDS,
     staleSeconds: FIPI_STALE_SECONDS,
     load: loadFipiLipiData,
@@ -53,30 +53,17 @@ async function loadFipiLipiData(): Promise<FipiLipiData> {
   const dates = recentTradingDates(HISTORY_DAYS);
   const liveDates = dates.slice(-LIVE_SCRAPE_DAYS);
 
-  const liveDays = await scrapeNccplRegular(liveDates).catch((err) => {
+  const scraped = await scrapeNccplRegular(liveDates).catch((err) => {
     console.warn("[fipi-lipi] NCCPL scraper unavailable, falling back to sample data:", err);
     return null;
   });
-  const liveByDate = new Map((liveDays ?? []).map((d) => [d.date, d]));
+  const liveByDate = new Map((scraped ?? []).map((d) => [d.date, d]));
 
-  // Trim trailing dates that were attempted live but came back with nothing
-  // published yet (e.g. today, before close) — drop them rather than
-  // sample-filling the most recent day with a fake number. Older gaps (not
-  // at the very end) still get sample-filled so history stays contiguous.
-  let trimmedDates = dates;
-  while (
-    trimmedDates.length > 0 &&
-    liveDates.includes(trimmedDates[trimmedDates.length - 1]) &&
-    !liveByDate.has(trimmedDates[trimmedDates.length - 1])
-  ) {
-    trimmedDates = trimmedDates.slice(0, -1);
-  }
-
-  const days = trimmedDates.map((date) => liveByDate.get(date) ?? buildSampleDay(date));
-
-  const liveCount = liveByDate.size;
-  const source: FipiLipiData["source"] =
-    liveCount === 0 ? "sample" : liveCount === trimmedDates.length ? "nccpl" : "mixed";
+  // Live days only — never mix sample-generated numbers into real history,
+  // otherwise daily nets and FYTD/CYTD cumulatives diverge from scstrade/NCCPL.
+  const liveDays = dates.filter((d) => liveByDate.has(d)).map((d) => liveByDate.get(d)!);
+  const days = liveDays.length > 0 ? liveDays : dates.map((date) => buildSampleDay(date));
+  const source: FipiLipiData["source"] = liveDays.length > 0 ? "nccpl" : "sample";
 
   applyCumulatives(days);
 
@@ -138,6 +125,7 @@ const FIPI_KEYWORDS: [string, string][] = [
   ["FOREIGN INDIVIDUAL", "Foreign Individual"],
 ];
 const LIPI_KEYWORDS: [string, string][] = [
+  ["INSURANCE", "Insurance"],
   ["INDIVIDUAL", "Individuals"],
   ["COMPAN", "Companies"],
   ["BANK", "Banks / DFI"],
@@ -145,7 +133,6 @@ const LIPI_KEYWORDS: [string, string][] = [
   ["NBFC", "NBFC"],
   ["MUTUAL", "Mutual Funds"],
   ["BROKER", "Brokers"],
-  ["INSURANCE", "Insurance"],
   ["OTHER", "Other"],
 ];
 const SECTOR_KEYWORDS: [string, string][] = [
