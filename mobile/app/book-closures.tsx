@@ -1,12 +1,11 @@
-import { View, FlatList, ActivityIndicator, Pressable } from "react-native";
+import { View, FlatList, ActivityIndicator, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ChevronLeft, BookOpen } from "lucide-react-native";
 import useSWR from "swr";
-import { colors, useColors } from "@/lib/theme";
+import { useColors } from "@/lib/theme";
 import { ThemedText } from "@/components/ui/ThemedText";
 import { api } from "@/lib/api";
-import { formatPKR } from "@/lib/format";
 
 export default function BookClosuresScreen() {
   const c = useColors();
@@ -14,55 +13,52 @@ export default function BookClosuresScreen() {
     revalidateOnFocus: false,
   });
 
-  const rows: any[] = (data as any)?.data ?? [];
+  const rows: any[] = (data as any)?.data?.rows ?? [];
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={["top"]}>
-      <View className="flex-row items-center gap-3 px-4 py-3 border-b border-border">
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={22} color={colors.text} />
-        </Pressable>
-        <ThemedText variant="title" className="flex-1">Book Closures</ThemedText>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.canvas }} edges={["top"]}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border }}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <ChevronLeft size={22} color={c.fg} />
+        </TouchableOpacity>
+        <ThemedText variant="title" style={{ flex: 1 }}>Book Closures</ThemedText>
       </View>
 
       {isLoading ? (
-        <View className="flex-1 items-center justify-center">
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={c.primary} />
         </View>
       ) : error ? (
-        <View className="flex-1 items-center justify-center">
-          <ThemedText variant="caption" className="text-muted">Failed to load</ThemedText>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ThemedText variant="caption" style={{ color: c.muted }}>Failed to load</ThemedText>
         </View>
       ) : (
         <FlatList
           data={rows}
           keyExtractor={(item, i) => `${item.symbol ?? i}-${i}`}
           renderItem={({ item }) => (
-            <Pressable
+            <TouchableOpacity
+              activeOpacity={0.7}
               onPress={() => item.symbol && router.push(`/stock/${item.symbol}` as never)}
-              className="flex-row items-center gap-3 px-4 py-3.5 border-b border-border active:bg-surface"
+              style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: c.border }}
             >
-              <View className="size-9 items-center justify-center rounded-xl bg-orange/10">
-                <BookOpen size={16} color={colors.orange} />
+              <View style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: 11, backgroundColor: c.warn + "18" }}>
+                <BookOpen size={16} color={c.warn} />
               </View>
-              <View className="flex-1">
-                <ThemedText className="text-[14px] font-semibold text-text">{item.symbol ?? "—"}</ThemedText>
-                <ThemedText variant="caption" className="mt-0.5">{item.company ?? item.name ?? ""}</ThemedText>
+              <View style={{ flex: 1 }}>
+                <ThemedText style={{ fontSize: 14, fontWeight: "600", color: c.fg }}>{item.symbol ?? "—"}</ThemedText>
+                <ThemedText variant="caption" style={{ color: c.muted, marginTop: 1 }}>{item.company ?? ""}</ThemedText>
               </View>
-              <View className="items-end gap-0.5">
-                {item.dividend != null && (
-                  <ThemedText className="text-[12px] font-semibold text-gain">
-                    {formatPKR(item.dividend)}
-                  </ThemedText>
-                )}
-                <ThemedText variant="caption">{item.from_date ?? item.date ?? "—"}</ThemedText>
+              <View style={{ alignItems: "flex-end", gap: 2 }}>
+                <ThemedText style={{ fontSize: 12, fontWeight: "600", color: c.gain }}>{item.payout ?? "—"}</ThemedText>
+                <ThemedText variant="caption" style={{ color: c.muted }}>{item.bookClosureFrom ?? "—"}</ThemedText>
               </View>
-            </Pressable>
+            </TouchableOpacity>
           )}
           ListEmptyComponent={
-            <View className="items-center py-16 gap-3">
-              <BookOpen size={36} color={colors.muted} />
-              <ThemedText variant="caption">No book closures</ThemedText>
+            <View style={{ alignItems: "center", paddingVertical: 64, gap: 12 }}>
+              <BookOpen size={36} color={c.muted} />
+              <ThemedText variant="caption" style={{ color: c.muted }}>No book closures</ThemedText>
             </View>
           }
           contentContainerStyle={{ paddingBottom: 40 }}

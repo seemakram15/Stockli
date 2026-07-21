@@ -54,6 +54,7 @@ export const api = {
     bookClosures: () => get<{ data: unknown }>("/api/public/book-closures"),
     youtubers: () => get<{ data: unknown }>("/api/public/youtubers"),
     usefulLinks: () => get<{ data: unknown }>("/api/public/useful-links"),
+    worldMonitor: () => get<{ data: unknown }>("/api/public/world-monitor"),
   },
 
   portfolio: {

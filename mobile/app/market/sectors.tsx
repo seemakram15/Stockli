@@ -19,7 +19,14 @@ export default function SectorsScreen() {
   const c = useColors();
   const { data: marketData, isLoading } = usePublicMarket();
 
-  const rows: SectorRow[] = (marketData as { data?: { sectors?: SectorRow[] } } | undefined)?.data?.sectors ?? [];
+  const rawSectors: any[] = (marketData as any)?.data?.analytics?.sectors ?? [];
+  const rows: SectorRow[] = rawSectors.map((s: any) => ({
+    sector: s.sector,
+    changePct: s.avgChangePct,
+    count: s.count,
+    advancers: s.advancers,
+    decliners: s.decliners,
+  }));
 
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={["top"]}>
@@ -52,7 +59,7 @@ export default function SectorsScreen() {
                     {item.sector}
                   </ThemedText>
                   <ThemedText variant="subhead" style={{ color }}>
-                    {item.changePct >= 0 ? "+" : ""}{formatPercent(item.changePct)}
+                    {formatPercent(item.changePct)}
                   </ThemedText>
                 </View>
                 <View className="h-1.5 bg-border rounded-full overflow-hidden mb-1">

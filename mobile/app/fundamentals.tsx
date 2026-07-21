@@ -1,122 +1,137 @@
 import { useState } from "react";
-import { View, FlatList, TextInput, Pressable, ActivityIndicator } from "react-native";
+import { View, ScrollView, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { ChevronLeft, Search } from "lucide-react-native";
-import useSWR from "swr";
-import { colors, useColors } from "@/lib/theme";
+import { ChevronLeft, BarChart2 } from "lucide-react-native";
+import { useColors } from "@/lib/theme";
+import { Card } from "@/components/ui/ThemedView";
 import { ThemedText } from "@/components/ui/ThemedText";
-import { api } from "@/lib/api";
-import { usePublicMarket } from "@/hooks/useMarket";
+import { StockSearchInput } from "@/components/ui/StockSearchInput";
+import { type StockInfo } from "@/hooks/useStockCache";
+import { formatPKR } from "@/lib/format";
 
-interface FundRow {
-  symbol: string;
-  pe: number | null;
-  pb: number | null;
-  roe: number | null;
-  eps: number | null;
-  sector: string | null;
-}
-
-function cell(val: number | null, suffix = "") {
-  if (val == null || isNaN(val)) return "—";
-  return val.toFixed(2) + suffix;
-}
-
-function colorFor(val: number | null, low: number, high: number) {
-  if (val == null) return colors.muted;
-  if (val <= low) return colors.gain;
-  if (val >= high) return colors.loss;
-  return colors.text;
+function StatRow({ label, value, subValue }: { label: string; value: string; subValue?: string }) {
+  const c = useColors();
+  return (
+    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.border }}>
+      <ThemedText variant="caption" style={{ color: c.muted }}>{label}</ThemedText>
+      <View style={{ alignItems: "flex-end" }}>
+        <ThemedText variant="caption" style={{ fontWeight: "600", color: c.fg }}>{value}</ThemedText>
+        {subValue ? <ThemedText variant="caption" style={{ color: c.muted, fontSize: 10 }}>{subValue}</ThemedText> : null}
+      </View>
+    </View>
+  );
 }
 
 export default function FundamentalsScreen() {
   const c = useColors();
-  const { data: mktData, isLoading: mktLoading } = usePublicMarket();
-  const [query, setQuery] = useState("");
+  const [symbol, setSymbol] = useState("");
+  const [selected, setSelected] = useState<StockInfo | null>(null);
 
-  const stocks: FundRow[] = ((mktData as any)?.stocks ?? []).map((s: any) => ({
-    symbol: s.symbol,
-    pe: s.pe ?? null,
-    pb: s.pb ?? null,
-    roe: s.roe ?? null,
-    eps: s.eps ?? null,
-    sector: s.sector ?? null,
-  }));
-
-  const filtered = stocks.filter((s) => {
-    if (!query) return true;
-    const q = query.toUpperCase();
-    return s.symbol.includes(q) || (s.sector ?? "").toUpperCase().includes(q);
-  });
+  const stock = selected;
+  const range = stock && stock.high && stock.low ? stock.high - stock.low : 0;
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={["top"]}>
-      <View className="flex-row items-center gap-3 px-4 py-3 border-b border-border">
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={22} color={colors.text} />
-        </Pressable>
-        <ThemedText variant="title" className="flex-1">Fundamentals</ThemedText>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.canvas }} edges={["top"]}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border }}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <ChevronLeft size={22} color={c.fg} />
+        </TouchableOpacity>
+        <ThemedText variant="title" style={{ flex: 1 }}>Fundamentals</ThemedText>
       </View>
 
-      <View className="flex-row items-center gap-2 mx-4 my-3 px-3 py-2.5 rounded-xl bg-surface border border-border">
-        <Search size={15} color={colors.muted} />
-        <TextInput
-          className="flex-1 text-text text-[14px]"
-          placeholder="Filter by symbol or sector…"
-          placeholderTextColor={colors.muted}
-          value={query}
-          onChangeText={setQuery}
-          autoCapitalize="characters"
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <StockSearchInput
+          value={symbol}
+          onChange={setSymbol}
+          onSelect={(s) => setSelected(s)}
         />
-      </View>
 
-      {/* Header row */}
-      <View className="flex-row px-4 pb-2 border-b border-border">
-        <ThemedText variant="caption" className="w-20">Symbol</ThemedText>
-        <ThemedText variant="caption" className="flex-1 text-right">P/E</ThemedText>
-        <ThemedText variant="caption" className="flex-1 text-right">P/B</ThemedText>
-        <ThemedText variant="caption" className="flex-1 text-right">ROE%</ThemedText>
-        <ThemedText variant="caption" className="flex-1 text-right">EPS</ThemedText>
-      </View>
+        {!stock && (
+          <Card style={{ alignItems: "center", paddingVertical: 48, gap: 12 }}>
+            <BarChart2 size={36} color={c.muted} />
+            <ThemedText variant="caption" style={{ color: c.muted, textAlign: "center" }}>
+              Enter a PSX symbol to view market data and pivot levels
+            </ThemedText>
+          </Card>
+        )}
 
-      {mktLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color={c.primary} />
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(i) => i.symbol}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => router.push(`/stock/${item.symbol}` as never)}
-              className="flex-row items-center px-4 py-3 border-b border-border active:bg-surface"
-            >
-              <ThemedText className="w-20 text-[13px] font-semibold text-text">{item.symbol}</ThemedText>
-              <ThemedText className="flex-1 text-right text-[13px]" style={{ color: colorFor(item.pe, 5, 30) }}>
-                {cell(item.pe)}
-              </ThemedText>
-              <ThemedText className="flex-1 text-right text-[13px]" style={{ color: colorFor(item.pb, 0.5, 5) }}>
-                {cell(item.pb)}
-              </ThemedText>
-              <ThemedText className="flex-1 text-right text-[13px]" style={{ color: colorFor(item.roe, 5, 20) }}>
-                {cell(item.roe, "%")}
-              </ThemedText>
-              <ThemedText className="flex-1 text-right text-[13px] text-muted">
-                {cell(item.eps)}
-              </ThemedText>
-            </Pressable>
-          )}
-          ListEmptyComponent={
-            <View className="items-center py-16">
-              <ThemedText variant="caption">No data</ThemedText>
-            </View>
-          }
-          contentContainerStyle={{ paddingBottom: 40 }}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+        {stock && (
+          <>
+            <Card style={{ gap: 12 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <View>
+                  <ThemedText variant="subhead" style={{ fontWeight: "800", fontSize: 17 }}>{stock.symbol}</ThemedText>
+                  <ThemedText variant="caption" style={{ color: c.muted, marginTop: 2 }}>{stock.name}</ThemedText>
+                  {stock.sector ? <ThemedText variant="caption" style={{ color: c.primary, marginTop: 2 }}>{stock.sector}</ThemedText> : null}
+                </View>
+                <ThemedText variant="subhead" style={{ fontWeight: "700", fontSize: 20 }}>{formatPKR(stock.current ?? 0)}</ThemedText>
+              </View>
+
+              {range > 0 && (
+                <View style={{ gap: 6 }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <ThemedText variant="caption" style={{ color: c.loss }}>{formatPKR(stock.low ?? 0)}</ThemedText>
+                    <ThemedText variant="caption" style={{ color: c.muted }}>Day Range</ThemedText>
+                    <ThemedText variant="caption" style={{ color: c.gain }}>{formatPKR(stock.high ?? 0)}</ThemedText>
+                  </View>
+                  <View style={{ height: 6, backgroundColor: c.border, borderRadius: 3, overflow: "hidden" }}>
+                    {stock.low && stock.high && stock.current ? (
+                      <View style={{
+                        position: "absolute", left: `${Math.max(0, ((stock.current - stock.low) / (stock.high - stock.low)) * 100 - 2)}%`,
+                        width: 4, height: 6, backgroundColor: c.primary, borderRadius: 2,
+                      }} />
+                    ) : null}
+                    <View style={{ height: "100%", backgroundColor: c.primary + "30", borderRadius: 3 }} />
+                  </View>
+                </View>
+              )}
+            </Card>
+
+            <Card style={{ padding: 0 }}>
+              <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: c.border }}>
+                <ThemedText variant="label" style={{ fontWeight: "700" }}>Price Levels</ThemedText>
+              </View>
+              <View style={{ padding: 16, gap: 0 }}>
+                <StatRow label="Previous Close" value={formatPKR(stock.previousClose ?? 0)} />
+                <StatRow label="Today High" value={formatPKR(stock.high ?? 0)} />
+                <StatRow label="Today Low" value={formatPKR(stock.low ?? 0)} />
+                <StatRow label="Range" value={formatPKR(range)} subValue={stock.high && stock.low && stock.previousClose ? `${((range / stock.previousClose) * 100).toFixed(2)}% of close` : undefined} />
+              </View>
+            </Card>
+
+            {stock.pivot && (
+              <Card style={{ padding: 0 }}>
+                <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: c.border }}>
+                  <ThemedText variant="label" style={{ fontWeight: "700" }}>Classic Pivot Points</ThemedText>
+                </View>
+                <View style={{ padding: 16 }}>
+                  {[
+                    { label: "R3", value: stock.r3, color: c.loss },
+                    { label: "R2", value: stock.r2, color: c.loss },
+                    { label: "R1", value: stock.r1, color: c.loss },
+                    { label: "Pivot", value: stock.pivot, color: c.primary },
+                    { label: "S1", value: stock.s1, color: c.gain },
+                    { label: "S2", value: stock.s2, color: c.gain },
+                    { label: "S3", value: stock.s3, color: c.gain },
+                  ].map((l, i) => l.value != null && (
+                    <View key={l.label} style={{
+                      flexDirection: "row", alignItems: "center", paddingVertical: 8,
+                      borderBottomWidth: i < 6 ? 1 : 0, borderBottomColor: c.border,
+                    }}>
+                      <ThemedText style={{ width: 44, fontSize: 12, fontWeight: "700", color: l.color }}>{l.label}</ThemedText>
+                      <ThemedText style={{ flex: 1, fontSize: 13, fontWeight: "600", color: l.color }}>{formatPKR(l.value)}</ThemedText>
+                      <ThemedText variant="caption" style={{ color: (stock.current ?? 0) < l.value ? c.gain : c.loss }}>
+                        {(stock.current ?? 0) < l.value ? "▲" : "▼"} {stock.current ? Math.abs(((l.value - stock.current) / stock.current) * 100).toFixed(2) : "0.00"}%
+                      </ThemedText>
+                    </View>
+                  ))}
+                </View>
+              </Card>
+            )}
+          </>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }

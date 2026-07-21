@@ -41,7 +41,7 @@ function MarketRow({ item }: { item: MarketRow }) {
       </View>
       <View className="items-end w-20">
         <ThemedText variant="body" style={{ color }}>
-          {item.changePct >= 0 ? "+" : ""}{formatPercent(item.changePct)}
+          {formatPercent(item.changePct)}
         </ThemedText>
         <ThemedText variant="caption" style={{ color }}>
           {item.change >= 0 ? "+" : ""}{formatPKR(item.change)}
@@ -59,7 +59,14 @@ export default function PsxMarketScreen() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("change");
 
-  const rows: MarketRow[] = (marketData as { data?: { rows?: MarketRow[] } } | undefined)?.data?.rows ?? [];
+  const rows: MarketRow[] = ((marketData as any)?.data?.detail?.constituents ?? []).map((r: any) => ({
+    symbol: r.symbol,
+    company_name: r.name,
+    current: r.current,
+    change: r.change,
+    changePct: r.changePct,
+    volume: r.volume,
+  }));
 
   const filtered = rows
     .filter((r) => {

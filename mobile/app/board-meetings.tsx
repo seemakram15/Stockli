@@ -1,9 +1,9 @@
-import { View, FlatList, ActivityIndicator, Pressable } from "react-native";
+import { View, FlatList, ActivityIndicator, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ChevronLeft, Calendar } from "lucide-react-native";
 import useSWR from "swr";
-import { colors, useColors } from "@/lib/theme";
+import { useColors } from "@/lib/theme";
 import { Card } from "@/components/ui/ThemedView";
 import { ThemedText } from "@/components/ui/ThemedText";
 import { api } from "@/lib/api";
@@ -14,52 +14,50 @@ export default function BoardMeetingsScreen() {
     revalidateOnFocus: false,
   });
 
-  const rows: any[] = (data as any)?.data ?? [];
+  const rows: any[] = (data as any)?.data?.rows ?? [];
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={["top"]}>
-      <View className="flex-row items-center gap-3 px-4 py-3 border-b border-border">
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={22} color={colors.text} />
-        </Pressable>
-        <ThemedText variant="title" className="flex-1">Board Meetings</ThemedText>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.canvas }} edges={["top"]}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border }}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <ChevronLeft size={22} color={c.fg} />
+        </TouchableOpacity>
+        <ThemedText variant="title" style={{ flex: 1 }}>Board Meetings</ThemedText>
       </View>
 
       {isLoading ? (
-        <View className="flex-1 items-center justify-center">
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={c.primary} />
         </View>
       ) : error ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <ThemedText variant="caption" className="text-center text-muted">Failed to load</ThemedText>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
+          <ThemedText variant="caption" style={{ textAlign: "center", color: c.muted }}>Failed to load</ThemedText>
         </View>
       ) : (
         <FlatList
           data={rows}
           keyExtractor={(item, i) => `${item.symbol ?? i}-${i}`}
           renderItem={({ item }) => (
-            <Pressable
+            <TouchableOpacity
+              activeOpacity={0.7}
               onPress={() => item.symbol && router.push(`/stock/${item.symbol}` as never)}
-              className="flex-row items-center gap-3 px-4 py-3.5 border-b border-border active:bg-surface"
+              style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: c.border }}
             >
-              <View className="size-9 items-center justify-center rounded-xl bg-accent/10">
+              <View style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: 11, backgroundColor: c.primary + "18" }}>
                 <Calendar size={16} color={c.primary} />
               </View>
-              <View className="flex-1">
-                <ThemedText className="text-[14px] font-semibold text-text">{item.symbol ?? item.company ?? "—"}</ThemedText>
-                <ThemedText variant="caption" className="mt-0.5">
-                  {item.company ?? item.name ?? ""}
-                </ThemedText>
+              <View style={{ flex: 1 }}>
+                <ThemedText style={{ fontSize: 14, fontWeight: "600", color: c.fg }}>{item.symbol ?? "—"}</ThemedText>
+                <ThemedText variant="caption" style={{ color: c.muted, marginTop: 1 }}>{item.company ?? ""}</ThemedText>
+                <ThemedText variant="caption" style={{ color: c.muted, marginTop: 2 }}>{item.meetingDate ?? "—"}{item.meetingTime ? `  ${item.meetingTime}` : ""}</ThemedText>
+                {item.subject ? <ThemedText variant="caption" style={{ color: c.muted, marginTop: 1 }} numberOfLines={2}>{item.subject}</ThemedText> : null}
               </View>
-              <ThemedText variant="caption" className="text-right">
-                {item.date ?? item.meeting_date ?? "—"}
-              </ThemedText>
-            </Pressable>
+            </TouchableOpacity>
           )}
           ListEmptyComponent={
-            <View className="items-center py-16 gap-3">
-              <Calendar size={36} color={colors.muted} />
-              <ThemedText variant="caption">No upcoming meetings</ThemedText>
+            <View style={{ alignItems: "center", paddingVertical: 64, gap: 12 }}>
+              <Calendar size={36} color={c.muted} />
+              <ThemedText variant="caption" style={{ color: c.muted }}>No upcoming meetings</ThemedText>
             </View>
           }
           contentContainerStyle={{ paddingBottom: 40 }}

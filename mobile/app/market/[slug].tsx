@@ -79,7 +79,7 @@ export default function MarketSlugScreen() {
                 <View className="items-end">
                   <ThemedText variant="body" className="text-fg">{price.toLocaleString()}</ThemedText>
                   <ThemedText variant="caption" style={{ color }}>
-                    {changePct >= 0 ? "+" : ""}{formatPercent(changePct)}
+                    {formatPercent(changePct)}
                   </ThemedText>
                 </View>
               </View>

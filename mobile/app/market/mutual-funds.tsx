@@ -80,14 +80,14 @@ export default function MutualFundsScreen() {
                 className="w-16 text-right"
                 style={{ color: item.return_1m != null ? plColor(item.return_1m) : colors.muted }}
               >
-                {item.return_1m != null ? `${item.return_1m >= 0 ? "+" : ""}${formatPercent(item.return_1m)}` : "—"}
+                {item.return_1m != null ? `${formatPercent(item.return_1m)}` : "—"}
               </ThemedText>
               <ThemedText
                 variant="caption"
                 className="w-16 text-right"
                 style={{ color: item.return_1y != null ? plColor(item.return_1y) : colors.muted }}
               >
-                {item.return_1y != null ? `${item.return_1y >= 0 ? "+" : ""}${formatPercent(item.return_1y)}` : "—"}
+                {item.return_1y != null ? `${formatPercent(item.return_1y)}` : "—"}
               </ThemedText>
             </View>
           )}

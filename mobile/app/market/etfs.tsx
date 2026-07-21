@@ -12,8 +12,12 @@ interface EtfRow { symbol: string; company_name?: string; current: number; chang
 export default function EtfsScreen() {
   const c = useColors();
   const { data: marketData, isLoading } = usePublicMarket();
-  const allRows: EtfRow[] = (marketData as { data?: { rows?: EtfRow[] } } | undefined)?.data?.rows ?? [];
-  const etfs = allRows.filter((r) => r.listedIn === "ETF" || r.symbol?.startsWith("ETF"));
+  const allSectorStocks: any[] = ((marketData as any)?.data?.analytics?.sectors ?? []).flatMap((s: any) => s.stocks ?? []);
+  const seen = new Set<string>();
+  const etfs: EtfRow[] = allSectorStocks
+    .filter((r) => r.listedIn === "ETF")
+    .filter((r) => { if (seen.has(r.symbol)) return false; seen.add(r.symbol); return true; })
+    .map((r) => ({ symbol: r.symbol, current: r.price, change: r.change, changePct: r.changePct, listedIn: r.listedIn }));
 
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={["top"]}>
@@ -49,7 +53,7 @@ export default function EtfsScreen() {
                 </View>
                 <View className="items-end">
                   <ThemedText variant="body" className="text-fg">{formatPKR(item.current)}</ThemedText>
-                  <ThemedText variant="caption" style={{ color }}>{item.changePct >= 0 ? "+" : ""}{formatPercent(item.changePct)}</ThemedText>
+                  <ThemedText variant="caption" style={{ color }}>{formatPercent(item.changePct)}</ThemedText>
                 </View>
               </Pressable>
             );

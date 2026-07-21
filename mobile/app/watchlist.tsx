@@ -7,7 +7,7 @@ import { colors, useColors } from "@/lib/theme";
 import { Card } from "@/components/ui/ThemedView";
 import { ThemedText } from "@/components/ui/ThemedText";
 import { useWatchlists } from "@/hooks/usePortfolio";
-import { usePrices, usePublicMarket } from "@/hooks/useMarket";
+import { usePrices } from "@/hooks/useMarket";
 import { db, type Watchlist, type WatchlistItem } from "@/lib/db";
 import { formatPKR, formatPercent, plColor } from "@/lib/format";
 
@@ -78,11 +78,9 @@ export default function WatchlistScreen() {
   const { data: watchlists, isLoading, mutate } = useWatchlists();
 
   const allSymbols = (watchlists ?? []).flatMap((w) => w.items.map((i) => i.symbol));
-  const { data: marketData } = usePublicMarket();
+  const { data: priceData = [] } = usePrices(allSymbols);
   const prices: Record<string, number> = {};
-  ((marketData as any)?.stocks ?? []).forEach((s: { symbol: string; current: number }) => {
-    prices[s.symbol] = s.current;
-  });
+  (priceData as { symbol: string; price: number }[]).forEach((q) => { prices[q.symbol] = q.price; });
 
   const [addingToId, setAddingToId] = useState<string | null>(null);
   const [symbolInput, setSymbolInput] = useState("");

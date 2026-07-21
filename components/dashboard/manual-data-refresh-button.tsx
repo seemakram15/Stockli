@@ -62,11 +62,9 @@ const OTHER_CACHE_JOBS = [
 export function ManualDataRefreshButton({
   userId,
   onDashboardRefresh,
-  cachedAt,
 }: {
   userId: string;
   onDashboardRefresh: () => Promise<PortfolioCommandPageData>;
-  cachedAt: string | null;
 }) {
   const [open, setOpen] = React.useState(false);
   const [running, setRunning] = React.useState(false);
@@ -273,14 +271,6 @@ export function ManualDataRefreshButton({
   );
 }
 
-function formatCacheTime(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    day: "2-digit",
-    month: "short",
-  }).format(new Date(value));
-}
 
 function StepIcon({ state }: { state: StepState }) {
   if (state === "done") return <CheckCircle2 className="size-4 text-gain" />;

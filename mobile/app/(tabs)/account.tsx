@@ -8,8 +8,8 @@ import { supabase } from "@/lib/supabase";
 
 const SETTINGS = [
   { label: "Price Alerts",  sub: "Set notifications for price moves", icon: Bell,        colorKey: "primary" as const, route: "/alerts" },
-  { label: "Tax Settings",  sub: "Configure capital gains settings",  icon: ShieldCheck,  colorKey: "gain"    as const, route: null },
-  { label: "Appearance",    sub: "Dark mode and theme preferences",   icon: Moon,         colorKey: "sky"     as const, route: null },
+  { label: "Tax Settings",  sub: "Configure capital gains settings",  icon: ShieldCheck,  colorKey: "gain"    as const, route: "/tax-settings" },
+  { label: "Appearance",    sub: "Dark mode and theme preferences",   icon: Moon,         colorKey: "sky"     as const, route: "/appearance" },
 ];
 
 export default function AccountScreen() {

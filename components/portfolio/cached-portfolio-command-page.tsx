@@ -245,7 +245,6 @@ export function CachedPortfolioCommandPage({
             <ManualDataRefreshButton
               userId={userId}
               onDashboardRefresh={refreshNow}
-              cachedAt={lastCachedAt}
             />
             {showManageAction ? (
               <Button asChild size="sm">

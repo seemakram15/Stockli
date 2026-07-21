@@ -93,7 +93,7 @@ export default function StockDetailScreen() {
             <View className="flex-row items-center gap-1 mb-1">
               <ChangeIcon size={14} color={priceColor} />
               <ThemedText variant="body" style={{ color: priceColor }}>
-                {quote.change >= 0 ? "+" : ""}{formatPKR(quote.change)} ({quote.changePct >= 0 ? "+" : ""}{formatPercent(quote.changePct)})
+                {quote.change >= 0 ? "+" : ""}{formatPKR(quote.change)} ({formatPercent(quote.changePct)})
               </ThemedText>
             </View>
           </View>
@@ -242,7 +242,7 @@ function PortfolioPositionCard({
             {pl >= 0 ? "+" : ""}{formatPKR(pl)}
           </ThemedText>
           <ThemedText variant="caption" style={{ color: plColor(plPct) }}>
-            {plPct >= 0 ? "+" : ""}{formatPercent(plPct)}
+            {formatPercent(plPct)}
           </ThemedText>
         </View>
       </View>

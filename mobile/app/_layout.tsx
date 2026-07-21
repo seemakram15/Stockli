@@ -9,7 +9,9 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { session, loading } = useSession();
-  const { colorScheme } = useColorScheme();
+  const { colorScheme, setColorScheme } = useColorScheme();
+
+  React.useEffect(() => { setColorScheme("light"); }, []);
 
   React.useEffect(() => {
     if (!loading) SplashScreen.hideAsync();
@@ -74,6 +76,8 @@ export default function RootLayout() {
       <Stack.Screen name="dividend-history" options={{ presentation: "card", animation: "slide_from_right" }} />
       <Stack.Screen name="useful-links" options={{ presentation: "card", animation: "slide_from_right" }} />
       <Stack.Screen name="youtubers" options={{ presentation: "card", animation: "slide_from_right" }} />
+      <Stack.Screen name="appearance" options={{ presentation: "card", animation: "slide_from_right" }} />
+      <Stack.Screen name="tax-settings" options={{ presentation: "card", animation: "slide_from_right" }} />
       <Stack.Screen name="+not-found" />
     </Stack>
   );

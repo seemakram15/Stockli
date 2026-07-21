@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  View, ScrollView, Pressable, Alert, TextInput, Modal,
+  View, ScrollView, TouchableOpacity, Alert, TextInput, Modal,
   ActivityIndicator, KeyboardAvoidingView, Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -40,7 +40,7 @@ function HoldingRow({
   const plPct = cost > 0 ? (pl / cost) * 100 : 0;
 
   return (
-    <Pressable
+    <TouchableOpacity
       className="flex-row items-center justify-between py-3 border-b border-border active:opacity-70"
       onPress={() => router.push(`/stock/${symbol}`)}
     >
@@ -53,11 +53,11 @@ function HoldingRow({
       <View className="items-end">
         <ThemedText variant="body" className="text-fg">{formatPKR(value)}</ThemedText>
         <ThemedText variant="caption" style={{ color: plColor(pl) }}>
-          {pl >= 0 ? "+" : ""}{formatPKR(pl)} ({plPct >= 0 ? "+" : ""}{formatPercent(plPct)})
+          {pl >= 0 ? "+" : ""}{formatPKR(pl)} ({formatPercent(plPct)})
         </ThemedText>
       </View>
       <ChevronRight size={14} color={colors.muted} style={{ marginLeft: 8 }} />
-    </Pressable>
+    </TouchableOpacity>
   );
 }
 
@@ -142,19 +142,19 @@ export default function PortfolioDetailScreen() {
       <ScrollView className="flex-1" contentContainerClassName="pb-10" showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View className="flex-row items-center gap-3 px-4 pt-2 pb-4">
-          <Pressable onPress={() => router.back()} className="size-9 items-center justify-center">
+          <TouchableOpacity onPress={() => router.back()} className="size-9 items-center justify-center">
             <ArrowLeft size={20} color={colors.text} />
-          </Pressable>
+          </TouchableOpacity>
           <View className="flex-1">
             <ThemedText variant="title" numberOfLines={1}>{portfolio.name}</ThemedText>
           </View>
-          <Pressable
+          <TouchableOpacity
             className="flex-row items-center gap-1.5 rounded-xl bg-accent px-3 py-2"
             onPress={() => setShowAdd(true)}
           >
             <Plus size={14} color="#fff" />
             <ThemedText variant="label" style={{ color: "#fff" }}>Trade</ThemedText>
-          </Pressable>
+          </TouchableOpacity>
         </View>
 
         {/* Summary card */}
@@ -171,7 +171,7 @@ export default function PortfolioDetailScreen() {
                   {totalPL >= 0 ? "+" : ""}{formatPKR(totalPL)}
                 </ThemedText>
                 <ThemedText variant="caption" style={{ color: plColor(totalPLPct) }}>
-                  {totalPLPct >= 0 ? "+" : ""}{formatPercent(totalPLPct)}
+                  {formatPercent(totalPLPct)}
                 </ThemedText>
               </View>
             </View>
@@ -223,14 +223,14 @@ export default function PortfolioDetailScreen() {
       {/* Add Trade Modal */}
       <Modal visible={showAdd} transparent animationType="slide" onRequestClose={() => setShowAdd(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
-          <Pressable className="flex-1 bg-black/60" onPress={() => setShowAdd(false)} />
+          <TouchableOpacity className="flex-1 bg-black/60" onPress={() => setShowAdd(false)} />
           <View className="bg-surface border-t border-border px-4 pt-4 pb-10 gap-4">
             <ThemedText variant="subhead">Record Trade</ThemedText>
 
             {/* Buy/Sell toggle */}
             <View className="flex-row gap-2">
               {(["BUY", "SELL"] as const).map((t) => (
-                <Pressable
+                <TouchableOpacity
                   key={t}
                   className={`flex-1 py-2.5 rounded-xl items-center border ${
                     form.type === t ? "bg-accent border-accent" : "border-border"
@@ -243,7 +243,7 @@ export default function PortfolioDetailScreen() {
                   >
                     {t}
                   </ThemedText>
-                </Pressable>
+                </TouchableOpacity>
               ))}
             </View>
 
@@ -267,7 +267,7 @@ export default function PortfolioDetailScreen() {
               />
             ))}
 
-            <Pressable
+            <TouchableOpacity
               className="rounded-xl bg-accent py-3 items-center"
               onPress={handleAddTrade}
               disabled={saving}
@@ -279,7 +279,7 @@ export default function PortfolioDetailScreen() {
                   Save {form.type}
                 </ThemedText>
               )}
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </Modal>

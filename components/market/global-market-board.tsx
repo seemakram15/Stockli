@@ -45,7 +45,6 @@ export function GlobalMarketBoard({
   sectionTitle = "Markets",
   sectionDescription,
   useTableOnMobile = false,
-  rowNoun = "market",
   prioritySymbols,
 }: {
   data: GlobalMarketData;
@@ -55,7 +54,6 @@ export function GlobalMarketBoard({
   sectionTitle?: string;
   sectionDescription?: string;
   useTableOnMobile?: boolean;
-  rowNoun?: string;
   prioritySymbols?: string[];
 }) {
   const [query, setQuery] = React.useState("");
@@ -82,7 +80,6 @@ export function GlobalMarketBoard({
         return matchesQuery && matchesType;
       })
       .sort((a, b) => compareQuotes(a, b, sortKey, sortDir, prioritySymbols));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.quotes, query, sortDir, sortKey, type, prioritySymbols]);
 
   function toggleSort(key: SortKey) {

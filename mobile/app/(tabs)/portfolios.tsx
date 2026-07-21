@@ -48,7 +48,7 @@ function PortfolioCard({ portfolio, value, pl, plPct, holdingCount, onDelete, c 
               {pl >= 0 ? "+" : ""}{formatPKR(pl)}
             </Text>
             <Text style={{ fontSize: 11, fontWeight: "600", color: up ? c.gain : c.loss, marginTop: 2 }}>
-              {plPct >= 0 ? "+" : ""}{formatPercent(plPct)}
+              {formatPercent(plPct)}
             </Text>
           </View>
         </View>
@@ -136,7 +136,7 @@ export default function PortfoliosScreen() {
                 {grandPL >= 0 ? <TrendingUp size={11} color={c.gain} /> : <TrendingDown size={11} color={c.loss} />}
                 <Text style={{ fontSize: 12, fontWeight: "700", color: plColor(grandPL) }}>{grandPL >= 0 ? "+" : ""}{formatPKR(grandPL)}</Text>
               </View>
-              <Text style={{ fontSize: 12, fontWeight: "600", color: plColor(grandPct) }}>{grandPct >= 0 ? "+" : ""}{formatPercent(grandPct)}</Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: plColor(grandPct) }}>{formatPercent(grandPct)}</Text>
             </View>
           </View>
         )}

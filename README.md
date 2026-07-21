@@ -10,6 +10,12 @@ Stockli is a PSX-focused investing platform built to help users track portfolios
 npm run restart:all
 ```
 
+to Install the android application
+```bash
+/Users/tk-lpt-1153/Documents/Projects/stock-portfolio/mobile/rebuild.sh
+```
+
+
 - Run the same restart in the background:
 
 ```bash
