@@ -2,7 +2,7 @@ import { useState } from "react";
 import { View, ScrollView, Pressable, Alert, TextInput, Modal, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { Plus, BriefcaseBusiness, ChevronRight } from "lucide-react-native";
+import { Plus, BriefcaseBusiness, ChevronRight, Eye } from "lucide-react-native";
 import { colors } from "@/lib/theme";
 import { Card } from "@/components/ui/ThemedView";
 import { ThemedText } from "@/components/ui/ThemedText";
@@ -140,13 +140,22 @@ export default function PortfoliosScreen() {
       >
         <View className="flex-row items-center justify-between py-2">
           <ThemedText variant="title">Portfolios</ThemedText>
-          <Pressable
-            className="flex-row items-center gap-1.5 rounded-xl bg-accent px-3 py-2"
-            onPress={() => setShowCreate(true)}
-          >
-            <Plus size={14} color="#fff" />
-            <ThemedText variant="label" style={{ color: "#fff" }}>New</ThemedText>
-          </Pressable>
+          <View className="flex-row gap-2">
+            <Pressable
+              className="flex-row items-center gap-1.5 rounded-xl border border-border px-3 py-2"
+              onPress={() => router.push("/watchlist" as never)}
+            >
+              <Eye size={14} color={colors.muted} />
+              <ThemedText variant="label" className="text-muted">Watchlist</ThemedText>
+            </Pressable>
+            <Pressable
+              className="flex-row items-center gap-1.5 rounded-xl bg-accent px-3 py-2"
+              onPress={() => setShowCreate(true)}
+            >
+              <Plus size={14} color="#fff" />
+              <ThemedText variant="label" style={{ color: "#fff" }}>New</ThemedText>
+            </Pressable>
+          </View>
         </View>
 
         {isLoading ? (
