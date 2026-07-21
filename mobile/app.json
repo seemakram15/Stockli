@@ -18,7 +18,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#0f0f13"
+        "backgroundColor": "#04100d"
       },
       "package": "com.stockli.app",
       "permissions": ["NOTIFICATIONS", "RECEIVE_BOOT_COMPLETED"]
@@ -37,7 +37,7 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#0f0f13"
+          "backgroundColor": "#04100d"
         }
       ],
       [

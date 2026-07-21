@@ -48,7 +48,7 @@ export default function EtfsScreen() {
                   {item.company_name ? <ThemedText variant="caption" className="text-muted" numberOfLines={1}>{item.company_name}</ThemedText> : null}
                 </View>
                 <View className="items-end">
-                  <ThemedText variant="body" style={{ color: "#e2e2f0" }}>{formatPKR(item.current)}</ThemedText>
+                  <ThemedText variant="body" className="text-fg">{formatPKR(item.current)}</ThemedText>
                   <ThemedText variant="caption" style={{ color }}>{item.changePct >= 0 ? "+" : ""}{formatPercent(item.changePct)}</ThemedText>
                 </View>
               </Pressable>

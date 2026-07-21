@@ -171,7 +171,7 @@ export default function WatchlistScreen() {
             <View className="bg-surface rounded-2xl p-5 gap-4 w-full" style={{ minWidth: 280 }}>
               <ThemedText variant="subhead" className="text-fg font-semibold">Add Symbol</ThemedText>
               <TextInput
-                className="bg-surface-2 border border-border rounded-xl px-4 py-3 text-text text-[15px]"
+                className="bg-card2 border border-border rounded-xl px-4 py-3 text-text text-[15px]"
                 placeholder="e.g. ENGRO"
                 placeholderTextColor={colors.muted}
                 autoCapitalize="characters"

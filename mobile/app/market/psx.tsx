@@ -34,7 +34,7 @@ function MarketRow({ item }: { item: MarketRow }) {
         ) : null}
       </View>
       <View className="items-end mr-4">
-        <ThemedText variant="body" style={{ color: "#e2e2f0" }}>{formatPKR(item.current)}</ThemedText>
+        <ThemedText variant="body" className="text-fg">{formatPKR(item.current)}</ThemedText>
         {item.volume ? (
           <ThemedText variant="caption" className="text-muted">{formatCompact(item.volume)}</ThemedText>
         ) : null}

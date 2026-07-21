@@ -77,7 +77,7 @@ export default function MarketSlugScreen() {
                   {row.name ? <ThemedText variant="caption" className="text-muted" numberOfLines={1}>{row.name}</ThemedText> : null}
                 </View>
                 <View className="items-end">
-                  <ThemedText variant="body" style={{ color: "#e2e2f0" }}>{price.toLocaleString()}</ThemedText>
+                  <ThemedText variant="body" className="text-fg">{price.toLocaleString()}</ThemedText>
                   <ThemedText variant="caption" style={{ color }}>
                     {changePct >= 0 ? "+" : ""}{formatPercent(changePct)}
                   </ThemedText>

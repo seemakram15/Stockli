@@ -14,7 +14,7 @@ function ScoreBar({ score, max = 10 }: { score: number; max?: number }) {
   const pct = Math.min(100, (score / max) * 100);
   const color = pct >= 70 ? colors.gain : pct >= 40 ? colors.warn : colors.loss;
   return (
-    <View className="h-2 bg-surface-2 rounded-full overflow-hidden">
+    <View className="h-2 bg-card2 rounded-full overflow-hidden">
       <View className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
     </View>
   );

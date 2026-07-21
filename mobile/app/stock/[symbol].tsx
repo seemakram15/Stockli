@@ -23,7 +23,7 @@ function StatRow({ label, value }: { label: string; value: string }) {
   return (
     <View className="flex-row justify-between py-2 border-b border-border">
       <ThemedText variant="caption" className="text-muted">{label}</ThemedText>
-      <ThemedText variant="caption" style={{ color: "#e2e2f0" }}>{value}</ThemedText>
+      <ThemedText variant="caption" className="text-fg">{value}</ThemedText>
     </View>
   );
 }
@@ -87,7 +87,7 @@ export default function StockDetailScreen() {
           <ActivityIndicator size="small" color={c.primary} />
         ) : (
           <View className="flex-row items-end gap-3">
-            <ThemedText variant="title" style={{ fontSize: 32, color: "#e2e2f0" }}>
+            <ThemedText variant="title" style={{ fontSize: 32 }} className="text-fg">
               {formatPKR(quote.price)}
             </ThemedText>
             <View className="flex-row items-center gap-1 mb-1">
@@ -226,13 +226,13 @@ function PortfolioPositionCard({
       <View className="flex-row justify-between">
         <View>
           <ThemedText variant="caption" className="text-muted">Qty</ThemedText>
-          <ThemedText variant="body" style={{ color: "#e2e2f0" }}>
+          <ThemedText variant="body" className="text-fg">
             {holding.quantity.toLocaleString()}
           </ThemedText>
         </View>
         <View className="items-end">
           <ThemedText variant="caption" className="text-muted">Avg Cost</ThemedText>
-          <ThemedText variant="body" style={{ color: "#e2e2f0" }}>
+          <ThemedText variant="body" className="text-fg">
             {formatPKR(holding.cost_basis)}
           </ThemedText>
         </View>

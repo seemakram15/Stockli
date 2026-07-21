@@ -51,7 +51,7 @@ function HoldingRow({
         </ThemedText>
       </View>
       <View className="items-end">
-        <ThemedText variant="body" style={{ color: "#e2e2f0" }}>{formatPKR(value)}</ThemedText>
+        <ThemedText variant="body" className="text-fg">{formatPKR(value)}</ThemedText>
         <ThemedText variant="caption" style={{ color: plColor(pl) }}>
           {pl >= 0 ? "+" : ""}{formatPKR(pl)} ({plPct >= 0 ? "+" : ""}{formatPercent(plPct)})
         </ThemedText>
@@ -163,7 +163,7 @@ export default function PortfolioDetailScreen() {
             <View className="flex-row justify-between">
               <View>
                 <ThemedText variant="caption" className="text-muted mb-0.5">Market Value</ThemedText>
-                <ThemedText variant="title" style={{ color: "#e2e2f0" }}>{formatPKR(totalValue)}</ThemedText>
+                <ThemedText variant="title" className="text-fg">{formatPKR(totalValue)}</ThemedText>
               </View>
               <View className="items-end">
                 <ThemedText variant="caption" className="text-muted mb-0.5">Total P/L</ThemedText>
@@ -178,15 +178,15 @@ export default function PortfolioDetailScreen() {
             <View className="flex-row gap-4 pt-1 border-t border-border">
               <View>
                 <ThemedText variant="caption" className="text-muted">Cost Basis</ThemedText>
-                <ThemedText variant="body" style={{ color: "#e2e2f0" }}>{formatPKR(totalCost)}</ThemedText>
+                <ThemedText variant="body" className="text-fg">{formatPKR(totalCost)}</ThemedText>
               </View>
               <View>
                 <ThemedText variant="caption" className="text-muted">Holdings</ThemedText>
-                <ThemedText variant="body" style={{ color: "#e2e2f0" }}>{holdings.length}</ThemedText>
+                <ThemedText variant="body" className="text-fg">{holdings.length}</ThemedText>
               </View>
               <View>
                 <ThemedText variant="caption" className="text-muted">Trades</ThemedText>
-                <ThemedText variant="body" style={{ color: "#e2e2f0" }}>{transactions.length}</ThemedText>
+                <ThemedText variant="body" className="text-fg">{transactions.length}</ThemedText>
               </View>
             </View>
           </Card>

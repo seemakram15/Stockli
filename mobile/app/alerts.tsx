@@ -185,7 +185,7 @@ export default function AlertsScreen() {
               <View className="gap-1.5">
                 <ThemedText variant="caption" className="ml-1">Symbol</ThemedText>
                 <TextInput
-                  className="bg-surface-2 border border-border rounded-xl px-4 py-3 text-text text-[15px]"
+                  className="bg-card2 border border-border rounded-xl px-4 py-3 text-text text-[15px]"
                   placeholder="e.g. ENGRO"
                   placeholderTextColor={colors.muted}
                   autoCapitalize="characters"
@@ -221,7 +221,7 @@ export default function AlertsScreen() {
               <View className="gap-1.5">
                 <ThemedText variant="caption" className="ml-1">Target Price (PKR)</ThemedText>
                 <TextInput
-                  className="bg-surface-2 border border-border rounded-xl px-4 py-3 text-text text-[15px]"
+                  className="bg-card2 border border-border rounded-xl px-4 py-3 text-text text-[15px]"
                   placeholder="e.g. 450.00"
                   placeholderTextColor={colors.muted}
                   keyboardType="decimal-pad"

@@ -1,227 +1,219 @@
-import { View, ScrollView, Pressable, RefreshControl, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, Pressable, RefreshControl, ActivityIndicator, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { TrendingUp, TrendingDown, RefreshCw, Search } from "lucide-react-native";
-import { colors, useColors } from "@/lib/theme";
-import { Card } from "@/components/ui/ThemedView";
-import { ThemedText } from "@/components/ui/ThemedText";
-import { usePublicMarket } from "@/hooks/useMarket";
+import { TrendingUp, TrendingDown, Search, Bell } from "lucide-react-native";
+import { useColors } from "@/lib/theme";
+import { usePublicMarket, usePrices } from "@/hooks/useMarket";
 import { usePortfolios, useAllHoldings } from "@/hooks/usePortfolio";
-import { usePrices } from "@/hooks/useMarket";
 import { formatPKR, formatPercent, plColor } from "@/lib/format";
+import { useSession } from "@/hooks/useSession";
 
-interface IndexCard {
-  symbol: string;
-  label: string;
-  current: number;
-  changePct: number;
-}
+interface IndexCard { symbol: string; label: string; current: number; changePct: number }
+interface Mover { symbol: string; company_name: string | null; changePct: number }
 
-interface Mover {
-  symbol: string;
-  company_name: string | null;
-  changePct: number;
-}
-
-function IndexStrip({ indices }: { indices: IndexCard[] }) {
+function IndexCard({ label, value, pct, c }: { label: string; value: number; pct: number; c: ReturnType<typeof useColors> }) {
+  const up = pct >= 0;
   return (
-    <View className="flex-row gap-2">
-      {indices.map((idx) => {
-        const up = idx.changePct >= 0;
-        const color = up ? colors.gain : colors.loss;
-        return (
-          <Card key={idx.symbol} className="flex-1 p-3">
-            <ThemedText variant="label" className="mb-1">{idx.label}</ThemedText>
-            <ThemedText variant="subhead" style={{ color: "#e2e2f0" }}>
-              {idx.current.toLocaleString("en-PK", { maximumFractionDigits: 0 })}
-            </ThemedText>
-            <ThemedText variant="caption" style={{ color, marginTop: 2 }}>
-              {up ? "+" : ""}{formatPercent(idx.changePct)}
-            </ThemedText>
-          </Card>
-        );
-      })}
+    <View style={{
+      width: 140, borderRadius: 16, padding: 14, marginRight: 10,
+      backgroundColor: c.card,
+      borderWidth: 1, borderColor: c.border,
+    }}>
+      <Text style={{ fontSize: 10, fontWeight: "700", color: c.muted, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 8 }}>
+        {label}
+      </Text>
+      <Text style={{ fontSize: 20, fontWeight: "800", color: c.fg, letterSpacing: -0.5, marginBottom: 4 }}>
+        {value.toLocaleString("en-PK", { maximumFractionDigits: 0 })}
+      </Text>
+      <View style={{
+        flexDirection: "row", alignItems: "center", gap: 4,
+        paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99, alignSelf: "flex-start",
+        backgroundColor: up ? c.gainDim : c.lossDim,
+      }}>
+        {up ? <TrendingUp size={10} color={c.gain} /> : <TrendingDown size={10} color={c.loss} />}
+        <Text style={{ fontSize: 11, fontWeight: "700", color: up ? c.gain : c.loss }}>
+          {up ? "+" : ""}{pct.toFixed(2)}%
+        </Text>
+      </View>
     </View>
   );
 }
 
-function MoverRow({ item }: { item: Mover }) {
-  const color = plColor(item.changePct);
+function MoverRow({ item, c, rank }: { item: Mover; c: ReturnType<typeof useColors>; rank: number }) {
+  const up = item.changePct >= 0;
   return (
     <Pressable
-      className="flex-row items-center justify-between py-1.5"
       onPress={() => router.push(`/stock/${item.symbol}`)}
+      style={({ pressed }) => ({
+        flexDirection: "row", alignItems: "center",
+        paddingVertical: 10, opacity: pressed ? 0.7 : 1,
+        gap: 10,
+      })}
     >
-      <View className="flex-1 mr-2">
-        <ThemedText variant="body" numberOfLines={1}>{item.symbol}</ThemedText>
-        {item.company_name ? (
-          <ThemedText variant="caption" className="text-muted" numberOfLines={1}>
-            {item.company_name}
-          </ThemedText>
-        ) : null}
+      <Text style={{ fontSize: 12, fontWeight: "700", color: c.muted, width: 16 }}>{rank}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 14, fontWeight: "700", color: c.fg }}>{item.symbol}</Text>
+        {item.company_name
+          ? <Text style={{ fontSize: 11, color: c.muted, marginTop: 1 }} numberOfLines={1}>{item.company_name}</Text>
+          : null}
       </View>
-      <ThemedText variant="label" style={{ color }}>
-        {item.changePct >= 0 ? "+" : ""}{formatPercent(item.changePct)}
-      </ThemedText>
+      <View style={{
+        paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99,
+        backgroundColor: up ? c.gainDim : c.lossDim,
+      }}>
+        <Text style={{ fontSize: 12, fontWeight: "700", color: up ? c.gain : c.loss }}>
+          {up ? "+" : ""}{formatPercent(item.changePct)}
+        </Text>
+      </View>
     </Pressable>
   );
 }
 
 export default function DashboardScreen() {
   const c = useColors();
-  const { data: marketData, isLoading: marketLoading, mutate: refreshMarket } = usePublicMarket();
-  const { data: portfolios = [], isLoading: portfolioLoading } = usePortfolios();
+  const { user } = useSession();
+  const { data: marketData, isLoading: mktLoading, mutate: refreshMkt } = usePublicMarket();
+  const { data: portfolios = [] } = usePortfolios();
   const { data: holdings = [] } = useAllHoldings();
-
   const allSymbols = [...new Set(holdings.map((h) => h.symbol))];
   const { data: quotes = [] } = usePrices(allSymbols);
 
-  const isRefreshing = marketLoading && !marketData;
-
-  const market = (marketData as { data?: { indices?: IndexCard[]; rows?: Mover[] } } | undefined)?.data;
-
-  const indices: IndexCard[] = (market?.indices ?? []).filter((i) =>
-    ["KSE100", "KSE30", "KMI30"].includes(i.symbol)
-  ).map((i) => ({
-    ...i,
-    label: i.symbol === "KSE100" ? "KSE 100" : i.symbol === "KSE30" ? "KSE 30" : "KMI 30",
-  }));
+  const market = (marketData as any)?.data;
+  const indices: IndexCard[] = (market?.indices ?? [])
+    .filter((i: any) => ["KSE100", "KSE30", "KMI30"].includes(i.symbol))
+    .map((i: any) => ({ ...i, label: i.symbol === "KSE100" ? "KSE 100" : i.symbol === "KSE30" ? "KSE 30" : "KMI 30" }));
 
   const rows: Mover[] = market?.rows ?? [];
   const gainers = [...rows].sort((a, b) => b.changePct - a.changePct).slice(0, 5);
   const losers = [...rows].sort((a, b) => a.changePct - b.changePct).slice(0, 5);
 
-  const quoteMap = new Map(
-    (quotes as { symbol: string; price: number; changePct: number }[]).map((q) => [q.symbol, q])
-  );
-
-  let totalValue = 0;
-  let totalCost = 0;
+  const quoteMap = new Map((quotes as any[]).map((q) => [q.symbol, q]));
+  let totalValue = 0, totalCost = 0;
   for (const h of holdings) {
     const q = quoteMap.get(h.symbol);
-    const price = q?.price ?? h.cost_basis;
+    const price = (q as any)?.price ?? h.cost_basis;
     totalValue += price * h.quantity;
     totalCost += h.cost_basis * h.quantity;
   }
   const totalPL = totalValue - totalCost;
   const totalPLPct = totalCost > 0 ? (totalPL / totalCost) * 100 : 0;
 
+  const displayName = user?.user_metadata?.display_name ?? user?.email?.split("@")[0] ?? "Investor";
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.canvas }} edges={["top"]}>
       <ScrollView
-        className="flex-1"
-        contentContainerClassName="gap-4 px-4 pb-10 pt-2"
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={refreshMarket}
-            tintColor={c.primary}
-          />
-        }
+        contentContainerStyle={{ paddingBottom: 32 }}
+        refreshControl={<RefreshControl refreshing={mktLoading && !marketData} onRefresh={refreshMkt} tintColor={c.primary} />}
       >
-        {/* Header */}
-        <View className="flex-row items-center justify-between py-2">
-          <View>
-            <ThemedText variant="label" className="mb-0.5">Pakistan Stock Exchange</ThemedText>
-            <ThemedText variant="title">Dashboard</ThemedText>
+        {/* ── Header ─────────────────────────────── */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Image source={require("../../assets/images/icon.png")} style={{ width: 32, height: 32, borderRadius: 8 }} />
+            <View>
+              <Text style={{ fontSize: 11, color: c.muted, fontWeight: "600" }}>{greeting}</Text>
+              <Text style={{ fontSize: 16, fontWeight: "800", color: c.fg, letterSpacing: -0.3 }}>{displayName}</Text>
+            </View>
           </View>
-          <Pressable
-            className="size-9 items-center justify-center rounded-full bg-surface"
-            onPress={() => router.push("/search")}
-          >
-            <Search size={16} color={colors.muted} />
-          </Pressable>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Pressable onPress={() => router.push("/search")} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: c.card, borderWidth: 1, borderColor: c.border, alignItems: "center", justifyContent: "center" }}>
+              <Search size={16} color={c.muted} />
+            </Pressable>
+            <Pressable onPress={() => router.push("/alerts")} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: c.card, borderWidth: 1, borderColor: c.border, alignItems: "center", justifyContent: "center" }}>
+              <Bell size={16} color={c.muted} />
+            </Pressable>
+          </View>
         </View>
 
-        {/* KSE Index Strip */}
-        {marketLoading && indices.length === 0 ? (
-          <View className="flex-row gap-2">
-            {["KSE 100", "KSE 30", "KMI 30"].map((label) => (
-              <Card key={label} className="flex-1 p-3">
-                <ThemedText variant="label" className="mb-1">{label}</ThemedText>
-                <ActivityIndicator size="small" color={c.primary} />
-              </Card>
+        {/* ── Portfolio hero ──────────────────────── */}
+        {portfolios.length > 0 && (
+          <Pressable onPress={() => router.push("/(tabs)/portfolios")} style={{ marginHorizontal: 20, marginTop: 12, marginBottom: 4 }}>
+            <View style={{
+              borderRadius: 20, padding: 22,
+              backgroundColor: c.card, borderWidth: 1, borderColor: c.border,
+            }}>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: c.muted, marginBottom: 6 }}>Total Portfolio Value</Text>
+              <Text style={{ fontSize: 34, fontWeight: "800", color: c.fg, letterSpacing: -1, marginBottom: 8 }}>
+                {formatPKR(totalValue)}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <View style={{
+                  flexDirection: "row", alignItems: "center", gap: 5,
+                  paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99,
+                  backgroundColor: totalPL >= 0 ? c.gainDim : c.lossDim,
+                }}>
+                  {totalPL >= 0
+                    ? <TrendingUp size={12} color={c.gain} />
+                    : <TrendingDown size={12} color={c.loss} />}
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: plColor(totalPL) }}>
+                    {totalPL >= 0 ? "+" : ""}{formatPKR(totalPL)}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: plColor(totalPLPct) }}>
+                  {totalPLPct >= 0 ? "+" : ""}{formatPercent(totalPLPct)}
+                </Text>
+                <Text style={{ fontSize: 12, color: c.muted, marginLeft: "auto" as any }}>
+                  {portfolios.length} portfolio{portfolios.length !== 1 ? "s" : ""}
+                </Text>
+              </View>
+            </View>
+          </Pressable>
+        )}
+
+        {/* ── KSE Indices ─────────────────────────── */}
+        <View style={{ marginTop: 20, marginBottom: 4 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: c.fg }}>Market Indices</Text>
+            <Pressable onPress={() => router.push("/market/psx" as never)}>
+              <Text style={{ fontSize: 12, color: c.primary, fontWeight: "600" }}>View all</Text>
+            </Pressable>
+          </View>
+          {mktLoading && indices.length === 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
+              {["KSE 100", "KSE 30", "KMI 30"].map((l) => (
+                <View key={l} style={{ width: 140, height: 90, borderRadius: 16, backgroundColor: c.card, borderWidth: 1, borderColor: c.border, alignItems: "center", justifyContent: "center" }}>
+                  <ActivityIndicator size="small" color={c.primary} />
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
+              {indices.map((idx) => (
+                <IndexCard key={idx.symbol} label={idx.label} value={idx.current} pct={idx.changePct} c={c} />
+              ))}
+            </ScrollView>
+          )}
+        </View>
+
+        {/* ── Market Movers ───────────────────────── */}
+        <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: 20, marginTop: 20 }}>
+          {/* Gainers */}
+          <View style={{ flex: 1, borderRadius: 16, backgroundColor: c.card, borderWidth: 1, borderColor: c.border, padding: 16 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
+              <TrendingUp size={14} color={c.gain} />
+              <Text style={{ fontSize: 12, fontWeight: "700", color: c.gain, letterSpacing: 0.5 }}>Top Gainers</Text>
+            </View>
+            {mktLoading && gainers.length === 0 ? (
+              <ActivityIndicator size="small" color={c.primary} />
+            ) : gainers.map((item, i) => (
+              <MoverRow key={item.symbol} item={item} c={c} rank={i + 1} />
             ))}
           </View>
-        ) : indices.length > 0 ? (
-          <IndexStrip indices={indices} />
-        ) : null}
-
-        {/* Portfolio Summary */}
-        <Card>
-          <ThemedText variant="label" className="mb-3">My Portfolios</ThemedText>
-          {portfolioLoading ? (
-            <ActivityIndicator size="small" color={c.primary} />
-          ) : portfolios.length === 0 ? (
-            <ThemedText variant="caption" className="text-muted text-center py-2">
-              No portfolios yet
-            </ThemedText>
-          ) : (
-            <View className="gap-3">
-              <View className="flex-row items-center justify-between">
-                <ThemedText variant="caption">Total Value</ThemedText>
-                <ThemedText variant="subhead" style={{ color: "#e2e2f0" }}>
-                  {formatPKR(totalValue)}
-                </ThemedText>
-              </View>
-              <View className="flex-row items-center justify-between">
-                <ThemedText variant="caption">Total P/L</ThemedText>
-                <View className="items-end">
-                  <ThemedText variant="subhead" style={{ color: plColor(totalPL) }}>
-                    {totalPL >= 0 ? "+" : ""}{formatPKR(totalPL)}
-                  </ThemedText>
-                  <ThemedText variant="caption" style={{ color: plColor(totalPLPct) }}>
-                    {totalPLPct >= 0 ? "+" : ""}{formatPercent(totalPLPct)}
-                  </ThemedText>
-                </View>
-              </View>
-              <View className="flex-row items-center justify-between">
-                <ThemedText variant="caption">Portfolios</ThemedText>
-                <ThemedText variant="subhead" style={{ color: "#e2e2f0" }}>
-                  {portfolios.length}
-                </ThemedText>
-              </View>
+          {/* Losers */}
+          <View style={{ flex: 1, borderRadius: 16, backgroundColor: c.card, borderWidth: 1, borderColor: c.border, padding: 16 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
+              <TrendingDown size={14} color={c.loss} />
+              <Text style={{ fontSize: 12, fontWeight: "700", color: c.loss, letterSpacing: 0.5 }}>Top Losers</Text>
             </View>
-          )}
-          <Pressable
-            className="mt-4 items-center rounded-xl border border-border py-2.5"
-            onPress={() => router.push("/(tabs)/portfolios")}
-          >
-            <ThemedText variant="label" style={{ color: c.primary }}>
-              View all portfolios
-            </ThemedText>
-          </Pressable>
-        </Card>
-
-        {/* Market Movers */}
-        <View className="flex-row gap-2">
-          <Card className="flex-1">
-            <View className="mb-2 flex-row items-center gap-2">
-              <TrendingUp size={14} color={colors.gain} />
-              <ThemedText variant="label" style={{ color: colors.gain }}>Top Gainers</ThemedText>
-            </View>
-            {marketLoading && gainers.length === 0 ? (
-              <ThemedText variant="caption" className="text-center text-muted py-4">Loading…</ThemedText>
-            ) : gainers.length === 0 ? (
-              <ThemedText variant="caption" className="text-center text-muted py-4">—</ThemedText>
-            ) : (
-              gainers.map((item) => <MoverRow key={item.symbol} item={item} />)
-            )}
-          </Card>
-          <Card className="flex-1">
-            <View className="mb-2 flex-row items-center gap-2">
-              <TrendingDown size={14} color={colors.loss} />
-              <ThemedText variant="label" style={{ color: colors.loss }}>Top Losers</ThemedText>
-            </View>
-            {marketLoading && losers.length === 0 ? (
-              <ThemedText variant="caption" className="text-center text-muted py-4">Loading…</ThemedText>
-            ) : losers.length === 0 ? (
-              <ThemedText variant="caption" className="text-center text-muted py-4">—</ThemedText>
-            ) : (
-              losers.map((item) => <MoverRow key={item.symbol} item={item} />)
-            )}
-          </Card>
+            {mktLoading && losers.length === 0 ? (
+              <ActivityIndicator size="small" color={c.primary} />
+            ) : losers.map((item, i) => (
+              <MoverRow key={item.symbol} item={item} c={c} rank={i + 1} />
+            ))}
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
