@@ -6,7 +6,9 @@ const BASE = process.env.EXPO_PUBLIC_SITE_URL ?? "";
 async function fetchPrices(symbols: string[]) {
   if (symbols.length === 0) return [];
   const qs = symbols.join(",");
-  const res = await fetch(`${BASE}/api/prices?symbols=${encodeURIComponent(qs)}`);
+  const res = await fetch(`${BASE}/api/prices?symbols=${encodeURIComponent(qs)}`, {
+    headers: { "User-Agent": "StockliApp/1.0 (Mobile; React-Native)" },
+  });
   if (!res.ok) return [];
   const json = await res.json() as { quotes: unknown[] };
   return json.quotes;
