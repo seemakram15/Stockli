@@ -33,6 +33,7 @@ import {
   Target,
   TrendingUp,
   Wallet,
+  Newspaper,
   type LucideIcon,
 } from "lucide-react";
 import { EXPLORE_NAV_ITEMS, MARKET_NAV_ITEMS, NAV_ITEMS, TOOL_NAV_ITEMS } from "@/lib/constants";
@@ -67,6 +68,7 @@ const ICONS: Record<string, LucideIcon> = {
   Target,
   TrendingUp,
   Wallet,
+  Newspaper,
 };
 
 function isLockedForGuest(
@@ -179,6 +181,15 @@ export function DesktopNav({
         active={exploreActive}
         pathname={pathname}
         links={exploreLinks}
+        onNavigate={handleNavigate}
+        isGuest={isGuest}
+        guestPageAccess={guestPageAccess}
+      />
+      <DesktopNavLink
+        href="/news"
+        label="Latest News"
+        icon="Newspaper"
+        active={pathname === "/news" || pathname.startsWith("/news/")}
         onNavigate={handleNavigate}
         isGuest={isGuest}
         guestPageAccess={guestPageAccess}
