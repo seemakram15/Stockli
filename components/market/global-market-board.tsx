@@ -45,6 +45,7 @@ export function GlobalMarketBoard({
   sectionTitle = "Markets",
   sectionDescription,
   useTableOnMobile = false,
+  rowNoun: _rowNoun = "market",
   prioritySymbols,
 }: {
   data: GlobalMarketData;
@@ -54,6 +55,7 @@ export function GlobalMarketBoard({
   sectionTitle?: string;
   sectionDescription?: string;
   useTableOnMobile?: boolean;
+  rowNoun?: string;
   prioritySymbols?: string[];
 }) {
   const [query, setQuery] = React.useState("");

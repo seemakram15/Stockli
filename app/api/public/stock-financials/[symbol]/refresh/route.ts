@@ -46,7 +46,7 @@ export async function POST(
         },
       }
     );
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       {
         error: "Fresh fundamentals could not be fetched.",
