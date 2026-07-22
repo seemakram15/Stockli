@@ -1,7 +1,7 @@
 import { getPredictionPageData } from "@/lib/services/psx-prediction";
 import { PredictionBoard } from "@/components/analysis/prediction-board";
 
-export const revalidate = 900;
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Next Day Prediction | Stockli",
