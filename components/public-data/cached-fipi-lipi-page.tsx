@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ArrowLeftRight, CalendarRange, Globe2, Users } from "lucide-react";
 import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
+import { MarketRefreshButton } from "@/components/market/market-refresh-button";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { FipiLipiBoard, type FlowCurrency } from "@/components/market/fipi-lipi-board";
@@ -14,7 +15,7 @@ import type { FipiLipiData } from "@/lib/types/fipi-lipi";
 
 export function CachedFipiLipiPage() {
   const [currency, setCurrency] = React.useState<FlowCurrency>("USD");
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt } =
+  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<FipiLipiData>({
       cacheKey: "public:fipi-lipi-v9",
       url: "/api/public/fipi-lipi",
@@ -34,12 +35,27 @@ export function CachedFipiLipiPage() {
         title="FIPI / LIPI Data"
         description="Who is buying and selling PSX each day — foreign vs local investors, Regular market."
         actions={
-          <CacheStatusBadge
-            updatedAt={data?.updatedAt}
-            cachedAt={cachedAt}
-            isFromDeviceCache={isFromDeviceCache}
-            isRefreshing={isRefreshing}
-          />
+          <>
+            <CacheStatusBadge
+              updatedAt={data?.updatedAt}
+              cachedAt={cachedAt}
+              isFromDeviceCache={isFromDeviceCache}
+              isRefreshing={isRefreshing}
+            />
+            <MarketRefreshButton
+              color="sky"
+              label="Refresh flows"
+              onRefresh={async () => {
+                await refreshNow();
+                return "Investor flow data refreshed";
+              }}
+              stages={[
+                "Connecting to NCCPL",
+                "Loading investor flow data",
+                "Updating flow board",
+              ]}
+            />
+          </>
         }
       />
 

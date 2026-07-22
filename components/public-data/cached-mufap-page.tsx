@@ -2,6 +2,7 @@
 
 import { BadgePercent, Layers3 } from "lucide-react";
 import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
+import { MarketRefreshButton } from "@/components/market/market-refresh-button";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { MufapFundsBoard } from "@/components/market/mufap-funds-board";
@@ -20,7 +21,7 @@ export function CachedMufapPage({ kind }: { kind: "mutual" | "etfs" }) {
     : "MUFAP daily NAV, returns, AMC filters and Rs 100,000 performance view.";
   const Icon = etfMode ? Layers3 : BadgePercent;
 
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt } =
+  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<MufapFundsData>({
       cacheKey: `public:mufap:${kind}`,
       url: `/api/public/mufap?kind=${etfMode ? "etfs" : "mutual"}`,
@@ -44,6 +45,21 @@ export function CachedMufapPage({ kind }: { kind: "mutual" | "etfs" }) {
               cachedAt={cachedAt}
               isFromDeviceCache={isFromDeviceCache}
               isRefreshing={isRefreshing}
+            />
+            <MarketRefreshButton
+              color="amber"
+              label={etfMode ? "Refresh ETFs" : "Refresh funds"}
+              onRefresh={async () => {
+                const result = await refreshNow();
+                const count = (result as MufapFundsData | undefined)?.funds?.length;
+                return count ? `${count} ${etfMode ? "ETFs" : "funds"} updated` : undefined;
+              }}
+              stages={[
+                "Connecting to MUFAP",
+                "Fetching latest NAV data",
+                etfMode ? "Processing ETF returns" : "Processing fund returns",
+                "Updating fund board",
+              ]}
             />
           </>
         }

@@ -29,7 +29,7 @@ const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 
 export async function getPakistanCommodities(): Promise<PkCommoditiesData> {
   const { value } = await getStaleCached({
-    key: "public:pk-commodities-v8",
+    key: "public:pk-commodities-v12",
     ttlSeconds: 90,
     staleSeconds: 30 * 60,
     load: fetchLive,
@@ -77,6 +77,7 @@ async function fetchPakgold(): Promise<{
   silver: PkSpotPrice;
   platinum: PkSpotPrice;
   usdPkr: number;
+  sessionDiffs: { gold: number | null; silver: number | null };
 } | null> {
   try {
     const res = await fetch("https://www.pakgold.net/", {
@@ -94,30 +95,15 @@ async function fetchPakgold(): Promise<{
     const silverPrice = parseNum(extractLabel(html, "lbl_localSilverSell"));
     const platinumPrice = parseNum(extractLabel(html, "lbl_localPT"));
 
-    // lbl_InternalMarket* = live international spot (auto-updated)
-    // lbl_*high / lbl_*low = previous session's range (updated once per day)
-    // → use high as prevClose proxy; apply % change to local PKR price
-    const pct = (curr: number | null, prev: number | null) =>
-      curr && prev && prev > 0 ? (curr - prev) / prev : null;
-
-    const goldPct = pct(parseNum(extractLabel(html, "lbl_InternalMarketGold")), parseNum(extractLabel(html, "lbl_goldhigh")));
-    const silverPct = pct(parseNum(extractLabel(html, "lbl_InternalMarketSilver")), parseNum(extractLabel(html, "lbl_silverhigh")));
-    const platPct = pct(parseNum(extractLabel(html, "lbl_InternalMarketPT")), parseNum(extractLabel(html, "lbl_pthigh")));
-
     return {
-      gold24: {
-        pricePerTola: gold24Price,
-        changePerTola: goldPct !== null ? Math.round(goldPct * gold24Price) : null,
-      },
-      silver: {
-        pricePerTola: silverPrice,
-        changePerTola: silverPct !== null && silverPrice ? Math.round(silverPct * silverPrice) : null,
-      },
-      platinum: {
-        pricePerTola: platinumPrice,
-        changePerTola: platPct !== null && platinumPrice ? Math.round(platPct * platinumPrice) : null,
-      },
+      gold24:    { pricePerTola: gold24Price,   changePerTola: null },
+      silver:    { pricePerTola: silverPrice,   changePerTola: null },
+      platinum:  { pricePerTola: platinumPrice, changePerTola: null },
       usdPkr,
+      sessionDiffs: {
+        gold:   parseDiff(extractLabel(html, "lbl_PcsDiff")),
+        silver: parseDiff(extractLabel(html, "lbl_LocalSilverDiff")),
+      },
     };
   } catch {
     return null;
@@ -128,26 +114,17 @@ async function fetchLive(): Promise<PkCommoditiesData> {
   const pakgold = await fetchPakgold();
 
   if (pakgold) {
-    const [gcSpot, siSpot, hgSpot] = await Promise.all([
+    const [gcSpot, siSpot, hgSpot, plSpot] = await Promise.all([
       fetchSpot("GC=F"),
       fetchSpot("SI=F"),
       fetchSpot("HG=F"),
+      fetchSpot("PL=F"),
     ]);
 
-    // Daily change = % move in international spot × actual local PKR price.
-    // prevClose from Yahoo Finance is yesterday's close — fixed for the day.
-    const spotChangePct = (spot: { price: number; prevClose: number } | null) =>
-      spot && spot.prevClose > 0 ? (spot.price - spot.prevClose) / spot.prevClose : null;
-
-    const goldPct = spotChangePct(gcSpot);
-    const silverPct = spotChangePct(siSpot);
-
-    const goldChange = goldPct !== null && pakgold.gold24.pricePerTola !== null
-      ? Math.round(goldPct * pakgold.gold24.pricePerTola)
-      : null;
-    const silverChange = silverPct !== null && pakgold.silver.pricePerTola !== null
-      ? Math.round(silverPct * pakgold.silver.pricePerTola)
-      : null;
+    const pctChange = (spot: { price: number; prevClose: number } | null, localPrice: number | null) =>
+      spot && spot.prevClose > 0 && localPrice
+        ? Math.round(((spot.price - spot.prevClose) / spot.prevClose) * localPrice)
+        : null;
 
     const copper: PkCopperSpot | null = hgSpot
       ? {
@@ -157,10 +134,10 @@ async function fetchLive(): Promise<PkCommoditiesData> {
       : null;
 
     return {
-      gold24: { pricePerTola: pakgold.gold24.pricePerTola, changePerTola: goldChange },
-      silver: { pricePerTola: pakgold.silver.pricePerTola, changePerTola: silverChange },
+      gold24:   { pricePerTola: pakgold.gold24.pricePerTola,   changePerTola: pctChange(gcSpot, pakgold.gold24.pricePerTola)   ?? pakgold.sessionDiffs.gold },
+      silver:   { pricePerTola: pakgold.silver.pricePerTola,   changePerTola: pctChange(siSpot, pakgold.silver.pricePerTola)   ?? pakgold.sessionDiffs.silver },
       copper,
-      platinum: pakgold.platinum,
+      platinum: { pricePerTola: pakgold.platinum.pricePerTola, changePerTola: pctChange(plSpot, pakgold.platinum.pricePerTola) },
       usdPkr: pakgold.usdPkr,
       updatedAt: new Date().toISOString(),
       source: "PakGold (Rawalpindi-Islamabad Sarafa)",

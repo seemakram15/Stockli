@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Activity, Landmark, Layers, TrendingUp } from "lucide-react";
 import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
+import { MarketRefreshButton } from "@/components/market/market-refresh-button";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { ConstituentsTable } from "@/components/market/constituents-table";
@@ -18,7 +19,7 @@ import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { PublicMarketPageData } from "@/lib/services/public-market-page";
 
 export function CachedPsxMarketPage() {
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt } =
+  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<PublicMarketPageData>({
       cacheKey: "public:psx-market",
       url: "/api/public/market",
@@ -29,10 +30,10 @@ export function CachedPsxMarketPage() {
   const [currentDetail, setCurrentDetail] = React.useState(data?.detail ?? null);
 
   React.useEffect(() => {
-    if (!currentDetail && data?.detail) {
-      setCurrentDetail(data.detail);
-    }
-  }, [currentDetail, data?.detail]);
+    const detail = data?.detail;
+    if (!detail) return;
+    setCurrentDetail((prev) => (!prev || prev.symbol === detail.symbol ? detail : prev));
+  }, [data?.detail]);
   const activeDetail = currentDetail ?? data?.detail ?? null;
 
   return (
@@ -53,6 +54,19 @@ export function CachedPsxMarketPage() {
               cachedAt={cachedAt}
               isFromDeviceCache={isFromDeviceCache}
               isRefreshing={isRefreshing}
+            />
+            <MarketRefreshButton
+              color="emerald"
+              label="Refresh PSX"
+              onRefresh={async () => {
+                await refreshNow();
+                return "PSX data refreshed";
+              }}
+              stages={[
+                "Connecting to PSX feed",
+                "Loading index and sector data",
+                "Updating market board",
+              ]}
             />
           </>
         }

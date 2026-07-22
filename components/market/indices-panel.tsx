@@ -41,6 +41,14 @@ export function IndicesPanel({
   const cache = React.useRef<Record<string, IndexDetail>>({ [initialDetail.symbol]: initialDetail });
 
   React.useEffect(() => {
+    cache.current[initialDetail.symbol] = initialDetail;
+    setDetail((prev) =>
+      prev.symbol === initialDetail.symbol ? initialDetail : prev
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialDetail]);
+
+  React.useEffect(() => {
     onDetailChange?.(detail);
   }, [detail, onDetailChange]);
 

@@ -19,49 +19,59 @@ const GLOBAL_OPTIONS = [
 
 type ChartSymbol = (typeof GLOBAL_OPTIONS)[number]["symbol"];
 
-export function GlobalCommodityChart() {
-  const [symbol, setSymbol] = React.useState<ChartSymbol>("GC=F");
-
-  const { data, isLoading } = usePersistentResource<HistoryPoint[]>({
-    cacheKey: `public:commodity-history-v4:${symbol}`,
-    url: `/api/public/commodity-history?symbol=${symbol}`,
-    refreshInterval: 4 * 60 * 60 * 1000,
-  });
-
-  const active = GLOBAL_OPTIONS.find((o) => o.symbol === symbol)!;
-
-  return (
-    <div className="rounded-xl border border-border bg-muted/10 p-3">
-      <div className="mb-3 flex flex-wrap gap-1">
-        {GLOBAL_OPTIONS.map((opt) => (
-          <button
-            key={opt.symbol}
-            type="button"
-            onClick={() => setSymbol(opt.symbol)}
-            className={
-              "rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors " +
-              (symbol === opt.symbol
-                ? "border-sky-500/40 bg-sky-500/15 text-sky-400"
-                : "border-border bg-muted/40 text-muted-foreground hover:text-foreground")
-            }
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
-      {isLoading && !data ? (
-        <div className="h-40 animate-pulse rounded-xl bg-muted/20" />
-      ) : (
-        <PriceLineChart
-          data={data ?? []}
-          color="hsl(199 89% 48%)"
-          height={160}
-          unit={active.unit}
-          label={`${active.label} (USD)`}
-          formatPrice={active.fmt}
-          defaultDuration="1Y"
-        />
-      )}
-    </div>
-  );
+export interface GlobalCommodityChartHandle {
+  refresh(): Promise<void>;
 }
+
+export const GlobalCommodityChart = React.forwardRef<GlobalCommodityChartHandle>(
+  function GlobalCommodityChart(_, ref) {
+    const [symbol, setSymbol] = React.useState<ChartSymbol>("GC=F");
+
+    const { data, isLoading, refreshNow } = usePersistentResource<HistoryPoint[]>({
+      cacheKey: `public:commodity-history-v4:${symbol}`,
+      url: `/api/public/commodity-history?symbol=${symbol}`,
+      refreshInterval: 4 * 60 * 60 * 1000,
+    });
+
+    React.useImperativeHandle(ref, () => ({
+      refresh: () => refreshNow(),
+    }), [refreshNow]);
+
+    const active = GLOBAL_OPTIONS.find((o) => o.symbol === symbol)!;
+
+    return (
+      <div className="rounded-xl border border-border bg-muted/10 p-3">
+        <div className="mb-3 flex flex-wrap gap-1">
+          {GLOBAL_OPTIONS.map((opt) => (
+            <button
+              key={opt.symbol}
+              type="button"
+              onClick={() => setSymbol(opt.symbol)}
+              className={
+                "rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors " +
+                (symbol === opt.symbol
+                  ? "border-sky-500/40 bg-sky-500/15 text-sky-400"
+                  : "border-border bg-muted/40 text-muted-foreground hover:text-foreground")
+              }
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {isLoading && !data ? (
+          <div className="h-40 animate-pulse rounded-xl bg-muted/20" />
+        ) : (
+          <PriceLineChart
+            data={data ?? []}
+            color="hsl(199 89% 48%)"
+            height={160}
+            unit={active.unit}
+            label={`${active.label} (USD)`}
+            formatPrice={active.fmt}
+            defaultDuration="1Y"
+          />
+        )}
+      </div>
+    );
+  }
+);

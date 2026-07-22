@@ -13,6 +13,7 @@ import {
   Target,
 } from "lucide-react";
 import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
+import { MarketRefreshButton, type RefreshColor } from "@/components/market/market-refresh-button";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { PageHeader } from "@/components/page-header";
@@ -44,7 +45,7 @@ import type {
 } from "@/lib/services/market-resources";
 
 export function CachedUsefulLinksPage() {
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt } =
+  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<UsefulLinksData>({
       cacheKey: "public:useful-links:v2",
       url: "/api/public/useful-links",
@@ -73,12 +74,23 @@ export function CachedUsefulLinksPage() {
         eyebrow="Research toolkit"
         accent="indigo"
         actions={
-          <CacheStatusBadge
-            updatedAt={data?.updatedAt}
-            cachedAt={cachedAt}
-            isFromDeviceCache={isFromDeviceCache}
-            isRefreshing={isRefreshing}
-          />
+          <>
+            <CacheStatusBadge
+              updatedAt={data?.updatedAt}
+              cachedAt={cachedAt}
+              isFromDeviceCache={isFromDeviceCache}
+              isRefreshing={isRefreshing}
+            />
+            <MarketRefreshButton
+              color="indigo"
+              label="Refresh links"
+              onRefresh={async () => {
+                await refreshNow();
+                return "Links refreshed";
+              }}
+              stages={["Fetching curated links", "Updating resource list"]}
+            />
+          </>
         }
       />
       <SearchBox
@@ -178,6 +190,10 @@ export function CachedBoardMeetingsPage() {
       accent="sky"
       eyebrow="Corporate calendar"
       resource={resource}
+      onRefresh={async () => { await resource.refreshNow(); }}
+      refreshColor="sky"
+      refreshLabel="Refresh meetings"
+      refreshStages={["Connecting to PSX", "Fetching board meetings", "Updating calendar"]}
     >
       <SearchBox value={query} onChange={setQuery} placeholder="Search company, symbol or agenda..." />
       {rows.length ? (
@@ -242,6 +258,10 @@ export function CachedBookClosuresPage() {
       accent="amber"
       eyebrow="Entitlements"
       resource={resource}
+      onRefresh={async () => { await resource.refreshNow(); }}
+      refreshColor="amber"
+      refreshLabel="Refresh closures"
+      refreshStages={["Connecting to PSX", "Fetching book closures", "Updating payout list"]}
     >
       <SearchBox value={query} onChange={setQuery} placeholder="Search symbol, company or payout..." />
       {rows.length ? (
@@ -298,6 +318,10 @@ export function CachedDividendHistoryPage() {
       accent="emerald"
       eyebrow="Payout records"
       resource={resource}
+      onRefresh={async () => { await resource.refreshNow(); }}
+      refreshColor="emerald"
+      refreshLabel="Refresh history"
+      refreshStages={["Connecting to PSX", "Fetching dividend records", "Updating history"]}
     >
       <SearchBox value={query} onChange={setQuery} placeholder="Search symbol, payout or date..." />
       {rows.length ? (
@@ -329,6 +353,7 @@ export function CachedDividendHistoryPage() {
 
 export function CachedPivotPointsPage() {
   const resource = usePublicResource<PivotPointsData>("public:pivot-points", "/api/public/pivot-points");
+  const { refreshNow } = resource;
   const [query, setQuery] = React.useState("");
   const [sector, setSector] = React.useState("all");
   const sectors = React.useMemo(
@@ -362,6 +387,16 @@ export function CachedPivotPointsPage() {
               cachedAt={resource.cachedAt}
               isFromDeviceCache={resource.isFromDeviceCache}
               isRefreshing={resource.isRefreshing}
+            />
+            <MarketRefreshButton
+              color="cyan"
+              label="Refresh pivots"
+              onRefresh={async () => {
+                const result = await refreshNow();
+                const count = (result as PivotPointsData | undefined)?.rows?.length;
+                return count ? `${count} stocks updated` : undefined;
+              }}
+              stages={["Connecting to PSX", "Fetching latest prices", "Calculating pivot levels", "Updating table"]}
             />
           </>
         }
@@ -534,6 +569,10 @@ function ResourceShell<T>({
   eyebrow,
   resource,
   sourceUrl,
+  onRefresh,
+  refreshColor,
+  refreshLabel = "Refresh",
+  refreshStages,
   children,
 }: {
   title: string;
@@ -548,6 +587,10 @@ function ResourceShell<T>({
     cachedAt: string | null;
   };
   sourceUrl?: string | null;
+  onRefresh?: () => Promise<string | void>;
+  refreshColor?: RefreshColor;
+  refreshLabel?: string;
+  refreshStages?: string[];
   children: React.ReactNode;
 }) {
   const updatedAt =
@@ -570,6 +613,14 @@ function ResourceShell<T>({
               isFromDeviceCache={resource.isFromDeviceCache}
               isRefreshing={resource.isRefreshing}
             />
+            {onRefresh && (
+              <MarketRefreshButton
+                color={refreshColor ?? "emerald"}
+                label={refreshLabel}
+                onRefresh={onRefresh}
+                stages={refreshStages}
+              />
+            )}
             {sourceUrl ? (
               <Button asChild variant="outline" size="sm">
                 <a href={sourceUrl} target="_blank" rel="noreferrer">

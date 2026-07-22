@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getStaleCached } from "@/lib/cache/stale";
 import { getPakistanCommodities } from "@/lib/services/pakistan-commodities";
+import { getPakistanRawMaterials } from "@/lib/services/pakistan-raw-materials";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -98,6 +99,77 @@ async function fetchPkPriceHistory(
   return points.map((p) => ({ date: p.date, price: Math.round(p.price * scale) }));
 }
 
+const SCRAPE_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+const MONTH_NAMES = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+
+async function fetchScrapeHtml(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": SCRAPE_UA, accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!res.ok) return null;
+    return await res.text();
+  } catch { return null; }
+}
+
+function extractPrice(html: string, keyword: string, min: number, max: number): number | null {
+  const idx = html.toLowerCase().indexOf(keyword.toLowerCase());
+  if (idx === -1) return null;
+  const chunk = html.slice(idx, idx + 2000);
+  const re = /\b(\d{1,2},\d{3}(?:,\d{3})*|\d{2,7})\b/g;
+  let m: RegExpExecArray | null;
+  const nums: number[] = [];
+  while ((m = re.exec(chunk)) !== null) {
+    const n = parseInt(m[1].replace(/,/g, ""), 10);
+    if (n >= min && n <= max) nums.push(n);
+  }
+  if (nums.length === 0) return null;
+  if (nums.length >= 2 && nums[1] - nums[0] <= nums[0] * 0.15) return Math.round((nums[0] + nums[1]) / 2);
+  return nums[0];
+}
+
+function avgOrNull(...vals: (number | null)[]): number | null {
+  const good = vals.filter((v): v is number => v !== null);
+  if (good.length === 0) return null;
+  return Math.round(good.reduce((a, b) => a + b, 0) / good.length);
+}
+
+async function fetchCementMonthlyHistory(): Promise<HistoryPoint[]> {
+  const today = new Date();
+  const targets = Array.from({ length: 18 }, (_, i) => {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    return { year: d.getFullYear(), month: d.getMonth(), dateStr: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01` };
+  });
+
+  const results = await Promise.all(
+    targets.map(async ({ year, month, dateStr }) => {
+      const mon = MONTH_NAMES[month];
+      const urls = [
+        `https://materialrate.pk/cement-rate-in-${mon}-${year}/`,
+        `https://materialrate.pk/${mon}-${year}-cement-rate-in-pakistan/`,
+        `https://materialrate.pk/cement-rate-${mon}-${year}/`,
+      ];
+      for (const url of urls) {
+        const html = await fetchScrapeHtml(url);
+        if (!html) continue;
+        const price = avgOrNull(
+          extractPrice(html, "Lucky", 1000, 2500),
+          extractPrice(html, "Bestway", 1000, 2500),
+          extractPrice(html, "DG Khan", 1000, 2500),
+          extractPrice(html, "Fauji", 1000, 2500),
+        );
+        if (price) return { date: dateStr, price };
+      }
+      return null;
+    })
+  );
+
+  const points = results.filter((r): r is HistoryPoint => r !== null);
+  return points.sort((a, b) => a.date.localeCompare(b.date));
+}
+
 const SYMBOL_LOADERS: Record<string, () => Promise<HistoryPoint[]>> = {
   "GC=F":             () => fetchMerged("GC=F"),
   "SI=F":             () => fetchMerged("SI=F"),
@@ -123,6 +195,59 @@ const SYMBOL_LOADERS: Record<string, () => Promise<HistoryPoint[]>> = {
   "PK-PLATINUM-TOLA": async () => {
     const live = await getPakistanCommodities().catch(() => null);
     return fetchPkPriceHistory("PL=F", (s, r) => (s * r) / TOLAS_PER_OZ, live?.platinum?.pricePerTola ?? null);
+  },
+  // MTF=F = Newcastle thermal coal futures (USD/MT on ICE via Yahoo Finance)
+  "PK-COAL": async () => {
+    const live = await getPakistanRawMaterials().catch(() => null);
+    const anchor = live?.items.find(i => i.label === "Coal (Imported)")?.price ?? null;
+    return fetchPkPriceHistory("MTF=F", (s, r) => s * r, anchor).catch(() => []);
+  },
+  // NU=F = CME Urea (Granular) Futures (USD/MT) — convert to PKR per 50kg bag
+  "PK-UREA": async () => {
+    const live = await getPakistanRawMaterials().catch(() => null);
+    const anchor = live?.items.find(i => i.label === "Urea")?.price ?? null;
+    return fetchPkPriceHistory("NU=F", (s, r) => s * r * 0.05, anchor).catch(
+      () => fetchPkPriceHistory("CF", (s, r) => s * r * 0.08, anchor).catch(() => [])
+    );
+  },
+  "PK-CEMENT-V3": async () => {
+    // Strategy 1: globalpetrolprices.com embeds Google Charts data with Pakistan cement history
+    const gpHtml = await fetchScrapeHtml("https://www.globalpetrolprices.com/Pakistan/cement_prices/").catch(() => null);
+    if (gpHtml) {
+      const pts: HistoryPoint[] = [];
+      const re = /\["([A-Za-z]+),\s*(\d{4})",\s*([\d.]+)/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(gpHtml)) !== null) {
+        const [, mon, year, priceStr] = m;
+        const raw = parseFloat(priceStr);
+        const monthNum = MONTH_NAMES.indexOf(mon.toLowerCase()) + 1;
+        if (monthNum < 1 || !raw) continue;
+        const date = `${year}-${String(monthNum).padStart(2, "0")}-01`;
+        let price50kg: number;
+        if (raw >= 15 && raw <= 70) {
+          price50kg = Math.round(raw * 50);
+        } else if (raw >= 0.04 && raw <= 0.20) {
+          price50kg = Math.round(raw * 50 * 285);
+        } else continue;
+        pts.push({ date, price: price50kg });
+      }
+      if (pts.length >= 3) return pts.sort((a, b) => a.date.localeCompare(b.date));
+    }
+    // Strategy 2: materialrate.pk monthly archives
+    const scraped = await fetchCementMonthlyHistory().catch(() => [] as HistoryPoint[]);
+    if (scraped.length >= 3) return scraped;
+    // Strategy 3: LUCK.KA (Lucky Cement, KSE) — single max/weekly request to avoid rate limits
+    const live = await getPakistanRawMaterials().catch(() => null);
+    const anchor = live?.items.find(i => i.label === "Cement (Grey)")?.price ?? null;
+    const raw = await fetchYahooHistory("LUCK.KA", "max", "1wk").catch(() => [] as HistoryPoint[]);
+    if (raw.length === 0) return [];
+    let scale = 1;
+    if (anchor) {
+      const last = raw[raw.length - 1].price;
+      if (last > 0) scale = anchor / last;
+    }
+    return raw.sort((a, b) => a.date.localeCompare(b.date))
+              .map(p => ({ date: p.date, price: Math.round(p.price * scale) }));
   },
 };
 

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Trophy, ChevronDown } from "lucide-react";
 import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
+import { MarketRefreshButton } from "@/components/market/market-refresh-button";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { PageHeader } from "@/components/page-header";
@@ -120,7 +121,7 @@ function HoldingCard({ holding, rank }: { holding: MFTopHolding; rank: number })
 }
 
 export function CachedMFTopHoldingsPage() {
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt } =
+  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<MFTopHoldingsData>({
       cacheKey: "public:mf-top-holdings",
       url: "/api/public/mf-top-holdings",
@@ -154,6 +155,21 @@ export function CachedMFTopHoldingsPage() {
               cachedAt={cachedAt}
               isFromDeviceCache={isFromDeviceCache}
               isRefreshing={isRefreshing}
+            />
+            <MarketRefreshButton
+              color="amber"
+              label="Refresh holdings"
+              onRefresh={async () => {
+                const result = await refreshNow();
+                const count = (result as MFTopHoldingsData | undefined)?.holdings?.length;
+                return count ? `${count} stocks updated` : undefined;
+              }}
+              stages={[
+                "Fetching MUFAP holdings data",
+                "Loading live PSX prices",
+                "Ranking by fund count",
+                "Updating holdings board",
+              ]}
             />
           </>
         }

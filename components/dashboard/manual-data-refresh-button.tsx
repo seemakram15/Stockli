@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { writePersistentResourceCache } from "@/lib/hooks/use-persistent-resource";
-import { markPortfolioMutated } from "@/lib/cache/portfolio-mutations";
 import type { PortfolioCommandPageData } from "@/lib/services/portfolio-command-page";
 import type { PortfoliosPageData } from "@/lib/services/portfolios-page";
 
@@ -111,8 +110,6 @@ export function ManualDataRefreshButton({
           market: dashboardData.market,
           updatedAt: dashboardData.updatedAt,
         } satisfies PortfoliosPageData);
-
-        markPortfolioMutated({ userId });
 
         const portfolioJobs = dashboardData.dashboard.portfolios.map((portfolio) => ({
           key: `private:portfolio:${userId}:${portfolio.id}`,

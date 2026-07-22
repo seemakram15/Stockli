@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import {
   Bitcoin,
   Droplets,
@@ -13,22 +14,44 @@ import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { GlobalMarketBoard } from "@/components/market/global-market-board";
-import { PakistanFuelPricesBoard } from "@/components/market/pakistan-fuel-prices-board";
-import { BrentCrudeChart } from "@/components/market/brent-crude-chart";
-import { PakistanCommoditiesBoard } from "@/components/market/pakistan-commodities-board";
-import { GlobalCommodityChart } from "@/components/market/global-commodity-chart";
+import { PakistanFuelPricesBoard, type PakFuelBoardHandle } from "@/components/market/pakistan-fuel-prices-board";
+import { BrentCrudeChart, type BrentCrudeChartHandle } from "@/components/market/brent-crude-chart";
+import { PakistanCommoditiesBoard, type PakCommoditiesBoardHandle } from "@/components/market/pakistan-commodities-board";
+import { GlobalCommodityChart, type GlobalCommodityChartHandle } from "@/components/market/global-commodity-chart";
+import { MarketRefreshButton, type RefreshColor } from "@/components/market/market-refresh-button";
 import { PageHeader } from "@/components/page-header";
 import { type Accent } from "@/components/ui/accent";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import type { GlobalMarketData, MarketUniverse } from "@/lib/services/global-markets";
 
-const MARKET_THEME: Record<MarketUniverse, { accent: Accent; eyebrow: string; Icon: LucideIcon }> = {
-  us: { accent: "sky", eyebrow: "USA markets", Icon: LineChart },
-  india: { accent: "rose", eyebrow: "India markets", Icon: LineChart },
-  world: { accent: "indigo", eyebrow: "World indices", Icon: Globe2 },
-  commodities: { accent: "amber", eyebrow: "Commodities", Icon: Gem },
-  oil: { accent: "orange", eyebrow: "Energy", Icon: Droplets },
-  crypto: { accent: "violet", eyebrow: "Crypto", Icon: Bitcoin },
+const MARKET_THEME: Record<
+  MarketUniverse,
+  { accent: Accent; color: RefreshColor; eyebrow: string; Icon: LucideIcon; stages: string[] }
+> = {
+  us: {
+    accent: "sky", color: "sky", eyebrow: "USA markets", Icon: LineChart,
+    stages: ["Connecting to US markets", "Fetching index quotes", "Updating board"],
+  },
+  india: {
+    accent: "rose", color: "rose", eyebrow: "India markets", Icon: LineChart,
+    stages: ["Connecting to India markets", "Fetching index quotes", "Updating board"],
+  },
+  world: {
+    accent: "indigo", color: "indigo", eyebrow: "World indices", Icon: Globe2,
+    stages: ["Fetching world exchanges", "Loading country indices", "Updating world board"],
+  },
+  commodities: {
+    accent: "amber", color: "amber", eyebrow: "Commodities", Icon: Gem,
+    stages: ["Connecting to commodity feeds", "Scraping Pakistan prices", "Fetching chart histories", "Updating all boards"],
+  },
+  oil: {
+    accent: "orange", color: "orange", eyebrow: "Energy", Icon: Droplets,
+    stages: ["Connecting to energy feeds", "Fetching OGRA fuel prices", "Loading Brent crude chart", "Updating energy board"],
+  },
+  crypto: {
+    accent: "violet", color: "violet", eyebrow: "Crypto", Icon: Bitcoin,
+    stages: ["Connecting to crypto markets", "Fetching coin prices", "Updating crypto board"],
+  },
 };
 
 export function CachedGlobalMarketPage({
@@ -42,12 +65,31 @@ export function CachedGlobalMarketPage({
 }) {
   const theme = MARKET_THEME[market] ?? MARKET_THEME.world;
   const ThemeIcon = theme.Icon;
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt } =
+  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<GlobalMarketData>({
       cacheKey: `public:global-market:${market}`,
       url: `/api/public/global-market/${market}`,
       refreshInterval: market === "crypto" ? 60_000 : 2 * 60_000,
     });
+
+  const pkCommoditiesRef = React.useRef<PakCommoditiesBoardHandle>(null);
+  const globalChartRef = React.useRef<GlobalCommodityChartHandle>(null);
+  const pkFuelRef = React.useRef<PakFuelBoardHandle>(null);
+  const brentRef = React.useRef<BrentCrudeChartHandle>(null);
+
+  const handleRefreshAll = React.useCallback(async (): Promise<string | void> => {
+    const fns: Array<Promise<unknown>> = [refreshNow()];
+    if (market === "commodities") {
+      if (pkCommoditiesRef.current) fns.push(pkCommoditiesRef.current.refresh());
+      if (globalChartRef.current) fns.push(globalChartRef.current.refresh());
+    } else if (market === "oil") {
+      if (pkFuelRef.current) fns.push(pkFuelRef.current.refresh());
+      if (brentRef.current) fns.push(brentRef.current.refresh());
+    }
+    const [mainData] = await Promise.all(fns);
+    const count = (mainData as GlobalMarketData | undefined)?.quotes?.length;
+    return count ? `${count} quotes refreshed` : undefined;
+  }, [market, refreshNow]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -65,6 +107,12 @@ export function CachedGlobalMarketPage({
               isFromDeviceCache={isFromDeviceCache}
               isRefreshing={isRefreshing}
             />
+            <MarketRefreshButton
+              color={theme.color}
+              label="Refresh"
+              onRefresh={handleRefreshAll}
+              stages={theme.stages}
+            />
           </>
         }
       />
@@ -78,13 +126,19 @@ export function CachedGlobalMarketPage({
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
                   <Gem className="size-4" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-foreground">Pakistan Commodity Prices</p>
                   <p className="text-xs text-muted-foreground">Gold & silver — PKR per tola</p>
                 </div>
+                <MarketRefreshButton
+                  color="amber"
+                  label="Refresh"
+                  onRefresh={() => pkCommoditiesRef.current?.refresh() ?? Promise.resolve()}
+                  stages={["Scraping Pakistan prices", "Refreshing price history", "Updating charts"]}
+                />
               </div>
               <div className="p-4">
-                <PakistanCommoditiesBoard />
+                <PakistanCommoditiesBoard ref={pkCommoditiesRef} />
               </div>
             </div>
 
@@ -94,10 +148,16 @@ export function CachedGlobalMarketPage({
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400">
                   <Globe2 className="size-4" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-foreground">Global Commodities</p>
                   <p className="text-xs text-muted-foreground">Metals, agriculture & soft — Yahoo Finance</p>
                 </div>
+                <MarketRefreshButton
+                  color="sky"
+                  label="Refresh"
+                  onRefresh={() => globalChartRef.current?.refresh() ?? Promise.resolve()}
+                  stages={["Fetching commodity chart", "Loading history data", "Updating chart"]}
+                />
               </div>
               <div className="space-y-4 p-4">
                 <GlobalMarketBoard
@@ -107,7 +167,7 @@ export function CachedGlobalMarketPage({
                   priceCardSymbols={["GC=F","SI=F","HG=F","PL=F"]}
                   hideSummaryStats
                   hideCountry
-                  chartSlot={<GlobalCommodityChart />}
+                  chartSlot={<GlobalCommodityChart ref={globalChartRef} />}
                 />
               </div>
             </div>
@@ -120,13 +180,19 @@ export function CachedGlobalMarketPage({
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500/20 text-orange-400">
                   <Flame className="size-4" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-foreground">Pakistan Fuel Prices</p>
                   <p className="text-xs text-muted-foreground">OGRA — revised bi-monthly</p>
                 </div>
+                <MarketRefreshButton
+                  color="orange"
+                  label="Refresh"
+                  onRefresh={() => pkFuelRef.current?.refresh() ?? Promise.resolve()}
+                  stages={["Connecting to OGRA", "Scraping fuel prices", "Updating price board"]}
+                />
               </div>
               <div className="p-4">
-                <PakistanFuelPricesBoard />
+                <PakistanFuelPricesBoard ref={pkFuelRef} />
               </div>
             </div>
 
@@ -136,10 +202,16 @@ export function CachedGlobalMarketPage({
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400">
                   <Droplets className="size-4" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-foreground">Global Oil Markets</p>
                   <p className="text-xs text-muted-foreground">Live futures — Yahoo Finance</p>
                 </div>
+                <MarketRefreshButton
+                  color="sky"
+                  label="Refresh"
+                  onRefresh={() => brentRef.current?.refresh() ?? Promise.resolve()}
+                  stages={["Fetching Brent crude data", "Loading chart history", "Updating oil chart"]}
+                />
               </div>
               <div className="p-4">
                 <GlobalMarketBoard
@@ -149,7 +221,7 @@ export function CachedGlobalMarketPage({
                   priceCardSymbols={["CL=F","BZ=F","NG=F","RB=F"]}
                   hideSummaryStats
                   hideCountry
-                  chartSlot={<BrentCrudeChart />}
+                  chartSlot={<BrentCrudeChart ref={brentRef} />}
                 />
               </div>
             </div>
