@@ -34,7 +34,7 @@ export const GlobalCommodityChart = React.forwardRef<GlobalCommodityChartHandle>
     });
 
     React.useImperativeHandle(ref, () => ({
-      refresh: () => refreshNow(),
+      refresh: () => refreshNow().then(() => undefined),
     }), [refreshNow]);
 
     const active = GLOBAL_OPTIONS.find((o) => o.symbol === symbol)!;
