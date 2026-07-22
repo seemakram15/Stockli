@@ -45,7 +45,7 @@ export function GlobalMarketBoard({
   sectionTitle = "Markets",
   sectionDescription,
   useTableOnMobile = false,
-  rowNoun: _rowNoun = "market",
+  rowNoun: _rowNoun = "market", // eslint-disable-line @typescript-eslint/no-unused-vars
   prioritySymbols,
   priceCardSymbols,
   hideCountry = false,

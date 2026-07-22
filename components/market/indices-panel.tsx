@@ -45,7 +45,6 @@ export function IndicesPanel({
     setDetail((prev) =>
       prev.symbol === initialDetail.symbol ? initialDetail : prev
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialDetail]);
 
   React.useEffect(() => {

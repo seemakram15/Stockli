@@ -391,6 +391,7 @@ function HeroCard({ article }: { article: NewsArticle }) {
       className="group relative flex min-h-[300px] flex-col justify-end overflow-hidden rounded-2xl border border-border bg-card shadow-xl transition-all hover:border-primary/30 sm:min-h-[360px]">
       {article.imageUrl && !imgErr ? (
         <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={article.imageUrl} alt="" referrerPolicy="no-referrer" crossOrigin="anonymous"
             loading="lazy" onError={() => setImgErr(true)}
             className="absolute inset-0 h-full w-full object-cover opacity-45 transition-opacity group-hover:opacity-60" />
@@ -433,6 +434,7 @@ function NewsCard({ article }: { article: NewsArticle }) {
       className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:border-primary/20 hover:shadow-md">
       {article.imageUrl && !imgErr ? (
         <div className="relative h-40 shrink-0 overflow-hidden bg-muted">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={article.imageUrl} alt="" referrerPolicy="no-referrer" crossOrigin="anonymous"
             loading="lazy" onError={() => setImgErr(true)}
             className="h-full w-full object-cover opacity-80 transition-all duration-500 group-hover:scale-105 group-hover:opacity-95" />

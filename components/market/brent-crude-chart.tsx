@@ -22,7 +22,7 @@ export const BrentCrudeChart = React.forwardRef<BrentCrudeChartHandle>(
     });
 
     React.useImperativeHandle(ref, () => ({
-      refresh: () => refreshNow(),
+      refresh: () => refreshNow().then(() => undefined),
     }), [refreshNow]);
 
     if (isLoading && !data) {
