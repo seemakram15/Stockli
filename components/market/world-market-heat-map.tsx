@@ -91,9 +91,27 @@ const WORLD_REGION_BOUNDS_COMPACT: Partial<
 export function WorldMarketHeatMap({
   data,
   compact = false,
+  explorer = false,
+  fillHeight = false,
+  hideRegionFilters = false,
+  hideLegend = false,
+  hideExchangeBadge = false,
+  mapAction,
 }: {
   data: GlobalMarketData;
   compact?: boolean;
+  /** Modal / expand: region filters + tall pannable map only. */
+  explorer?: boolean;
+  /** Stretch map to fill parent height (dashboard card / modal). */
+  fillHeight?: boolean;
+  /** Dashboard preview: hide region pills. */
+  hideRegionFilters?: boolean;
+  /** Dashboard preview: hide the color scale bar. */
+  hideLegend?: boolean;
+  /** Dashboard preview: hide the “N exchanges shown” chip. */
+  hideExchangeBadge?: boolean;
+  /** Optional control rendered on the map (e.g. Expand). */
+  mapAction?: React.ReactNode;
 }) {
   const [activeRegion, setActiveRegion] = React.useState<WorldRegionFilter>("all");
 
@@ -164,34 +182,53 @@ export function WorldMarketHeatMap({
   );
 
   const mapPanel = (
-    <div className="overflow-hidden rounded-[28px] border border-sky-100 bg-white shadow-soft">
+    <div
+      className={cn(
+        "overflow-hidden bg-white dark:bg-slate-950",
+        fillHeight
+          ? "h-full min-h-0 rounded-none border-0 shadow-none"
+          : "rounded-[28px] border border-sky-100 shadow-soft dark:border-sky-900/40"
+      )}
+    >
       <div
         className={cn(
-          "relative overflow-hidden bg-[#d8e6f5]",
-          compact ? "min-h-[340px] sm:min-h-[460px]" : "min-h-[420px] sm:min-h-[620px]"
+          "relative overflow-hidden bg-[#d8e6f5] dark:bg-slate-900",
+          fillHeight
+            ? "h-full min-h-[240px]"
+            : explorer
+              ? "min-h-[min(78dvh,720px)]"
+              : compact
+                ? "min-h-[280px] sm:min-h-[360px]"
+                : "min-h-[420px] sm:min-h-[620px]"
         )}
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.75),transparent_26%),radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.42),transparent_24%)]" />
         <LeafletCountryHeatMap
           quotesByCode={quotesByCode}
           activeRegion={activeRegion}
-          compact={compact}
+          compact={compact && !fillHeight && !explorer}
         />
 
-        <div className="pointer-events-none absolute right-4 top-4 z-20 rounded-full border border-white/75 bg-white/92 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm">
-          {visibleQuotes.length} exchanges shown
-        </div>
+        {mapAction ? (
+          <div className="absolute right-3 top-3 z-30 sm:right-4 sm:top-4">{mapAction}</div>
+        ) : null}
 
-        <ScaleLegend min={legendRange.min} max={legendRange.max} />
+        {!hideExchangeBadge ? (
+          <div className="pointer-events-none absolute right-4 top-4 z-20 rounded-full border border-white/75 bg-white/92 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm">
+            {visibleQuotes.length} exchanges shown
+          </div>
+        ) : null}
+
+        {!hideLegend ? <ScaleLegend min={legendRange.min} max={legendRange.max} /> : null}
       </div>
     </div>
   );
 
-  if (compact) {
+  if (compact || explorer) {
     return (
-      <div className="space-y-3">
-        {regionControls}
-        {mapPanel}
+      <div className={cn(fillHeight ? "flex h-full min-h-0 flex-col" : "space-y-3")}>
+        {!hideRegionFilters ? regionControls : null}
+        <div className={cn(fillHeight && "min-h-0 flex-1")}>{mapPanel}</div>
       </div>
     );
   }
@@ -633,6 +670,11 @@ function fitRegion(
           : 4.2,
     }
   );
+
+  // One zoom step in by default so the world reads larger in the card/modal.
+  if (region === "all") {
+    map.setZoom(Math.min(map.getMaxZoom(), map.getZoom() + 1), { animate: false });
+  }
 }
 
 function mapFillColor(

@@ -22,6 +22,8 @@ export type PublicRefreshTarget =
   | "book-closures"
   | "dividend-history"
   | "pivot-points"
+  | "pk-commodities"
+  | "pk-fuel"
   | `global-market:${string}`;
 
 const CACHE_KEYS: Record<Exclude<PublicRefreshTarget, `global-market:${string}`>, string[]> = {
@@ -39,6 +41,8 @@ const CACHE_KEYS: Record<Exclude<PublicRefreshTarget, `global-market:${string}`>
   "book-closures": ["explore:book-closures:v2"],
   "dividend-history": ["explore:dividend-history:v1"],
   "pivot-points": ["analysis:pivot-points:v1"],
+  "pk-commodities": ["public:pk-commodities-v12"],
+  "pk-fuel": ["public:pk-fuel-prices-v1"],
 };
 
 function needsLivePsx(target: PublicRefreshTarget) {
