@@ -19,6 +19,8 @@ export interface IndexCard {
   change: number;
   changePct: number;
   spark: number[];
+  week52High: number;
+  week52Low: number;
 }
 
 export interface IndexReturns {
@@ -100,13 +102,25 @@ export async function getIndexCards(): Promise<IndexCard[]> {
       const s = byCode.get(idx.symbol);
       const candles = await getEodCandlesCached(idx.symbol);
       const lastClose = candles[candles.length - 1]?.close ?? idx.ref;
+      const current = s?.current ?? lastClose;
+      const year = candles.slice(-252);
+      const week52High = Math.max(
+        current,
+        ...(year.length ? year.map((c) => c.high) : [current])
+      );
+      const week52Low = Math.min(
+        current,
+        ...(year.length ? year.map((c) => c.low) : [current])
+      );
       return {
         symbol: idx.symbol,
         name: idx.name,
-        current: s?.current ?? lastClose,
+        current,
         change: s?.change ?? 0,
         changePct: s?.changePct ?? 0,
         spark: candles.slice(-32).map((c) => c.close),
+        week52High,
+        week52Low,
       };
     })
   );
