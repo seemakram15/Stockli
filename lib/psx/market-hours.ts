@@ -20,6 +20,8 @@ const DAY = 24 * HOUR;
 const OPEN_CACHE_TTL_SECONDS = 60;
 const CLOSED_MAX_STALE_SECONDS = 7 * DAY;
 const REFRESH_WINDOW_BUFFER_SECONDS = 5 * MINUTE;
+/** PSX HTML feed lags ~10 min; keep refreshing past official close to catch the final print. */
+const POST_CLOSE_SETTLEMENT_MINUTES = 20;
 
 export const PSX_HOLIDAYS_2026: string[] = [
   "2026-02-05", // Kashmir Day
@@ -185,9 +187,18 @@ export function hasPsxTradingStartedToday(date: Date = new Date()): boolean {
 export function shouldRefreshPsxData(date: Date = new Date()): boolean {
   const parts = pktParts(date);
   const mins = parts.hour * 60 + parts.minute;
-  return tradingSessionsForDate(parts).some(
-    (session) => mins >= session.start && mins <= session.end
-  );
+  const sessions = tradingSessionsForDate(parts);
+  if (sessions.some((session) => mins >= session.start && mins <= session.end)) {
+    return true;
+  }
+  // Delayed DPS feed can keep printing for a while after the bell — without this
+  // window we freeze mid-session snapshots (e.g. KSE100 −1277 vs final −1703).
+  return sessions
+    .filter((session) => session.kind === "open")
+    .some(
+      (session) =>
+        mins > session.end && mins <= session.end + POST_CLOSE_SETTLEMENT_MINUTES
+    );
 }
 
 /**

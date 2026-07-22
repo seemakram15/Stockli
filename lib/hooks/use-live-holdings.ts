@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { usePrices } from "@/lib/hooks/use-prices";
-import { isMarketOpen } from "@/lib/psx/market-hours";
+import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import { computeHoldingMetrics } from "@/lib/services/metrics";
 import type { HoldingWithMetrics, Quote } from "@/lib/types";
 
@@ -10,7 +10,7 @@ import type { HoldingWithMetrics, Quote } from "@/lib/types";
  * Live-quote-enriched holdings. While PSX is open, each holding's price/day
  * change tracks the polled quote; once the market closes, everything freezes
  * to the last server-rendered quote (`h.quote`) for the rest of the session —
- * today's P/L should only move during actual trading hours, never after.
+ * today's P/L should only move while the delayed PSX feed can still update.
  */
 export function useLiveHoldings(holdings: HoldingWithMetrics[]) {
   const symbols = React.useMemo(() => holdings.map((h) => h.symbol), [holdings]);
@@ -25,7 +25,8 @@ export function useLiveHoldings(holdings: HoldingWithMetrics[]) {
     const id = window.setInterval(() => setClockTick((tick) => tick + 1), 60_000);
     return () => window.clearInterval(id);
   }, []);
-  const marketOpen = isMarketOpen();
+  // Include the post-close settlement window so delayed final prints still land.
+  const liveQuotesActive = shouldRefreshPsxData();
 
   const liveHoldings = React.useMemo(
     () =>
@@ -34,11 +35,11 @@ export function useLiveHoldings(holdings: HoldingWithMetrics[]) {
           computeHoldingMetrics(
             h,
             h.ticker,
-            (marketOpen ? quotes.get(h.symbol.toUpperCase()) : null) ?? h.quote
+            (liveQuotesActive ? quotes.get(h.symbol.toUpperCase()) : null) ?? h.quote
           )
         )
         .sort((a, b) => b.marketValue - a.marketValue),
-    [holdings, quotes, marketOpen]
+    [holdings, quotes, liveQuotesActive]
   );
 
   return { liveHoldings, isLoading, market };

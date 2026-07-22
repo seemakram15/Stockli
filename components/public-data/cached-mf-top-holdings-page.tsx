@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { PageHeader } from "@/components/page-header";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import { withFreshParam } from "@/lib/hooks/use-refresh-runner";
 import { AmcBrandMark } from "@/components/market/amc-brand-mark";
 import { IslamicTag, isIslamicOrShariahName } from "@/components/market/islamic-mark";
 import { StockIdentity } from "@/components/stock/stock-identity";
@@ -168,14 +169,16 @@ export function CachedMFTopHoldingsPage() {
             <MarketRefreshButton
               color="amber"
               label="Refresh holdings"
+              title="Refreshing top holdings"
               onRefresh={async () => {
-                const result = await refreshNow();
-                const count = (result as MFTopHoldingsData | undefined)?.holdings?.length;
+                const result = await refreshNow({
+                  url: withFreshParam("/api/public/mf-top-holdings"),
+                });
+                const count = result?.holdings?.length;
                 return count ? `${count} stocks updated` : undefined;
               }}
               stages={[
-                "Fetching MUFAP holdings data",
-                "Loading live PSX prices",
+                "Fetching mutual fund holdings",
                 "Ranking by fund count",
                 "Updating holdings board",
               ]}

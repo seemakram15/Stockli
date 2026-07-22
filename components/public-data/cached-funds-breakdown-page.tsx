@@ -8,6 +8,7 @@ import { FundsBreakdownBoard } from "@/components/market/funds-breakdown-board";
 import { PageHeader } from "@/components/page-header";
 import { MarketRefreshButton } from "@/components/market/market-refresh-button";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import { withFreshParam } from "@/lib/hooks/use-refresh-runner";
 import type { FundsBreakdownData } from "@/lib/services/funds-breakdown";
 
 export function CachedFundsBreakdownPage() {
@@ -37,13 +38,13 @@ export function CachedFundsBreakdownPage() {
             <MarketRefreshButton
               color="violet"
               label="Refresh holdings"
+              title="Refreshing funds breakdown"
               onRefresh={async () => {
-                await refreshNow();
+                await refreshNow({ url: withFreshParam("/api/public/funds-breakdown") });
                 return "Holdings data refreshed";
               }}
               stages={[
-                "Fetching fund holdings data",
-                "Loading live PSX prices",
+                "Fetching fund holdings + live PSX prices",
                 "Updating breakdown view",
               ]}
             />

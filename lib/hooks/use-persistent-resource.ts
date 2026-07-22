@@ -27,6 +27,7 @@ const PORTFOLIO_MUTATION_STORAGE_PREFIX = "stockli:portfolio-mutated-at";
 async function fetchResource<T>(url: string): Promise<T> {
   const response = await fetch(url, {
     headers: { accept: "application/json" },
+    cache: "no-store",
   });
   if (!response.ok) throw new Error(`Request failed: ${response.status}`);
   const json = (await response.json()) as ResourceResponse<T>;
@@ -125,17 +126,20 @@ export function usePersistentResource<T>({
     writeStorageCached(record).catch(() => undefined);
   }, [cacheKey, swr.data]);
 
-  const refreshNow = React.useCallback(async () => {
-    const value = await fetchResource<T>(url);
-    const record = makeCachedRecord(cacheKey, value);
-    writeMemoryCached(record);
-    setCached(record);
-    await Promise.all([
-      writeStorageCached(record).catch(() => undefined),
-      swr.mutate(value, { revalidate: false }),
-    ]);
-    return value;
-  }, [cacheKey, swr, url]);
+  const refreshNow = React.useCallback(
+    async (options?: { url?: string }) => {
+      const value = await fetchResource<T>(options?.url ?? url);
+      const record = makeCachedRecord(cacheKey, value);
+      writeMemoryCached(record);
+      setCached(record);
+      await Promise.all([
+        writeStorageCached(record).catch(() => undefined),
+        swr.mutate(value, { revalidate: false }),
+      ]);
+      return value;
+    },
+    [cacheKey, swr, url]
+  );
 
   const cacheIsKnownStale =
     activeCached !== null && acceptCacheWhen !== undefined && !acceptCacheWhen(activeCached);

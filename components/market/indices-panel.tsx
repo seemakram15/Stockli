@@ -44,12 +44,29 @@ export function IndicesPanel({
     const cached = cache.current[initialDetail.symbol];
     const prefer =
       cached && (cached.candles?.length ?? 0) > (initialDetail.candles?.length ?? 0)
-        ? cached
+        ? {
+            ...cached,
+            // Always take the fresher live level/change even if we keep longer history.
+            current: initialDetail.current,
+            change: initialDetail.change,
+            changePct: initialDetail.changePct,
+            volume: initialDetail.volume,
+            returns: initialDetail.returns ?? cached.returns,
+          }
         : initialDetail;
     cache.current[initialDetail.symbol] = prefer;
     setDetail((prev) => {
       if (prev.symbol !== initialDetail.symbol) return prev;
-      if ((prev.candles?.length ?? 0) > (prefer.candles?.length ?? 0)) return prev;
+      if ((prev.candles?.length ?? 0) > (prefer.candles?.length ?? 0)) {
+        return {
+          ...prev,
+          current: prefer.current,
+          change: prefer.change,
+          changePct: prefer.changePct,
+          volume: prefer.volume,
+          returns: prefer.returns ?? prev.returns,
+        };
+      }
       return prefer;
     });
   }, [initialDetail]);
@@ -69,7 +86,19 @@ export function IndicesPanel({
         const data: IndexDetail = await res.json();
         if (cancelled) return;
         const existing = cache.current[symbol];
-        if (existing && (existing.candles?.length ?? 0) > (data.candles?.length ?? 0)) return;
+        if (existing && (existing.candles?.length ?? 0) > (data.candles?.length ?? 0)) {
+          const merged = {
+            ...existing,
+            current: data.current,
+            change: data.change,
+            changePct: data.changePct,
+            volume: data.volume,
+            returns: data.returns ?? existing.returns,
+          };
+          cache.current[symbol] = merged;
+          setDetail((prev) => (prev.symbol === symbol ? merged : prev));
+          return;
+        }
         cache.current[symbol] = data;
         setDetail((prev) => (prev.symbol === symbol ? data : prev));
       } catch {

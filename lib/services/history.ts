@@ -1,7 +1,7 @@
 import "server-only";
 import { psx } from "@/lib/psx/adapter";
-import { getRedis } from "@/lib/cache/redis";
-import { getOrSetMemoryCache } from "@/lib/cache/memory";
+import { getRedis, getRedisClients } from "@/lib/cache/redis";
+import { deleteMemoryCache, getOrSetMemoryCache, setMemoryCache } from "@/lib/cache/memory";
 import { psxLiveCacheTtlSeconds, shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import { PSX_INDICES } from "@/lib/psx/symbols";
 import type { Candle, IndexConstituent, IndexSummary, SeriesPoint } from "@/lib/types";
@@ -199,6 +199,39 @@ export async function getIndexSummariesCached(): Promise<IndexSummary[]> {
     loadIndexSummaries,
     (rows) => rows.length > 0
   );
+}
+
+/** Drop cached index summaries/constituents so the next read scrapes PSX again. */
+export async function invalidateIndexCaches(): Promise<void> {
+  deleteMemoryCache("psx:indices");
+  for (const index of PSX_INDICES) {
+    deleteMemoryCache(`psx:cons:${index.symbol}`);
+  }
+  await Promise.allSettled(
+    getRedisClients().flatMap((redis) => [
+      redis.del("psx:indices"),
+      ...PSX_INDICES.map((index) => redis.del(`psx:cons:${index.symbol}`)),
+    ])
+  );
+}
+
+/** Force a fresh `/indices` scrape into memory + Redis. */
+export async function refreshIndexSummaries(): Promise<IndexSummary[]> {
+  await invalidateIndexCaches();
+  const rows = await psx.getIndexSummaries();
+  if (rows.length) {
+    const ttl = indexCacheTtl();
+    setMemoryCache("psx:indices", rows, ttl);
+    const redis = getRedis();
+    if (redis) {
+      try {
+        await redis.set("psx:indices", rows, { ex: ttl });
+      } catch {
+        /* best effort */
+      }
+    }
+  }
+  return rows;
 }
 
 async function loadIndexSummaries(): Promise<IndexSummary[]> {

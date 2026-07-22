@@ -36,6 +36,7 @@ import { formatDate, formatNumber } from "@/lib/format";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import { cn } from "@/lib/utils";
 import { StockIdentity } from "@/components/stock/stock-identity";
+import { withFreshParam } from "@/lib/hooks/use-refresh-runner";
 import type {
   BoardMeetingsData,
   BookClosuresData,
@@ -85,8 +86,9 @@ export function CachedUsefulLinksPage() {
             <MarketRefreshButton
               color="indigo"
               label="Refresh links"
+              title="Refreshing useful links"
               onRefresh={async () => {
-                await refreshNow();
+                await refreshNow({ url: withFreshParam("/api/public/useful-links") });
                 return "Links refreshed";
               }}
               stages={["Fetching curated links", "Updating resource list"]}
@@ -191,7 +193,10 @@ export function CachedBoardMeetingsPage() {
       accent="sky"
       eyebrow="Corporate calendar"
       resource={resource}
-      onRefresh={async () => { await resource.refreshNow(); }}
+      onRefresh={async () => {
+        await resource.refreshNow({ url: withFreshParam("/api/public/board-meetings") });
+        return "Board meetings updated";
+      }}
       refreshColor="sky"
       refreshLabel="Refresh meetings"
       refreshStages={["Connecting to PSX", "Fetching board meetings", "Updating calendar"]}
@@ -268,7 +273,10 @@ export function CachedBookClosuresPage() {
       accent="amber"
       eyebrow="Entitlements"
       resource={resource}
-      onRefresh={async () => { await resource.refreshNow(); }}
+      onRefresh={async () => {
+        await resource.refreshNow({ url: withFreshParam("/api/public/book-closures") });
+        return "Book closures updated";
+      }}
       refreshColor="amber"
       refreshLabel="Refresh closures"
       refreshStages={["Connecting to PSX", "Fetching book closures", "Updating payout list"]}
@@ -336,7 +344,10 @@ export function CachedDividendHistoryPage() {
       accent="emerald"
       eyebrow="Payout records"
       resource={resource}
-      onRefresh={async () => { await resource.refreshNow(); }}
+      onRefresh={async () => {
+        await resource.refreshNow({ url: withFreshParam("/api/public/dividend-history") });
+        return "Dividend history updated";
+      }}
       refreshColor="emerald"
       refreshLabel="Refresh history"
       refreshStages={["Connecting to PSX", "Fetching dividend records", "Updating history"]}
@@ -416,12 +427,19 @@ export function CachedPivotPointsPage() {
             <MarketRefreshButton
               color="cyan"
               label="Refresh pivots"
+              title="Refreshing pivot points"
               onRefresh={async () => {
-                const result = await refreshNow();
-                const count = (result as PivotPointsData | undefined)?.rows?.length;
+                const result = await refreshNow({
+                  url: withFreshParam("/api/public/pivot-points"),
+                });
+                const count = result?.rows?.length;
                 return count ? `${count} stocks updated` : undefined;
               }}
-              stages={["Connecting to PSX", "Fetching latest prices", "Calculating pivot levels", "Updating table"]}
+              stages={[
+                "Fetching latest PSX prices",
+                "Calculating pivot levels",
+                "Updating table",
+              ]}
             />
           </>
         }
@@ -642,6 +660,7 @@ function ResourceShell<T>({
               <MarketRefreshButton
                 color={refreshColor ?? "emerald"}
                 label={refreshLabel}
+                title={`Refreshing ${title.toLowerCase()}`}
                 onRefresh={onRefresh}
                 stages={refreshStages}
               />

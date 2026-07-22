@@ -19,6 +19,7 @@ import { StatCard } from "@/components/stat-card";
 import { MarketRefreshButton } from "@/components/market/market-refresh-button";
 import { formatPKR } from "@/lib/format";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import { withFreshParam } from "@/lib/hooks/use-refresh-runner";
 import { cn } from "@/lib/utils";
 import type { HoldingsStrategyData } from "@/lib/services/market-strategy-holdings";
 
@@ -61,14 +62,16 @@ export function CachedMarketStrategyPage() {
             <MarketRefreshButton
               color="violet"
               label="Refresh returns"
+              title="Refreshing fund returns"
               onRefresh={async () => {
-                const result = await refreshNow();
-                const count = (result as HoldingsStrategyData | undefined)?.funds?.length;
+                const result = await refreshNow({
+                  url: withFreshParam("/api/public/market-strategy-holdings"),
+                });
+                const count = result?.funds?.length;
                 return count ? `${count} fund returns updated` : undefined;
               }}
               stages={[
-                "Loading fund holdings data",
-                "Fetching live PSX prices",
+                "Loading fund holdings + live PSX prices",
                 "Calculating estimated returns",
                 "Updating strategy board",
               ]}

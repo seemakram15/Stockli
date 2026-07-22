@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { YoutubeVideosBoard } from "@/components/youtubers/youtube-videos-board";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import { withFreshParam } from "@/lib/hooks/use-refresh-runner";
 import type { YoutubeVideosData } from "@/lib/services/youtube";
 
 export function CachedYoutubersPage() {
@@ -38,9 +39,12 @@ export function CachedYoutubersPage() {
             <MarketRefreshButton
               color="rose"
               label="Refresh videos"
+              title="Refreshing YouTube feed"
               onRefresh={async () => {
-                const result = await refreshNow();
-                const count = (result as YoutubeVideosData | undefined)?.videos?.length;
+                const result = await refreshNow({
+                  url: withFreshParam("/api/public/youtubers"),
+                });
+                const count = result?.videos?.length;
                 return count ? `${count} videos loaded` : undefined;
               }}
               stages={["Fetching YouTube channels", "Loading latest videos", "Updating feed"]}

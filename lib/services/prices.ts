@@ -2,8 +2,14 @@ import "server-only";
 import { after } from "next/server";
 import type { MarketWatchRow, PriceSnapshot, Quote, Ticker } from "@/lib/types";
 import { psx } from "@/lib/psx/adapter";
-import { getRedis } from "@/lib/cache/redis";
-import { getMemoryCache, getOrSetMemoryCache, setMemoryCache } from "@/lib/cache/memory";
+import { getRedis, getRedisClients } from "@/lib/cache/redis";
+import {
+  deleteMemoryCache,
+  deleteMemoryCacheByPrefix,
+  getMemoryCache,
+  getOrSetMemoryCache,
+  setMemoryCache,
+} from "@/lib/cache/memory";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured } from "@/lib/config";
 import { PRICE_CACHE_TTL_SECONDS } from "@/lib/constants";
@@ -174,6 +180,27 @@ async function cacheMarketRows(
 export async function refreshMarketWatch(): Promise<Map<string, Quote>> {
   const rows = await scrapeAndStore();
   return new Map(rows.map((r) => [r.symbol.toUpperCase(), marketWatchRowToQuote(r)]));
+}
+
+/** Drop market-watch + per-symbol price caches so the next read scrapes/reloads. */
+export async function invalidateMarketWatchCaches(): Promise<void> {
+  deleteMemoryCache(MARKET_WATCH_KEY);
+  deleteMemoryCacheByPrefix(`psx:price:${PRICE_CACHE_VERSION}:`);
+  await Promise.allSettled(
+    getRedisClients().map(async (redis) => {
+      await redis.del(MARKET_WATCH_KEY);
+      // Per-symbol keys are overwritten on the next scrape; best-effort wipe via scan is optional.
+    })
+  );
+}
+
+/**
+ * Force a live market-watch scrape after clearing caches. Used by manual refresh
+ * so closed-session TTLs cannot keep serving a mid-day snapshot.
+ */
+export async function forceRefreshMarketWatch(): Promise<Map<string, Quote>> {
+  await invalidateMarketWatchCaches();
+  return refreshMarketWatch();
 }
 
 /**

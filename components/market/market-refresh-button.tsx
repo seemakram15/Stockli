@@ -3,174 +3,117 @@
 import * as React from "react";
 import { CheckCircle2, RefreshCw, XCircle } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  RefreshStatusDialog,
+  type RefreshAccent,
+} from "@/components/refresh/refresh-status-dialog";
+import {
+  useRefreshRunner,
+  withFreshParam,
+  type RefreshJob,
+} from "@/lib/hooks/use-refresh-runner";
 import { cn } from "@/lib/utils";
 
 const COLOR_MAP = {
   emerald: {
     btn: "bg-gradient-to-r from-emerald-500 to-green-400 shadow-emerald-500/30 hover:shadow-emerald-500/50",
-    dot: "bg-emerald-400",
-    pulse: "animate-pulse bg-emerald-400",
+    accent: "emerald" as RefreshAccent,
   },
   sky: {
     btn: "bg-gradient-to-r from-sky-500 to-blue-400 shadow-sky-500/30 hover:shadow-sky-500/50",
-    dot: "bg-sky-400",
-    pulse: "animate-pulse bg-sky-400",
+    accent: "sky" as RefreshAccent,
   },
   violet: {
     btn: "bg-gradient-to-r from-violet-500 to-fuchsia-400 shadow-violet-500/30 hover:shadow-violet-500/50",
-    dot: "bg-violet-400",
-    pulse: "animate-pulse bg-violet-400",
+    accent: "violet" as RefreshAccent,
   },
   amber: {
     btn: "bg-gradient-to-r from-amber-500 to-yellow-400 shadow-amber-500/30 hover:shadow-amber-500/50",
-    dot: "bg-amber-400",
-    pulse: "animate-pulse bg-amber-400",
+    accent: "amber" as RefreshAccent,
   },
   orange: {
     btn: "bg-gradient-to-r from-orange-500 to-amber-400 shadow-orange-500/30 hover:shadow-orange-500/50",
-    dot: "bg-orange-400",
-    pulse: "animate-pulse bg-orange-400",
+    accent: "orange" as RefreshAccent,
   },
   rose: {
     btn: "bg-gradient-to-r from-rose-500 to-pink-400 shadow-rose-500/30 hover:shadow-rose-500/50",
-    dot: "bg-rose-400",
-    pulse: "animate-pulse bg-rose-400",
+    accent: "rose" as RefreshAccent,
   },
   indigo: {
     btn: "bg-gradient-to-r from-indigo-500 to-violet-400 shadow-indigo-500/30 hover:shadow-indigo-500/50",
-    dot: "bg-indigo-400",
-    pulse: "animate-pulse bg-indigo-400",
+    accent: "indigo" as RefreshAccent,
   },
   cyan: {
     btn: "bg-gradient-to-r from-cyan-500 to-sky-400 shadow-cyan-500/30 hover:shadow-cyan-500/50",
-    dot: "bg-cyan-400",
-    pulse: "animate-pulse bg-cyan-400",
+    accent: "cyan" as RefreshAccent,
   },
 } as const;
 
 export type RefreshColor = keyof typeof COLOR_MAP;
 
-type Phase = "idle" | "loading" | "done" | "error";
-type StageState = "pending" | "active" | "done" | "error";
-
-interface StageItem {
-  label: string;
-  state: StageState;
-}
-
+/**
+ * Page refresh control with a real status dialog.
+ *
+ * Prefer `jobs` for accurate step-by-step updates. The legacy `onRefresh` +
+ * `stages` API still works: stages become labeled steps around one real fetch.
+ */
 export function MarketRefreshButton({
   onRefresh,
+  jobs,
   color = "emerald",
   label = "Refresh",
+  title,
+  description,
   stages,
   size = "sm",
   className,
+  autoStart = true,
 }: {
-  onRefresh: () => Promise<string | void>;
+  onRefresh?: () => Promise<string | void>;
+  jobs?: RefreshJob[];
   color?: RefreshColor;
   label?: string;
+  title?: string;
+  description?: string;
   stages?: string[];
   size?: "sm" | "default";
   className?: string;
+  /** Open dialog and start immediately (default). */
+  autoStart?: boolean;
 }) {
   const style = COLOR_MAP[color];
-  const [phase, setPhase] = React.useState<Phase>("idle");
-  const [impactText, setImpactText] = React.useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [stageItems, setStageItems] = React.useState<StageItem[]>([]);
-  const timersRef = React.useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [open, setOpen] = React.useState(false);
 
-  const clearTimers = () => {
-    timersRef.current.forEach(clearTimeout);
-    timersRef.current = [];
-  };
+  const resolvedJobs = React.useMemo(() => {
+    if (jobs?.length) return jobs;
+    if (!onRefresh) return [];
+    const labels = stages?.length
+      ? stages
+      : ["Connecting to live feed", "Fetching latest data", "Updating this screen"];
+    let impact: string | void;
+    return labels.map((stepLabel, index) => ({
+      id: `stage-${index}`,
+      label: stepLabel,
+      run: async () => {
+        if (index === 0) {
+          impact = await onRefresh();
+          return typeof impact === "string" ? impact : undefined;
+        }
+        return typeof impact === "string" ? impact : "Screen updated";
+      },
+    }));
+  }, [jobs, onRefresh, stages]);
 
-  React.useEffect(() => () => clearTimers(), []);
+  const runner = useRefreshRunner({ jobs: resolvedJobs });
 
   async function handleClick() {
-    if (phase === "loading") return;
-    clearTimers();
-    setPhase("loading");
-    setImpactText(null);
-
-    const hasDialog = stages && stages.length > 0;
-
-    if (hasDialog) {
-      const initial: StageItem[] = stages.map((label, i) => ({
-        label,
-        state: i === 0 ? "active" : "pending",
-      }));
-      setStageItems(initial);
-      setDialogOpen(true);
-
-      let currentIdx = 0;
-      const advanceTo = (idx: number) => {
-        currentIdx = idx;
-        setStageItems((prev) =>
-          prev.map((item, i) => ({
-            ...item,
-            state: i < idx ? "done" : i === idx ? "active" : "pending",
-          }))
-        );
-      };
-
-      for (let i = 1; i < stages.length - 1; i++) {
-        const t = setTimeout(() => advanceTo(i), i * 750);
-        timersRef.current.push(t);
-      }
-
-      try {
-        const result = await onRefresh();
-        clearTimers();
-        if (typeof result === "string" && result) setImpactText(result);
-
-        const lastIdx = stages.length - 1;
-        advanceTo(lastIdx);
-
-        const t1 = setTimeout(() => {
-          setStageItems((prev) => prev.map((s) => ({ ...s, state: "done" })));
-          setPhase("done");
-          const t2 = setTimeout(() => {
-            setDialogOpen(false);
-            const t3 = setTimeout(() => setPhase("idle"), 300);
-            timersRef.current.push(t3);
-          }, 1400);
-          timersRef.current.push(t2);
-        }, 550);
-        timersRef.current.push(t1);
-      } catch {
-        clearTimers();
-        setStageItems((prev) =>
-          prev.map((item, i) => ({
-            ...item,
-            state:
-              i < currentIdx ? "done" : i === currentIdx ? "error" : "pending",
-          }))
-        );
-        setPhase("error");
-        const t = setTimeout(() => {
-          setDialogOpen(false);
-          setTimeout(() => setPhase("idle"), 300);
-        }, 2800);
-        timersRef.current.push(t);
-      }
-    } else {
-      try {
-        const result = await onRefresh();
-        if (typeof result === "string" && result) setImpactText(result);
-        setPhase("done");
-        const t = setTimeout(() => setPhase("idle"), 2400);
-        timersRef.current.push(t);
-      } catch {
-        setPhase("error");
-        const t = setTimeout(() => setPhase("idle"), 2000);
-        timersRef.current.push(t);
-      }
+    if (runner.running) return;
+    runner.reset();
+    setOpen(true);
+    if (autoStart) {
+      // Let the dialog paint before the first await.
+      window.setTimeout(() => {
+        void runner.run();
+      }, 40);
     }
   }
 
@@ -181,92 +124,114 @@ export function MarketRefreshButton({
     className
   );
 
-  const doneText = impactText ?? "Updated!";
+  const phaseIcon =
+    runner.phase === "done" && runner.errors.length === 0 ? (
+      <>
+        <CheckCircle2 className="size-4 shrink-0" />
+        <span>Updated</span>
+      </>
+    ) : runner.phase === "error" ? (
+      <>
+        <XCircle className="size-4 shrink-0" />
+        <span>Failed</span>
+      </>
+    ) : (
+      <>
+        <RefreshCw className={cn("size-4 shrink-0", runner.running && "animate-spin")} />
+        <span>{runner.running ? "Refreshing…" : label}</span>
+      </>
+    );
 
   return (
     <>
       <button
         type="button"
         onClick={handleClick}
-        disabled={phase === "loading"}
+        disabled={runner.running}
         className={btnBase}
       >
-        {phase === "done" ? (
-          <>
-            <CheckCircle2 className="size-4 shrink-0" />
-            <span>{doneText}</span>
-          </>
-        ) : phase === "error" ? (
-          <>
-            <XCircle className="size-4 shrink-0" />
-            <span>Failed</span>
-          </>
-        ) : (
-          <>
-            <RefreshCw className={cn("size-4 shrink-0", phase === "loading" && "animate-spin")} />
-            <span>{phase === "loading" ? "Refreshing…" : label}</span>
-          </>
-        )}
+        {open || runner.running || runner.phase === "done" || runner.phase === "error"
+          ? phaseIcon
+          : (
+            <>
+              <RefreshCw className="size-4 shrink-0" />
+              <span>{label}</span>
+            </>
+          )}
       </button>
 
-      {stages && stages.length > 0 && (
-        <Dialog
-          open={dialogOpen}
-          onOpenChange={(open) => {
-            if (!open && phase !== "loading") {
-              setDialogOpen(false);
-              setPhase("idle");
-            }
-          }}
-        >
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2.5 text-base">
-                <span
-                  className={cn(
-                    "size-2.5 rounded-full",
-                    phase === "loading" ? style.pulse : phase === "done" ? "bg-emerald-400" : "bg-destructive"
-                  )}
-                />
-                {phase === "done"
-                  ? impactText ?? "Data refreshed"
-                  : phase === "error"
-                  ? "Refresh failed"
-                  : "Refreshing data…"}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-3 py-1">
-              {stageItems.map((item, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="flex size-6 shrink-0 items-center justify-center">
-                    {item.state === "done" ? (
-                      <CheckCircle2 className="size-5 text-emerald-500" />
-                    ) : item.state === "active" ? (
-                      <RefreshCw className="size-4 animate-spin text-primary" />
-                    ) : item.state === "error" ? (
-                      <XCircle className="size-5 text-destructive" />
-                    ) : (
-                      <div className="size-2 rounded-full bg-border" />
-                    )}
-                  </div>
-                  <span
-                    className={cn(
-                      "text-sm",
-                      item.state === "active" && "font-medium text-foreground",
-                      item.state === "done" && "text-foreground",
-                      item.state === "error" && "text-destructive",
-                      item.state === "pending" && "text-muted-foreground"
-                    )}
-                  >
-                    {item.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      <RefreshStatusDialog
+        open={open}
+        onOpenChange={(next) => {
+          if (runner.running) return;
+          setOpen(next);
+          if (!next) runner.reset();
+        }}
+        title={title ?? label}
+        description={
+          description ??
+          "Pulling fresh data from the live feed and rebuilding this screen — stale caches are cleared first."
+        }
+        accent={style.accent}
+        phase={runner.phase}
+        headline={runner.headline}
+        steps={runner.steps}
+        impact={runner.impact}
+        errors={runner.errors}
+        onStart={autoStart ? undefined : () => void runner.run()}
+        startLabel="Refresh now"
+      />
     </>
   );
+}
+
+/** Build standard 3-step jobs for a persistent resource page. */
+export function resourceRefreshJobs<T>({
+  refreshNow,
+  freshUrl,
+  labels,
+  summarize,
+  prepare,
+}: {
+  refreshNow: (options?: { url?: string }) => Promise<T>;
+  freshUrl: string;
+  labels: { prepare?: string; fetch: string; apply: string };
+  summarize?: (data: T) => string | void;
+  prepare?: () => Promise<void> | void;
+}): RefreshJob[] {
+  let snapshot: T | null = null;
+  const jobs: RefreshJob[] = [];
+
+  if (prepare || labels.prepare) {
+    jobs.push({
+      id: "prepare",
+      label: labels.prepare ?? "Clearing stale caches",
+      detail: "Bypassing saved snapshots on this device and the server",
+      run: async () => {
+        await prepare?.();
+      },
+    });
+  }
+
+  jobs.push({
+    id: "fetch",
+    label: labels.fetch,
+    detail: "Requesting a forced live reload",
+    run: async () => {
+      snapshot = await refreshNow({ url: withFreshParam(freshUrl) });
+      return summarize?.(snapshot) ?? undefined;
+    },
+  });
+
+  jobs.push({
+    id: "apply",
+    label: labels.apply,
+    detail: "Writing the latest snapshot onto this screen",
+    run: async () => {
+      if (!snapshot) snapshot = await refreshNow({ url: withFreshParam(freshUrl) });
+      return summarize?.(snapshot) ?? "Screen updated";
+    },
+  });
+
+  return jobs;
 }

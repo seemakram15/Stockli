@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/page-header";
 import { MarketStatusBadge } from "@/components/status-badges";
 import { IconChip } from "@/components/ui/accent";
 import { Card, CardContent } from "@/components/ui/card";
-import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import { usePersistentResource, writePersistentResourceCache } from "@/lib/hooks/use-persistent-resource";
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { PublicMarketPageData } from "@/lib/services/public-market-page";
 
@@ -59,14 +59,36 @@ export function CachedPsxMarketPage() {
             <MarketRefreshButton
               color="emerald"
               label="Refresh PSX"
-              onRefresh={async () => {
-                await refreshNow();
-                return "PSX data refreshed";
-              }}
-              stages={[
-                "Connecting to PSX feed",
-                "Loading index and sector data",
-                "Updating market board",
+              title="Refreshing PSX market"
+              description="Force-scrapes live PSX prices and indexes, clears stale page caches, then rebuilds this board."
+              jobs={[
+                {
+                  id: "scrape",
+                  label: "Scraping live PSX prices & indexes",
+                  detail: "Clears mid-session snapshots before pulling the delayed feed",
+                  critical: true,
+                  run: async () => {
+                    const response = await fetch("/api/public/market?fresh=1", {
+                      cache: "no-store",
+                    });
+                    if (!response.ok) throw new Error(`PSX refresh failed (${response.status})`);
+                    const json = (await response.json()) as { data?: PublicMarketPageData };
+                    if (!json.data) throw new Error("PSX response did not include data");
+                    await writePersistentResourceCache("public:psx-market:v3", json.data);
+                    return `${json.data.cards.length} indexes loaded`;
+                  },
+                },
+                {
+                  id: "apply",
+                  label: "Updating this market board",
+                  detail: "Writing the fresh snapshot onto this screen",
+                  run: async () => {
+                    const next = await refreshNow();
+                    return next.detail
+                      ? `${next.detail.symbol} ${next.detail.change >= 0 ? "+" : ""}${next.detail.change.toFixed(2)}`
+                      : "Market board updated";
+                  },
+                },
               ]}
             />
           </>

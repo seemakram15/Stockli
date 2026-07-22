@@ -27,6 +27,7 @@ export async function POST(request: Request) {
   const result = await runBackendWarmup({
     trigger: manual ? "manual" : "login",
     userId,
+    force: manual,
     forcePsxRefresh: manual,
     allowPrivilegedWrites: false,
     includePublicCaches: !backendOnly,

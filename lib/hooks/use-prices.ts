@@ -15,6 +15,23 @@ interface PricesResponse {
 const fetcher = (url: string): Promise<PricesResponse> =>
   fetch(url).then((r) => r.json());
 
+const PRICE_CACHE_PREFIX = "stockli:prices:";
+
+/** Clear device-cached quotes so the next poll / holdings refresh cannot overlay stale prices. */
+export function invalidateClientPriceCaches() {
+  if (typeof window === "undefined") return;
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key?.startsWith(PRICE_CACHE_PREFIX)) keys.push(key);
+    }
+    for (const key of keys) window.localStorage.removeItem(key);
+  } catch {
+    /* best effort */
+  }
+}
+
 /**
  * Polls /api/prices for the given symbols every ~30s (live-ish, backed by the
  * server's 15-min cache). Seed with server-rendered quotes via `initial` so
@@ -32,7 +49,7 @@ export function usePrices(symbols: string[], initial?: Quote[]) {
     [symbols]
   );
   const key = symbolsKey ? `/api/prices?symbols=${symbolsKey}` : null;
-  const cacheKey = symbolsKey ? `stockli:prices:${symbolsKey}` : null;
+  const cacheKey = symbolsKey ? `${PRICE_CACHE_PREFIX}${symbolsKey}` : null;
 
   const fallbackData: PricesResponse | undefined = initial
     ? { quotes: initial }

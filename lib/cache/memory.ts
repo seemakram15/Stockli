@@ -37,6 +37,17 @@ export function deleteMemoryCache(key: string): void {
   store().delete(key);
 }
 
+/** Drop every in-memory entry whose key starts with `prefix`. */
+export function deleteMemoryCacheByPrefix(prefix: string): number {
+  let removed = 0;
+  for (const key of store().keys()) {
+    if (!key.startsWith(prefix)) continue;
+    store().delete(key);
+    removed += 1;
+  }
+  return removed;
+}
+
 export async function getOrSetMemoryCache<T>(
   key: string,
   ttlSeconds: number,

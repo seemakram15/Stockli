@@ -9,6 +9,7 @@ import { MufapFundsBoard } from "@/components/market/mufap-funds-board";
 import { EtfTable } from "@/components/market/etf-table";
 import { PageHeader } from "@/components/page-header";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import { withFreshParam } from "@/lib/hooks/use-refresh-runner";
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { MufapFundsData } from "@/lib/services/mufap";
 
@@ -49,16 +50,18 @@ export function CachedMufapPage({ kind }: { kind: "mutual" | "etfs" }) {
             <MarketRefreshButton
               color="amber"
               label={etfMode ? "Refresh ETFs" : "Refresh funds"}
+              title={etfMode ? "Refreshing ETFs" : "Refreshing mutual funds"}
               onRefresh={async () => {
-                const result = await refreshNow();
-                const count = (result as MufapFundsData | undefined)?.funds?.length;
+                const result = await refreshNow({
+                  url: withFreshParam(`/api/public/mufap?kind=${etfMode ? "etfs" : "mutual"}`),
+                });
+                const count = result?.funds?.length;
                 return count ? `${count} ${etfMode ? "ETFs" : "funds"} updated` : undefined;
               }}
               stages={[
                 "Connecting to MUFAP",
                 "Fetching latest NAV data",
-                etfMode ? "Processing ETF returns" : "Processing fund returns",
-                "Updating fund board",
+                etfMode ? "Updating ETF board" : "Updating fund board",
               ]}
             />
           </>

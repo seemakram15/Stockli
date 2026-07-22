@@ -13,7 +13,9 @@ import {
   getPivotPointsData,
   getUsefulLinksData,
 } from "@/lib/services/market-resources";
-import { getMarketRows, marketWatchRowToQuote, refreshMarketWatch } from "@/lib/services/prices";
+import { getMarketRows, marketWatchRowToQuote, forceRefreshMarketWatch, refreshMarketWatch } from "@/lib/services/prices";
+import { refreshIndexSummaries } from "@/lib/services/history";
+import { invalidateStaleCache } from "@/lib/cache/stale";
 import { getMufapFunds } from "@/lib/services/mufap";
 import { getPublicMarketPageData } from "@/lib/services/public-market-page";
 import { archiveStockFundamentals } from "@/lib/services/stock-fundamentals";
@@ -74,7 +76,19 @@ export async function runBackendWarmup({
   let quotes = new Map<string, Quote>();
   if (psxRefreshAllowed) {
     try {
-      await refreshMarketWatch();
+      if (force || forcePsxRefresh) {
+        // Bust price caches first so closed-session TTLs cannot keep a
+        // mid-day snapshot (e.g. KSE100 −1277 vs final −1703).
+        await forceRefreshMarketWatch();
+      } else {
+        await refreshMarketWatch();
+      }
+      // Indices are a separate scrape from market-watch — always refresh them
+      // when PSX data may move (including the post-close settlement window).
+      await refreshIndexSummaries();
+      if (force || forcePsxRefresh) {
+        await invalidateStaleCache("public-page:psx-market:v3");
+      }
     } catch (err) {
       psxRefreshError = err instanceof Error ? err.message : String(err);
     }

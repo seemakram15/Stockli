@@ -24,6 +24,7 @@ import { MarketRefreshButton, type RefreshColor } from "@/components/market/mark
 import { PageHeader } from "@/components/page-header";
 import { type Accent } from "@/components/ui/accent";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import { withFreshParam } from "@/lib/hooks/use-refresh-runner";
 import type { GlobalMarketData, MarketUniverse } from "@/lib/services/global-markets";
 
 const MARKET_THEME: Record<
@@ -82,7 +83,9 @@ export function CachedGlobalMarketPage({
   const usChartRef = React.useRef<UsMarketChartHandle>(null);
 
   const handleRefreshAll = React.useCallback(async (): Promise<string | void> => {
-    const fns: Array<Promise<unknown>> = [refreshNow()];
+    const fns: Array<Promise<unknown>> = [
+      refreshNow({ url: withFreshParam(`/api/public/global-market/${market}`) }),
+    ];
     if (market === "commodities") {
       if (pkCommoditiesRef.current) fns.push(pkCommoditiesRef.current.refresh());
       if (globalChartRef.current) fns.push(globalChartRef.current.refresh());
@@ -118,6 +121,8 @@ export function CachedGlobalMarketPage({
             <MarketRefreshButton
               color={theme.color}
               label="Refresh"
+              title={`Refreshing ${title}`}
+              description="Force-reloads this market board from the live feed and updates every chart on the page."
               onRefresh={handleRefreshAll}
               stages={theme.stages}
             />

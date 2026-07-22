@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { formatFlow } from "@/lib/format";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import { withFreshParam } from "@/lib/hooks/use-refresh-runner";
 import type { FipiLipiData } from "@/lib/types/fipi-lipi";
 
 export function CachedFipiLipiPage() {
@@ -45,8 +46,9 @@ export function CachedFipiLipiPage() {
             <MarketRefreshButton
               color="sky"
               label="Refresh flows"
+              title="Refreshing FIPI / LIPI"
               onRefresh={async () => {
-                await refreshNow();
+                await refreshNow({ url: withFreshParam("/api/public/fipi-lipi") });
                 return "Investor flow data refreshed";
               }}
               stages={[
