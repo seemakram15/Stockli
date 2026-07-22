@@ -12,6 +12,7 @@ import { MarketStatusBadge } from "@/components/status-badges";
 import { EmptyState } from "@/components/empty-state";
 import { LiveQuote } from "@/components/live-quote";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
+import { ViewportLazy } from "@/components/loading/viewport-lazy";
 import { PLCalendar } from "@/components/charts/pl-calendar";
 import { PriceChart } from "@/components/charts/price-chart";
 import { SmartBackLink } from "@/components/smart-back-link";
@@ -19,6 +20,7 @@ import { StockFinancialsPanel } from "@/components/stock/stock-financials-panel"
 import { StockFundHolders } from "@/components/stock/stock-fund-holders";
 import { StockLogo } from "@/components/stock/stock-logo";
 import { WatchButton } from "@/components/watch-button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useLiveHoldings } from "@/lib/hooks/use-live-holdings";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
@@ -233,39 +235,68 @@ function StockPageView({
         </div>
       </div>
 
-      {cdcDividends.length > 0 && <StockDividendHistory dividends={cdcDividends} />}
+      {cdcDividends.length > 0 && (
+        <ViewportLazy
+          minHeight={280}
+          fallback={<SectionSkeleton rows={5} />}
+        >
+          <StockDividendHistory dividends={cdcDividends} />
+        </ViewportLazy>
+      )}
 
-      <StockFinancialsPanel symbol={symbol} companyName={ticker?.company_name} />
+      <ViewportLazy minHeight={360} fallback={<SectionSkeleton rows={6} />}>
+        <StockFinancialsPanel symbol={symbol} companyName={ticker?.company_name} />
+      </ViewportLazy>
 
-      <StockFundHolders symbol={symbol} />
+      <ViewportLazy minHeight={200} fallback={<SectionSkeleton rows={3} />}>
+        <StockFundHolders symbol={symbol} />
+      </ViewportLazy>
 
-      <Card>
-        <CardHeader className="flex-col items-start gap-2 sm:flex-row sm:justify-between">
-          <div className="flex items-start gap-3">
-            <IconChip accent="emerald"><CalendarRange /></IconChip>
-            <div>
-              <CardTitle>Daily gain / loss calendar</CardTitle>
-              <CardDescription>
-                {data.calendar.hasPosition
-                  ? `Coloured by your position's daily P/L — green for gains, red for losses${data.calendar.firstDate ? `, from your first buy on ${formatDate(data.calendar.firstDate)}` : ""}.`
-                  : "Coloured by the stock's daily move. Add a position to track your P/L per day."}
-              </CardDescription>
+      <ViewportLazy minHeight={420} fallback={<SectionSkeleton rows={7} />}>
+        <Card>
+          <CardHeader className="flex-col items-start gap-2 sm:flex-row sm:justify-between">
+            <div className="flex items-start gap-3">
+              <IconChip accent="emerald"><CalendarRange /></IconChip>
+              <div>
+                <CardTitle>Daily gain / loss calendar</CardTitle>
+                <CardDescription>
+                  {data.calendar.hasPosition
+                    ? `Coloured by your position's daily P/L — green for gains, red for losses${data.calendar.firstDate ? `, from your first buy on ${formatDate(data.calendar.firstDate)}` : ""}.`
+                    : "Coloured by the stock's daily move. Add a position to track your P/L per day."}
+                </CardDescription>
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <PLCalendar
-            data={data.calendar.days}
-            hasPosition={data.calendar.hasPosition}
-            livePositions={
-              hasPosition
-                ? [{ symbol, quantity: summary.totalQty, avgBuyPrice: summary.avgCost, initial: quote }]
-                : []
-            }
-          />
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            <PLCalendar
+              data={data.calendar.days}
+              hasPosition={data.calendar.hasPosition}
+              livePositions={
+                hasPosition
+                  ? [{ symbol, quantity: summary.totalQty, avgBuyPrice: summary.avgCost, initial: quote }]
+                  : []
+              }
+            />
+          </CardContent>
+        </Card>
+      </ViewportLazy>
     </div>
+  );
+}
+
+function SectionSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-5 w-48" />
+        <Skeleton className="mt-2 h-3 w-72 max-w-full" />
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {Array.from({ length: rows }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 

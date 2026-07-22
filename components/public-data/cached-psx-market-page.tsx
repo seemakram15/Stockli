@@ -6,6 +6,7 @@ import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { MarketRefreshButton } from "@/components/market/market-refresh-button";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
+import { ViewportLazy } from "@/components/loading/viewport-lazy";
 import { ConstituentsTable } from "@/components/market/constituents-table";
 import { IndicesPanel } from "@/components/market/indices-panel";
 import { MarketAccordion } from "@/components/market/market-accordion";
@@ -14,6 +15,7 @@ import { PageHeader } from "@/components/page-header";
 import { MarketStatusBadge } from "@/components/status-badges";
 import { IconChip } from "@/components/ui/accent";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { usePersistentResource, writePersistentResourceCache } from "@/lib/hooks/use-persistent-resource";
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { PublicMarketPageData } from "@/lib/services/public-market-page";
@@ -119,23 +121,46 @@ export function CachedPsxMarketPage() {
             )}
           </section>
 
-          <MarketAccordion title="Market Performers" icon={<Activity />} accent="emerald">
-            <MarketPerformers data={data.analytics.performers} showHeader={false} />
-          </MarketAccordion>
+          <ViewportLazy
+            minHeight={280}
+            fallback={
+              <div className="space-y-3 rounded-xl border border-border p-4">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            }
+          >
+            <MarketAccordion title="Market Performers" icon={<Activity />} accent="emerald">
+              <MarketPerformers data={data.analytics.performers} showHeader={false} />
+            </MarketAccordion>
+          </ViewportLazy>
 
           {activeDetail && (
-            <MarketAccordion
-              title={`${activeDetail.symbol} constituents (${activeDetail.constituents.length})`}
-              meta="Sorted by index weight"
-              icon={<Layers />}
-              accent="sky"
+            <ViewportLazy
+              minHeight={320}
+              fallback={
+                <div className="space-y-3 rounded-xl border border-border p-4">
+                  <Skeleton className="h-5 w-56" />
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </div>
+              }
             >
-              <Card>
-                <CardContent>
-                  <ConstituentsTable constituents={activeDetail.constituents} />
-                </CardContent>
-              </Card>
-            </MarketAccordion>
+              <MarketAccordion
+                title={`${activeDetail.symbol} constituents (${activeDetail.constituents.length})`}
+                meta="Sorted by index weight"
+                icon={<Layers />}
+                accent="sky"
+              >
+                <Card>
+                  <CardContent>
+                    <ConstituentsTable constituents={activeDetail.constituents} />
+                  </CardContent>
+                </Card>
+              </MarketAccordion>
+            </ViewportLazy>
           )}
         </>
       ) : isLoading ? (

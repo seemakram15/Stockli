@@ -19,6 +19,7 @@ import { PerformanceChart } from "@/components/charts/performance-chart";
 import { PLCalendar } from "@/components/charts/pl-calendar";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
+import { ViewportLazy, useViewportEnabled } from "@/components/loading/viewport-lazy";
 import { LiveSummaryCards } from "@/components/live-summary-cards";
 import { useLiveHoldings } from "@/lib/hooks/use-live-holdings";
 import { PageHeader } from "@/components/page-header";
@@ -124,45 +125,43 @@ export function CachedPortfolioCommandPage({
     acceptCacheWhen: acceptPortfolioCache,
   });
 
+  // Performance chart is below the fold — fetch only when near viewport.
+  const perfGate = useViewportEnabled({ rootMargin: "280px 0px" });
+  const acceptPerfCache = React.useCallback(
+    (record: CachedRecord<PerformanceResult>) =>
+      cacheClosedOnly() && isPortfolioCacheFresh(record, userId),
+    [cacheClosedOnly, userId]
+  );
+  const {
+    data: perfData,
+    refreshNow: refreshPerf,
+  } = usePersistentResource<PerformanceResult>({
+    cacheKey: `private:portfolio-performance:${userId}`,
+    url: PORTFOLIO_PERFORMANCE_URL,
+    refreshInterval: 60_000,
+    pauseWhen: cacheClosedOnly,
+    acceptCacheWhen: acceptPerfCache,
+    enabled: perfGate.visible,
+  });
+
   React.useEffect(() => {
     const onMutation = () => {
       void refreshNow();
+      void refreshPerf();
     };
     window.addEventListener(PORTFOLIO_MUTATION_EVENT, onMutation);
     return () => window.removeEventListener(PORTFOLIO_MUTATION_EVENT, onMutation);
-  }, [refreshNow]);
-
-  const [perfData, setPerfData] = React.useState<import("@/lib/services/performance").PerformanceResult | null>(null);
-  const fetchingPerfRef = React.useRef(false);
-  const fetchPerformance = React.useCallback(() => {
-    if (fetchingPerfRef.current) return;
-    fetchingPerfRef.current = true;
-    fetch(PORTFOLIO_PERFORMANCE_URL)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json: { data: import("@/lib/services/performance").PerformanceResult } | null) => {
-        if (json?.data) setPerfData(json.data);
-      })
-      .catch(() => {})
-      .finally(() => {
-        fetchingPerfRef.current = false;
-      });
-  }, []);
-
-  React.useEffect(() => {
-    fetchPerformance();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshNow, refreshPerf]);
 
   const isFirstDataRef = React.useRef(true);
   React.useEffect(() => {
-    if (!data) return;
+    if (!data || !perfGate.visible) return;
     if (isFirstDataRef.current) {
       isFirstDataRef.current = false;
       return;
     }
-    fetchPerformance();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.updatedAt]);
+    void refreshPerf();
+  }, [data?.updatedAt, perfGate.visible, refreshPerf]);
 
   // When returning to this page after a mutation (e.g. creating a portfolio from the detail
   // page or any other flow), the SWR dedup window can prevent the automatic revalidation.
@@ -331,8 +330,12 @@ export function CachedPortfolioCommandPage({
             dayPLByPortfolio={marketOpen ? null : portfolioDayPL}
           />
 
-          <div className="grid gap-4 lg:grid-cols-3">
-            <PerformanceCard data={perfData} holdings={holdings} />
+          <div ref={perfGate.ref} className="grid gap-4 lg:grid-cols-3">
+            {perfGate.visible ? (
+              <PerformanceCard data={perfData} holdings={holdings} />
+            ) : (
+              <PerformanceSkeleton />
+            )}
             <AllocationExplorer holdings={holdings} portfolios={portfolios} title="Allocation overview" />
           </div>
 
@@ -341,34 +344,36 @@ export function CachedPortfolioCommandPage({
             <MoversCard title="Lagging positions" icon="down" items={dashboard.topLosers} />
           </div>
 
-          <Card className="relative">
-            <CardHeader className="flex-col items-start gap-2 pr-16 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex items-start gap-2">
-                <CalendarClock className="mt-0.5 size-5 text-primary" />
-                <div>
-                  <CardTitle>All portfolios gain / loss calendar</CardTitle>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Daily PKR gain/loss across every portfolio, with today updated from live session prices.
-                  </p>
+          <ViewportLazy minHeight={420} fallback={<PerformanceSkeleton />}>
+            <Card className="relative">
+              <CardHeader className="flex-col items-start gap-2 pr-16 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-2">
+                  <CalendarClock className="mt-0.5 size-5 text-primary" />
+                  <div>
+                    <CardTitle>All portfolios gain / loss calendar</CardTitle>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Daily PKR gain/loss across every portfolio, with today updated from live session prices.
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <AllocationExpandDialog
-                holdings={holdings}
-                portfolios={portfolios}
-                description="Explore exposure, invested amount and live P/L across all portfolios."
-                ariaLabel="Expand portfolio allocation"
-                triggerClassName="absolute right-4 top-4 z-10 size-9 border-primary/30 bg-primary/5 text-primary shadow-sm hover:bg-primary/10"
-              />
-            </CardHeader>
-            <CardContent>
-              <PLCalendar
-                data={calendar?.days ?? []}
-                hasPosition
-                livePositions={liveCalendarPositions}
-                showSummaryPL={false}
-              />
-            </CardContent>
-          </Card>
+                <AllocationExpandDialog
+                  holdings={holdings}
+                  portfolios={portfolios}
+                  description="Explore exposure, invested amount and live P/L across all portfolios."
+                  ariaLabel="Expand portfolio allocation"
+                  triggerClassName="absolute right-4 top-4 z-10 size-9 border-primary/30 bg-primary/5 text-primary shadow-sm hover:bg-primary/10"
+                />
+              </CardHeader>
+              <CardContent>
+                <PLCalendar
+                  data={calendar?.days ?? []}
+                  hasPosition
+                  livePositions={liveCalendarPositions}
+                  showSummaryPL={false}
+                />
+              </CardContent>
+            </Card>
+          </ViewportLazy>
         </>
       )}
     </div>

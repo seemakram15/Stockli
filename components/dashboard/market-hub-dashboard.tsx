@@ -21,6 +21,7 @@ import {
 import { IndexTickerStrip, type DashboardTickerItem } from "@/components/dashboard/index-ticker-strip";
 import { MarketRefreshButton } from "@/components/market/market-refresh-button";
 import { WorldMarketHeatMap } from "@/components/market/world-market-heat-map";
+import { useViewportEnabled } from "@/components/loading/viewport-lazy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -31,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AccentPill, ACCENT_GRADIENT, IconChip, type Accent } from "@/components/ui/accent";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   isPortfolioCacheFresh,
   PORTFOLIO_MUTATION_EVENT,
@@ -55,7 +57,6 @@ import type {
   GlobalMarketData as PublicGlobalMarketData,
   GlobalMarketQuote as PublicGlobalQuote,
 } from "@/lib/services/global-markets";
-import type { FipiLipiData } from "@/lib/types/fipi-lipi";
 import type { HoldingWithMetrics, Portfolio, PortfolioSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -209,6 +210,7 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
     [cacheClosedOnly, userId]
   );
 
+  // Critical above-the-fold feeds — load immediately.
   const portfolio = usePersistentResource<DashboardData>({
     cacheKey: `private:dashboard:${userId}`,
     url: "/api/private/dashboard",
@@ -217,40 +219,63 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
     acceptCacheWhen: acceptPortfolioCache,
   });
   const psx = usePublicHub<PublicMarketData>("public:psx-market:v3", "/api/public/market", cacheClosedOnly);
-  const us = usePublicHub<GlobalMarketData>("public:global-market:us", "/api/public/global-market/us", cacheClosedOnly);
-  const india = usePublicHub<GlobalMarketData>("public:global-market:india", "/api/public/global-market/india", cacheClosedOnly);
-  const world = usePublicHub<GlobalMarketData>("public:global-market:world", "/api/public/global-market/world", cacheClosedOnly);
-  const commodities = usePublicHub<GlobalMarketData>(
-    "public:global-market:commodities",
-    "/api/public/global-market/commodities",
-    cacheClosedOnly
-  );
-  const oil = usePublicHub<GlobalMarketData>("public:global-market:oil", "/api/public/global-market/oil", cacheClosedOnly);
-  const crypto = usePublicHub<GlobalMarketData>(
-    "public:global-market:crypto",
-    "/api/public/global-market/crypto",
-    cacheClosedOnly
-  );
+
+  // Below-the-fold — fetch only once the section is near the viewport.
+  const ratesGate = useViewportEnabled({ rootMargin: "280px 0px" });
+  const worldGate = useViewportEnabled({ rootMargin: "320px 0px" });
+  const boardsGate = useViewportEnabled({ rootMargin: "360px 0px" });
+
   const pkRates = usePersistentResource<PkCommoditiesData>({
     cacheKey: "public:pk-commodities-v12",
     url: "/api/public/pakistan-commodities",
     refreshInterval: PK_RATES_REFRESH_MS,
     pauseWhen: cacheClosedOnly,
     acceptCacheWhen: cacheClosedOnly,
+    enabled: ratesGate.visible,
   });
   const fuel = usePersistentResource<PakistanFuelData>({
     cacheKey: "public:pk-fuel-prices-v1",
     url: "/api/public/pakistan-fuel-prices",
     refreshInterval: FUEL_REFRESH_MS,
     acceptCacheWhen: () => true,
+    enabled: ratesGate.visible,
   });
-  const fipi = usePersistentResource<FipiLipiData>({
-    cacheKey: "public:fipi-lipi-v9",
-    url: "/api/public/fipi-lipi",
-    refreshInterval: REFRESH_MS * 5,
-    pauseWhen: cacheClosedOnly,
-    acceptCacheWhen: cacheClosedOnly,
-  });
+  const oil = usePublicHub<GlobalMarketData>(
+    "public:global-market:oil",
+    "/api/public/global-market/oil",
+    cacheClosedOnly,
+    ratesGate.visible || boardsGate.visible
+  );
+  const world = usePublicHub<GlobalMarketData>(
+    "public:global-market:world",
+    "/api/public/global-market/world",
+    cacheClosedOnly,
+    worldGate.visible
+  );
+  const us = usePublicHub<GlobalMarketData>(
+    "public:global-market:us",
+    "/api/public/global-market/us",
+    cacheClosedOnly,
+    worldGate.visible || boardsGate.visible
+  );
+  const india = usePublicHub<GlobalMarketData>(
+    "public:global-market:india",
+    "/api/public/global-market/india",
+    cacheClosedOnly,
+    boardsGate.visible
+  );
+  const commodities = usePublicHub<GlobalMarketData>(
+    "public:global-market:commodities",
+    "/api/public/global-market/commodities",
+    cacheClosedOnly,
+    boardsGate.visible
+  );
+  const crypto = usePublicHub<GlobalMarketData>(
+    "public:global-market:crypto",
+    "/api/public/global-market/crypto",
+    cacheClosedOnly,
+    boardsGate.visible
+  );
 
   const refreshPortfolioRef = React.useRef(portfolio.refreshNow);
   refreshPortfolioRef.current = portfolio.refreshNow;
@@ -273,7 +298,6 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
     crypto: crypto.data ?? undefined,
     pkRates: pkRates.data ?? undefined,
     fuel: fuel.data ?? undefined,
-    fipi: fipi.data ?? undefined,
   };
 
   const refreshJobs = React.useMemo<RefreshJob[]>(
@@ -350,17 +374,8 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
           return "Global boards updated";
         },
       },
-      {
-        id: "fipi",
-        label: "Foreign & local flows",
-        detail: "Latest FIPI / LIPI session totals",
-        run: async () => {
-          const next = await fipi.refreshNow({ url: "/api/public/fipi-lipi?fresh=1" });
-          return next.latest ? `Flows for ${next.latest.date}` : "Flow board updated";
-        },
-      },
     ],
-    [commodities, crypto, fipi, fuel, india, oil, pkRates, portfolio, psx, us, world]
+    [commodities, crypto, fuel, india, oil, pkRates, portfolio, psx, us, world]
   );
 
   const kse100 = data.psx?.detail ?? data.psx?.cards.find((card) => card.symbol === "KSE100") ?? null;
@@ -460,90 +475,171 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
         <PortfolioHeroCard data={data.portfolio} className="xl:col-span-7" />
       </section>
 
-      <PakistanDailyStrip pkRates={data.pkRates} fuel={data.fuel} oil={data.oil} />
+      <div ref={ratesGate.ref} className="min-h-[12rem]">
+        {ratesGate.visible ? (
+          <PakistanDailyStrip pkRates={data.pkRates} fuel={data.fuel} oil={data.oil} />
+        ) : (
+          <HubSectionSkeleton label="Today's key rates" rows={4} />
+        )}
+      </div>
 
-      <section className="grid items-stretch gap-4 xl:grid-cols-12">
-        <div className="min-h-[28rem] xl:col-span-8 xl:min-h-0">
-          <DashboardWorldMapCard
-            href="/market/world"
-            title="World view"
-            eyebrow="Country exchange map"
-            data={data.world}
-            featured={worldFeatured}
-          />
-        </div>
-        <div className="xl:col-span-4">
-          <MarketPulseCard us={data.us} world={data.world} />
-        </div>
-      </section>
+      <div ref={worldGate.ref} className="min-h-[28rem]">
+        {worldGate.visible ? (
+          <section className="grid items-stretch gap-4 xl:grid-cols-12">
+            <div className="min-h-[28rem] xl:col-span-8 xl:min-h-0">
+              <DashboardWorldMapCard
+                href="/market/world"
+                title="World view"
+                eyebrow="Country exchange map"
+                data={data.world}
+                featured={worldFeatured}
+              />
+            </div>
+            <div className="xl:col-span-4">
+              <MarketPulseCard us={data.us} world={data.world} />
+            </div>
+          </section>
+        ) : (
+          <HubMapSkeleton />
+        )}
+      </div>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
-        <DashboardMarketCard
-          href="/market"
-          accent="primary"
-          icon={<Landmark className="size-5" />}
-          title="PSX market"
-          eyebrow="Famous & blue chips"
-          featured={ffcFeatured}
-          rows={psxBlueChipRows(data.psx)}
-        />
-        <DashboardMarketCard
-          href="/market/us"
-          accent="sky"
-          icon={<LineChart className="size-5" />}
-          title="USA stocks"
-          eyebrow="Indexes & megacaps"
-          featured={usFeatured}
-          rows={quoteRows(data.us, ["GOOGL", "NVDA", "META", "TSLA", "AAPL", "MSFT", "AMZN"])}
-        />
-        <DashboardMarketCard
-          href="/market/india"
-          accent="indigo"
-          icon={<Globe2 className="size-5" />}
-          title="India market"
-          eyebrow="Nifty & Sensex names"
-          featured={indiaFeatured}
-          rows={quoteRows(data.india, ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "SBIN.NS"])}
-        />
-        <DashboardMarketCard
-          href="/market/oil"
-          accent="orange"
-          icon={<Droplets className="size-5" />}
-          title="Oil market"
-          eyebrow="Energy futures"
-          featured={brentFeatured}
-          rows={quoteRows(data.oil, ["CL=F", "BZ=F", "NG=F", "RB=F", "HO=F"])}
-        />
-        <DashboardMarketCard
-          href="/market/commodities"
-          accent="amber"
-          icon={<Gem className="size-5" />}
-          title="Commodities"
-          eyebrow="Metals & futures"
-          featured={goldFeatured}
-          rows={quoteRows(data.commodities, ["GC=F", "SI=F", "PL=F", "HG=F", "PA=F", "ZC=F", "ZW=F"])}
-        />
-        <DashboardMarketCard
-          href="/market/crypto"
-          accent="violet"
-          icon={<Bitcoin className="size-5" />}
-          title="Crypto market"
-          eyebrow="BTC, ETH, SOL, BNB"
-          featured={btcFeatured}
-          rows={quoteRows(data.crypto, ["BTC", "ETH", "SOL", "BNB", "SUI", "XRP", "DOGE"])}
-        />
-      </section>
+      <div ref={boardsGate.ref} className="min-h-[26rem]">
+        {boardsGate.visible ? (
+          <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+            <DashboardMarketCard
+              href="/market"
+              accent="primary"
+              icon={<Landmark className="size-5" />}
+              title="PSX market"
+              eyebrow="Famous & blue chips"
+              featured={ffcFeatured}
+              rows={psxBlueChipRows(data.psx)}
+            />
+            <DashboardMarketCard
+              href="/market/us"
+              accent="sky"
+              icon={<LineChart className="size-5" />}
+              title="USA stocks"
+              eyebrow="Indexes & megacaps"
+              featured={usFeatured}
+              rows={quoteRows(data.us, ["GOOGL", "NVDA", "META", "TSLA", "AAPL", "MSFT", "AMZN"])}
+            />
+            <DashboardMarketCard
+              href="/market/india"
+              accent="indigo"
+              icon={<Globe2 className="size-5" />}
+              title="India market"
+              eyebrow="Nifty & Sensex names"
+              featured={indiaFeatured}
+              rows={quoteRows(data.india, ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "SBIN.NS"])}
+            />
+            <DashboardMarketCard
+              href="/market/oil"
+              accent="orange"
+              icon={<Droplets className="size-5" />}
+              title="Oil market"
+              eyebrow="Energy futures"
+              featured={brentFeatured}
+              rows={quoteRows(data.oil, ["CL=F", "BZ=F", "NG=F", "RB=F", "HO=F"])}
+            />
+            <DashboardMarketCard
+              href="/market/commodities"
+              accent="amber"
+              icon={<Gem className="size-5" />}
+              title="Commodities"
+              eyebrow="Metals & futures"
+              featured={goldFeatured}
+              rows={quoteRows(data.commodities, ["GC=F", "SI=F", "PL=F", "HG=F", "PA=F", "ZC=F", "ZW=F"])}
+            />
+            <DashboardMarketCard
+              href="/market/crypto"
+              accent="violet"
+              icon={<Bitcoin className="size-5" />}
+              title="Crypto market"
+              eyebrow="BTC, ETH, SOL, BNB"
+              featured={btcFeatured}
+              rows={quoteRows(data.crypto, ["BTC", "ETH", "SOL", "BNB", "SUI", "XRP", "DOGE"])}
+            />
+          </section>
+        ) : (
+          <HubBoardsSkeleton />
+        )}
+      </div>
     </div>
   );
 }
 
-function usePublicHub<T>(cacheKey: string, url: string, cacheClosedOnly: () => boolean) {
+function HubSectionSkeleton({ label, rows }: { label: string; rows: number }) {
+  return (
+    <div className="overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-4 sm:p-5">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+        {Array.from({ length: rows }).map((_, index) => (
+          <div key={index} className="rounded-2xl border border-border/70 bg-background p-3">
+            <Skeleton className="h-3.5 w-16" />
+            <Skeleton className="mt-2 h-6 w-24" />
+            <Skeleton className="mt-2 h-3 w-20" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HubMapSkeleton() {
+  return (
+    <section className="grid items-stretch gap-4 xl:grid-cols-12">
+      <div className="min-h-[28rem] overflow-hidden rounded-xl border border-border/70 bg-card xl:col-span-8 sm:min-h-[34rem]">
+        <div className="space-y-3 p-4">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-10 w-full rounded-2xl" />
+        </div>
+        <Skeleton className="h-[22rem] w-full rounded-none" />
+      </div>
+      <div className="min-h-[28rem] overflow-hidden rounded-xl border border-border/70 bg-card p-4 xl:col-span-4 sm:min-h-[34rem]">
+        <Skeleton className="h-5 w-32" />
+        <div className="mt-3 space-y-2">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <Skeleton key={index} className="h-10 w-full rounded-xl" />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HubBoardsSkeleton() {
+  return (
+    <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={index} className="min-h-[26rem] overflow-hidden rounded-xl border border-border/70 bg-card p-4 sm:min-h-[30rem]">
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="mt-3 h-16 w-full rounded-2xl" />
+          <div className="mt-4 space-y-2">
+            {Array.from({ length: 5 }).map((__, row) => (
+              <Skeleton key={row} className="h-14 w-full rounded-xl" />
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function usePublicHub<T>(
+  cacheKey: string,
+  url: string,
+  cacheClosedOnly: () => boolean,
+  enabled = true
+) {
   return usePersistentResource<T>({
     cacheKey,
     url,
     refreshInterval: REFRESH_MS,
     pauseWhen: cacheClosedOnly,
     acceptCacheWhen: cacheClosedOnly,
+    enabled,
   });
 }
 

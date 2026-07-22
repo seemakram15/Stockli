@@ -6,6 +6,7 @@ import { AllocationExplorer } from "@/components/portfolio/allocation-explorer";
 import { EmptyState } from "@/components/empty-state";
 import { HoldingsTable } from "@/components/holdings-table";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
+import { ViewportLazy } from "@/components/loading/viewport-lazy";
 import { LiveSummaryCards } from "@/components/live-summary-cards";
 import { useLiveHoldings } from "@/lib/hooks/use-live-holdings";
 import { PageHeader } from "@/components/page-header";
@@ -18,6 +19,7 @@ import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { MarketStatusBadge } from "@/components/status-badges";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { IconChip } from "@/components/ui/accent";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PLCalendar } from "@/components/charts/pl-calendar";
 import { PortfolioValueChart } from "@/components/charts/portfolio-value-chart";
@@ -211,20 +213,22 @@ export function CachedPortfolioDetailPage({
       />
 
       {hasHoldings && (
-        <Card>
-          <CardHeader className="flex-row items-start gap-3">
-            <IconChip accent="emerald"><LineChart /></IconChip>
-            <div>
-              <CardTitle>Portfolio value</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Total market value over time, live while the market&apos;s open.
-              </p>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <PortfolioValueChart days={valueSeries} />
-          </CardContent>
-        </Card>
+        <ViewportLazy minHeight={320} fallback={<DetailSectionSkeleton rows={5} />}>
+          <Card>
+            <CardHeader className="flex-row items-start gap-3">
+              <IconChip accent="emerald"><LineChart /></IconChip>
+              <div>
+                <CardTitle>Portfolio value</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Total market value over time, live while the market&apos;s open.
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <PortfolioValueChart days={valueSeries} />
+            </CardContent>
+          </Card>
+        </ViewportLazy>
       )}
 
       {!hasHoldings && !hasHistory ? (
@@ -276,51 +280,73 @@ export function CachedPortfolioDetailPage({
             </Card>
 
             {hasHoldings && (
-              <AllocationExplorer
-                holdings={holdings}
-                portfolios={[pf]}
-                defaultPortfolioId={pf.id}
-                defaultMode="holding"
-                title="Allocation"
-                description={`Explore ${pf.name}'s holdings, invested amount and live P/L.`}
-                className="h-full"
-              />
+              <ViewportLazy minHeight={360} fallback={<DetailSectionSkeleton rows={6} />} className="h-full">
+                <AllocationExplorer
+                  holdings={holdings}
+                  portfolios={[pf]}
+                  defaultPortfolioId={pf.id}
+                  defaultMode="holding"
+                  title="Allocation"
+                  description={`Explore ${pf.name}'s holdings, invested amount and live P/L.`}
+                  className="h-full"
+                />
+              </ViewportLazy>
             )}
           </div>
 
-          <RealizedHistory positions={pf.realizedPositions ?? []} />
+          <ViewportLazy minHeight={240} fallback={<DetailSectionSkeleton rows={4} />}>
+            <RealizedHistory positions={pf.realizedPositions ?? []} />
+          </ViewportLazy>
 
-          <Card>
-            <CardHeader className="flex-row items-start gap-3">
-              <IconChip accent="sky"><CalendarClock /></IconChip>
-              <div>
-                <CardTitle>Portfolio gain / loss calendar</CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Daily PKR gain/loss across all current holdings, updated with live session prices.
-                </p>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <PLCalendar
-                data={data.calendar?.days ?? []}
-                hasPosition={hasHoldings}
-                livePositions={holdings.map((h) => {
-                  const live = liveByHoldingId.get(h.id);
-                  return {
-                    symbol: h.symbol,
-                    quantity: h.quantity,
-                    avgBuyPrice: h.avg_buy_price,
-                    initial: h.quote,
-                    liveDayChange: live?.dayChange,
-                    liveMarketValue: live?.marketValue,
-                  };
-                })}
-              />
-            </CardContent>
-          </Card>
+          <ViewportLazy minHeight={420} fallback={<DetailSectionSkeleton rows={7} />}>
+            <Card>
+              <CardHeader className="flex-row items-start gap-3">
+                <IconChip accent="sky"><CalendarClock /></IconChip>
+                <div>
+                  <CardTitle>Portfolio gain / loss calendar</CardTitle>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Daily PKR gain/loss across all current holdings, updated with live session prices.
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <PLCalendar
+                  data={data.calendar?.days ?? []}
+                  hasPosition={hasHoldings}
+                  livePositions={holdings.map((h) => {
+                    const live = liveByHoldingId.get(h.id);
+                    return {
+                      symbol: h.symbol,
+                      quantity: h.quantity,
+                      avgBuyPrice: h.avg_buy_price,
+                      initial: h.quote,
+                      liveDayChange: live?.dayChange,
+                      liveMarketValue: live?.marketValue,
+                    };
+                  })}
+                />
+              </CardContent>
+            </Card>
+          </ViewportLazy>
         </>
       )}
     </div>
+  );
+}
+
+function DetailSectionSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-5 w-48" />
+        <Skeleton className="mt-2 h-3 w-64 max-w-full" />
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {Array.from({ length: rows }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 

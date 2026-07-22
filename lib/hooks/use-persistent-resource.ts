@@ -42,6 +42,7 @@ export function usePersistentResource<T>({
   acceptCacheWhen,
   keepPreviousData = true,
   legacyCacheKeys = EMPTY_LEGACY_CACHE_KEYS,
+  enabled = true,
 }: {
   cacheKey: string;
   url: string;
@@ -50,6 +51,12 @@ export function usePersistentResource<T>({
   acceptCacheWhen?: (record: CachedRecord<T>) => boolean;
   keepPreviousData?: boolean;
   legacyCacheKeys?: string[];
+  /**
+   * When false, skip network requests (SWR key is null).
+   * Device cache is still read so a previously saved snapshot can paint instantly
+   * once the section enables.
+   */
+  enabled?: boolean;
 }) {
   const [cached, setCached] = React.useState<CachedRecord<T> | null>(() =>
     readMemoryCached<T>(cacheKey, legacyCacheKeys)
@@ -98,7 +105,7 @@ export function usePersistentResource<T>({
   const cachedValue = usableCached?.value ?? null;
   const rawCachedValue = activeCached?.value ?? null;
   const isPaused = Boolean(cacheReady && cachedValue && pauseWhen?.(cachedValue));
-  const swrKey = cacheReady && !isPaused ? ([cacheKey, url] as const) : null;
+  const swrKey = enabled && cacheReady && !isPaused ? ([cacheKey, url] as const) : null;
 
   const swr = useSWR<T>(
     swrKey,
@@ -106,9 +113,10 @@ export function usePersistentResource<T>({
     {
       dedupingInterval: 15_000,
       keepPreviousData: keepPrevious,
-      revalidateOnFocus: !isPaused,
-      revalidateOnReconnect: !isPaused,
+      revalidateOnFocus: enabled && !isPaused,
+      revalidateOnReconnect: enabled && !isPaused,
       refreshInterval: (latest) => {
+        if (!enabled) return 0;
         const value = latest ?? rawCachedValue;
         if (pauseWhen?.(value ?? null)) return 0;
         return typeof refreshInterval === "function"
@@ -143,14 +151,17 @@ export function usePersistentResource<T>({
 
   const cacheIsKnownStale =
     activeCached !== null && acceptCacheWhen !== undefined && !acceptCacheWhen(activeCached);
-  const data = swr.data ?? cachedValue ?? (cacheIsKnownStale ? null : rawCachedValue);
+  // While disabled, keep cache available for instant paint the moment `enabled` flips.
+  const resolved =
+    swr.data ?? cachedValue ?? (cacheIsKnownStale ? null : rawCachedValue);
+  const data = enabled ? resolved : null;
 
   return {
     data,
     error: swr.error as Error | undefined,
-    isLoading: !data && (!cacheReady || swr.isLoading),
-    isRefreshing: Boolean(data && swr.isValidating),
-    isFromDeviceCache: Boolean(!swr.data && rawCachedValue),
+    isLoading: enabled && !data && (!cacheReady || swr.isLoading),
+    isRefreshing: Boolean(enabled && data && swr.isValidating),
+    isFromDeviceCache: Boolean(enabled && !swr.data && rawCachedValue),
     cachedAt: usableCached?.savedAt ?? null,
     lastCachedAt: activeCached?.savedAt ?? null,
     mutate: swr.mutate,
