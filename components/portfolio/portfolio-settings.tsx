@@ -124,9 +124,7 @@ function DeleteButton({
     markPortfolioMutated({ portfolioId: id, userId, deleted: true });
     onDeleted();
     beginNavigation("/portfolios");
-    React.startTransition(() => {
-      router.push("/portfolios");
-    });
+    router.push("/portfolios");
     router.refresh();
   }
 
