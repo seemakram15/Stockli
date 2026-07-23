@@ -45,9 +45,9 @@ export function AccountDangerZone({
   }, [state.error]);
 
   return (
-    <Card variant="plain" className="border-loss/30">
+    <Card variant="plain" className="rounded-3xl border-loss/30">
       <CardHeader>
-        <CardTitle className="text-loss">Danger zone</CardTitle>
+        <CardTitle className="font-bold text-loss">Danger zone</CardTitle>
         <CardDescription>
           Permanently delete your MyStockli account and all connected personal data.
         </CardDescription>

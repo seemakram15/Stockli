@@ -275,3 +275,191 @@ export async function removeHolding(formData: FormData): Promise<ActionState> {
     return { error: String(e) };
   }
 }
+
+export interface StatementImportTradeInput {
+  side: "BUY" | "SELL";
+  symbol: string;
+  quantity: number;
+  price: number;
+  /** Broker fees + tax combined into the fees column. */
+  fees: number;
+  date: string;
+  note?: string;
+}
+
+export interface StatementImportResult {
+  ok?: boolean;
+  error?: string;
+  message?: string;
+  imported: number;
+  skipped: number;
+  errors: string[];
+}
+
+/**
+ * Import approved statement trades chronologically.
+ * Holdings avg cost / qty and realized P/L history update through the same
+ * BUY/SELL paths used by the manual trade dialog.
+ */
+export async function importStatementTrades(
+  portfolioId: string,
+  trades: StatementImportTradeInput[]
+): Promise<StatementImportResult> {
+  if (await isSampleMode()) {
+    return { error: DEMO_BLOCK.error, imported: 0, skipped: 0, errors: [DEMO_BLOCK.error!] };
+  }
+  if (!portfolioId || !Array.isArray(trades) || !trades.length) {
+    return { error: "No trades to import.", imported: 0, skipped: 0, errors: [] };
+  }
+
+  const rowSchema = z.object({
+    side: z.enum(["BUY", "SELL"]),
+    symbol: z
+      .string()
+      .min(1)
+      .max(20)
+      .transform((value, ctx) => {
+        const symbol = normalizeSymbol(value);
+        if (!symbol) {
+          ctx.addIssue({ code: "custom", message: "Invalid symbol" });
+          return z.NEVER;
+        }
+        return symbol;
+      }),
+    quantity: z.number().positive(),
+    price: z.number().nonnegative(),
+    fees: z.number().nonnegative().default(0),
+    date: z.string().min(8, "Date is required"),
+    note: z.string().max(280).optional(),
+  });
+
+  const parsedRows: Array<z.infer<typeof rowSchema> & { side: "BUY" | "SELL" }> = [];
+  const errors: string[] = [];
+
+  for (let i = 0; i < trades.length; i++) {
+    const parsed = rowSchema.safeParse(trades[i]);
+    if (!parsed.success) {
+      errors.push(`Row ${i + 1}: ${parsed.error.issues[0]?.message ?? "Invalid trade"}`);
+      continue;
+    }
+    const when = new Date(parsed.data.date);
+    if (Number.isNaN(when.getTime())) {
+      errors.push(`Row ${i + 1} (${parsed.data.symbol}): invalid date`);
+      continue;
+    }
+    parsedRows.push(parsed.data);
+  }
+
+  if (!parsedRows.length) {
+    return { error: "No valid trades to import.", imported: 0, skipped: trades.length, errors };
+  }
+
+  // Chronological apply so avg cost / sell qty stay consistent
+  parsedRows.sort((a, b) => {
+    const da = new Date(a.date).getTime() - new Date(b.date).getTime();
+    if (da !== 0) return da;
+    if (a.side !== b.side) return a.side === "BUY" ? -1 : 1;
+    return a.symbol.localeCompare(b.symbol);
+  });
+
+  try {
+    const { supabase, user } = await requireUser();
+    await requireOwnedPortfolio(supabase, user.id, portfolioId);
+
+    // Always insert transaction rows. Holdings are best-effort updated to match
+    // schema (qty / avg cost) but never block import when sell qty exceeds position.
+    let imported = 0;
+    for (const row of parsedRows) {
+      const sym = row.symbol;
+      const fees = row.fees ?? 0;
+      const when = new Date(row.date).toISOString();
+      const note = row.note?.trim() || null;
+
+      await supabase.from("tickers").upsert({ symbol: sym }, { onConflict: "symbol" });
+
+      const { data: existing } = await supabase
+        .from("holdings")
+        .select("*")
+        .eq("portfolio_id", portfolioId)
+        .eq("symbol", sym)
+        .maybeSingle();
+      const ex = existing as Holding | null;
+
+      if (row.side === "BUY") {
+        const newQty = (ex?.quantity ?? 0) + row.quantity;
+        const newAvg = weightedAvgPrice(ex?.quantity ?? 0, ex?.avg_buy_price ?? 0, row.quantity, row.price);
+        const { error: upErr } = await supabase.from("holdings").upsert(
+          { portfolio_id: portfolioId, symbol: sym, quantity: newQty, avg_buy_price: newAvg },
+          { onConflict: "portfolio_id,symbol" }
+        );
+        if (upErr) {
+          errors.push(`BUY ${sym} holding: ${upErr.message}`);
+        }
+        const { error: txErr } = await supabase.from("transactions").insert({
+          portfolio_id: portfolioId,
+          symbol: sym,
+          type: "BUY",
+          quantity: row.quantity,
+          price: row.price,
+          fees,
+          note,
+          transacted_at: when,
+        });
+        if (txErr) {
+          errors.push(`BUY ${sym} tx: ${txErr.message}`);
+          continue;
+        }
+        imported++;
+      } else {
+        // SELL: always insert the transaction. Adjust holdings if present.
+        if (ex) {
+          const remaining = Math.max(0, ex.quantity - row.quantity);
+          if (remaining <= 0) {
+            await supabase.from("holdings").delete().eq("id", ex.id);
+          } else {
+            await supabase.from("holdings").update({ quantity: remaining }).eq("id", ex.id);
+          }
+        }
+        const { error: txErr } = await supabase.from("transactions").insert({
+          portfolio_id: portfolioId,
+          symbol: sym,
+          type: "SELL",
+          quantity: row.quantity,
+          price: row.price,
+          fees,
+          note,
+          transacted_at: when,
+        });
+        if (txErr) {
+          errors.push(`SELL ${sym} tx: ${txErr.message}`);
+          continue;
+        }
+        imported++;
+      }
+    }
+
+    revalidatePath(`/portfolios/${portfolioId}`);
+    revalidatePath("/portfolios");
+    revalidatePath("/dashboard");
+
+    return {
+      ok: imported > 0,
+      imported,
+      skipped: parsedRows.length - imported,
+      errors,
+      message:
+        imported > 0
+          ? `Imported ${imported} trade${imported === 1 ? "" : "s"}.`
+          : undefined,
+      error: imported === 0 ? errors[0] ?? "Nothing imported." : undefined,
+    };
+  } catch (e) {
+    return {
+      error: String(e),
+      imported: 0,
+      skipped: parsedRows.length,
+      errors: [String(e)],
+    };
+  }
+}
+

@@ -40,10 +40,10 @@ export default async function AccountPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
         icon={<ShieldCheck />}
-        eyebrow="Account settings"
+        eyebrow="Profile"
         accent="emerald"
-        title="Account settings"
-        description="Update your photo, name, email, password, and permanent account actions from one place."
+        title="Your profile"
+        description="Photo, account details, and tax preferences in one place."
       />
 
       <AccountSettingsPanel

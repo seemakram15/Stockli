@@ -1,4 +1,5 @@
 import "server-only";
+import { isSupabaseAdminConfigured } from "@/lib/config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSuperadmin } from "@/lib/auth/roles";
 import type {
@@ -11,6 +12,17 @@ export type { FundPeriodStatus, FundHolding, SaveHoldingInput };
 
 async function assertSuperadmin() {
   if (!(await isSuperadmin())) throw new Error("Forbidden");
+}
+
+/** Public readers must soft-fail in demo mode (no Supabase) instead of hard-crashing. */
+function publicAdminClient() {
+  if (!isSupabaseAdminConfigured) return null;
+  try {
+    return createAdminClient();
+  } catch (error) {
+    console.warn("[fund-holdings] admin client unavailable:", error);
+    return null;
+  }
 }
 
 /** Which year+month periods have holdings for a fund. */
@@ -191,22 +203,31 @@ export async function getAllPublishedHoldings(opts: {
 export async function getPublishedPeriods(
   fundName: string
 ): Promise<{ year: number; month: number }[]> {
-  const db = createAdminClient();
-  const { data, error } = await db
-    .from("mutual_fund_holdings")
-    .select("report_year, report_month")
-    .eq("fund_name", fundName)
-    .eq("status", "published")
-    .order("report_year", { ascending: false })
-    .order("report_month", { ascending: false });
-  if (error) throw error;
-  const seen = new Set<string>();
-  const out: { year: number; month: number }[] = [];
-  for (const r of data ?? []) {
-    const k = `${r.report_year}-${r.report_month}`;
-    if (!seen.has(k)) { seen.add(k); out.push({ year: r.report_year, month: r.report_month }); }
+  const db = publicAdminClient();
+  if (!db) return [];
+  try {
+    const { data, error } = await db
+      .from("mutual_fund_holdings")
+      .select("report_year, report_month")
+      .eq("fund_name", fundName)
+      .eq("status", "published")
+      .order("report_year", { ascending: false })
+      .order("report_month", { ascending: false });
+    if (error) throw error;
+    const seen = new Set<string>();
+    const out: { year: number; month: number }[] = [];
+    for (const r of data ?? []) {
+      const k = `${r.report_year}-${r.report_month}`;
+      if (!seen.has(k)) {
+        seen.add(k);
+        out.push({ year: r.report_year, month: r.report_month });
+      }
+    }
+    return out;
+  } catch (error) {
+    console.warn("[fund-holdings] getPublishedPeriods failed:", error);
+    return [];
   }
-  return out;
 }
 
 /** Public: get published holdings for a fund+period (no auth required). */
@@ -215,24 +236,30 @@ export async function getPublishedFundHoldings(
   year: number,
   month: number
 ): Promise<FundHolding[]> {
-  const db = createAdminClient();
-  const { data, error } = await db
-    .from("mutual_fund_holdings")
-    .select("id, symbol, stock_name, percentage, rank, status")
-    .eq("fund_name", fundName)
-    .eq("report_year", year)
-    .eq("report_month", month)
-    .eq("status", "published")
-    .order("percentage", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    symbol: r.symbol,
-    stockName: r.stock_name,
-    percentage: Number(r.percentage),
-    rank: r.rank,
-    status: r.status as "draft" | "published",
-  }));
+  const db = publicAdminClient();
+  if (!db) return [];
+  try {
+    const { data, error } = await db
+      .from("mutual_fund_holdings")
+      .select("id, symbol, stock_name, percentage, rank, status")
+      .eq("fund_name", fundName)
+      .eq("report_year", year)
+      .eq("report_month", month)
+      .eq("status", "published")
+      .order("percentage", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      symbol: r.symbol,
+      stockName: r.stock_name,
+      percentage: Number(r.percentage),
+      rank: r.rank,
+      status: r.status as "draft" | "published",
+    }));
+  } catch (error) {
+    console.warn("[fund-holdings] getPublishedFundHoldings failed:", error);
+    return [];
+  }
 }
 
 /** Public: load all published holdings for all funds in a given period (no auth required). */
@@ -240,46 +267,59 @@ export async function getPublishedHoldingsForPeriod(
   year: number,
   month: number
 ): Promise<{ fundName: string; amc: string; holdings: FundHolding[] }[]> {
-  const db = createAdminClient();
-  const { data, error } = await db
-    .from("mutual_fund_holdings")
-    .select("amc, fund_name, symbol, stock_name, percentage, rank")
-    .eq("status", "published")
-    .eq("report_year", year)
-    .eq("report_month", month)
-    .order("amc")
-    .order("fund_name")
-    .order("rank", { ascending: true, nullsFirst: false });
-  if (error) throw error;
+  const db = publicAdminClient();
+  if (!db) return [];
+  try {
+    const { data, error } = await db
+      .from("mutual_fund_holdings")
+      .select("amc, fund_name, symbol, stock_name, percentage, rank")
+      .eq("status", "published")
+      .eq("report_year", year)
+      .eq("report_month", month)
+      .order("amc")
+      .order("fund_name")
+      .order("rank", { ascending: true, nullsFirst: false });
+    if (error) throw error;
 
-  const map = new Map<string, { fundName: string; amc: string; holdings: FundHolding[] }>();
-  for (const r of data ?? []) {
-    const key = `${r.amc}||${r.fund_name}`;
-    if (!map.has(key)) map.set(key, { fundName: r.fund_name, amc: r.amc, holdings: [] });
-    map.get(key)!.holdings.push({
-      id: 0,
-      symbol: r.symbol,
-      stockName: r.stock_name,
-      percentage: Number(r.percentage),
-      rank: r.rank,
-      status: "published",
-    });
+    const map = new Map<string, { fundName: string; amc: string; holdings: FundHolding[] }>();
+    for (const r of data ?? []) {
+      const key = `${r.amc}||${r.fund_name}`;
+      if (!map.has(key)) map.set(key, { fundName: r.fund_name, amc: r.amc, holdings: [] });
+      map.get(key)!.holdings.push({
+        id: 0,
+        symbol: r.symbol,
+        stockName: r.stock_name,
+        percentage: Number(r.percentage),
+        rank: r.rank,
+        status: "published",
+      });
+    }
+    return Array.from(map.values());
+  } catch (error) {
+    console.warn("[fund-holdings] getPublishedHoldingsForPeriod failed:", error);
+    return [];
   }
-  return Array.from(map.values());
 }
 
 /** Public: find the most recent published period across all funds (no auth required). */
 export async function getLatestPublishedPeriod(): Promise<{ year: number; month: number } | null> {
-  const db = createAdminClient();
-  const { data } = await db
-    .from("mutual_fund_holdings")
-    .select("report_year, report_month")
-    .eq("status", "published")
-    .order("report_year", { ascending: false })
-    .order("report_month", { ascending: false })
-    .limit(1);
-  if (!data || data.length === 0) return null;
-  return { year: data[0].report_year, month: data[0].report_month };
+  const db = publicAdminClient();
+  if (!db) return null;
+  try {
+    const { data, error } = await db
+      .from("mutual_fund_holdings")
+      .select("report_year, report_month")
+      .eq("status", "published")
+      .order("report_year", { ascending: false })
+      .order("report_month", { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    if (!data || data.length === 0) return null;
+    return { year: data[0].report_year, month: data[0].report_month };
+  } catch (error) {
+    console.warn("[fund-holdings] getLatestPublishedPeriod failed:", error);
+    return null;
+  }
 }
 
 /** Public: load the most recent published holdings for all funds (no auth required). */
@@ -288,10 +328,15 @@ export async function getLatestPublishedHoldingsAll(): Promise<{
   month: number;
   funds: { fundName: string; amc: string; holdings: FundHolding[] }[];
 }> {
-  const period = await getLatestPublishedPeriod();
-  if (!period) return { year: 0, month: 0, funds: [] };
-  const funds = await getPublishedHoldingsForPeriod(period.year, period.month);
-  return { ...period, funds };
+  try {
+    const period = await getLatestPublishedPeriod();
+    if (!period) return { year: 0, month: 0, funds: [] };
+    const funds = await getPublishedHoldingsForPeriod(period.year, period.month);
+    return { ...period, funds };
+  } catch (error) {
+    console.warn("[fund-holdings] getLatestPublishedHoldingsAll failed:", error);
+    return { year: 0, month: 0, funds: [] };
+  }
 }
 
 /** Load PSX tickers for the stock picker. */

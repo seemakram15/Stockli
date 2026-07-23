@@ -11,15 +11,32 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(request: Request) {
-  const fresh = wantsFresh(request);
-  if (fresh) {
-    await forcePublicRefresh("mf-top-holdings");
-  }
-  const data = await getMFTopHoldingsData();
-  return NextResponse.json(
-    { data },
-    {
-      headers: freshCacheHeaders(fresh, 300, false),
+  try {
+    const fresh = wantsFresh(request);
+    if (fresh) {
+      await forcePublicRefresh("mf-top-holdings");
     }
-  );
+    const data = await getMFTopHoldingsData();
+    return NextResponse.json(
+      { data },
+      {
+        headers: freshCacheHeaders(fresh, 300, false),
+      }
+    );
+  } catch (error) {
+    console.error("[mf-top-holdings] GET failed:", error);
+    return NextResponse.json(
+      {
+        data: {
+          holdings: [],
+          totalFunds: 0,
+          periodYear: 0,
+          periodMonth: 0,
+          updatedAt: new Date().toISOString(),
+        },
+        warning: error instanceof Error ? error.message : String(error),
+      },
+      { status: 200, headers: { "Cache-Control": "no-store, max-age=0" } }
+    );
+  }
 }

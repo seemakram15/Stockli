@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CalendarClock, LineChart, TrendingUp, Wallet } from "lucide-react";
+import { CalendarClock, FileUp, LineChart, TrendingUp, Wallet } from "lucide-react";
 import { AllocationExplorer } from "@/components/portfolio/allocation-explorer";
 import { EmptyState } from "@/components/empty-state";
 import { HoldingsTable } from "@/components/holdings-table";
@@ -11,12 +11,14 @@ import { LiveSummaryCards } from "@/components/live-summary-cards";
 import { useLiveHoldings } from "@/lib/hooks/use-live-holdings";
 import { PageHeader } from "@/components/page-header";
 import { AddTradeDialog } from "@/components/portfolio/add-trade-dialog";
+import { ImportStatementModal } from "@/components/portfolio/import-statement-modal";
 import { PortfolioSettings } from "@/components/portfolio/portfolio-settings";
 import { TransactionsPanel } from "@/components/portfolio/transactions-panel";
 import { DividendsPanel } from "@/components/portfolio/dividends-panel";
 import { SmartBackLink } from "@/components/smart-back-link";
 import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { MarketStatusBadge } from "@/components/status-badges";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { IconChip } from "@/components/ui/accent";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -48,6 +50,7 @@ export function CachedPortfolioDetailPage({
   demo?: boolean;
   }) {
   const cacheKey = `private:portfolio:v2:${userId}:${id}`;
+  const [importOpen, setImportOpen] = React.useState(false);
   const cacheClosedOnly = React.useCallback(() => !shouldRefreshPsxData(), []);
   const acceptPortfolioCache = React.useCallback(
     (record: CachedRecord<PortfolioPageData>) =>
@@ -171,7 +174,23 @@ export function CachedPortfolioDetailPage({
                 demo={demo}
                 userId={userId}
               />
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => setImportOpen(true)}
+              >
+                <FileUp className="size-4" />
+                <span className="hidden sm:inline">Import statement</span>
+                <span className="sm:hidden">Import</span>
+              </Button>
               <AddTradeDialog portfolioId={pf.id} userId={userId} holdingsBySymbol={holdingsBySymbol} avgBuyPriceBySymbol={avgBuyPriceBySymbol} taxSettings={taxSettings} />
+              <ImportStatementModal
+                open={importOpen}
+                onOpenChange={setImportOpen}
+                portfolioId={pf.id}
+                userId={userId}
+              />
             </>
           }
         />

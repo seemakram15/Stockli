@@ -66,7 +66,7 @@ export function DatePickerField({
   };
 
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn("w-full min-w-0", className)}>
       {name ? <input type="hidden" name={name} value={iso} required={required} /> : null}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -77,16 +77,16 @@ export function DatePickerField({
             disabled={disabled}
             aria-required={required}
             className={cn(
-              "h-10 w-full justify-start rounded-xl border-border/80 bg-muted/45 px-3.5 text-left text-sm font-normal shadow-sm hover:bg-muted/60",
+              "h-10 w-full min-w-0 shrink justify-start overflow-hidden rounded-xl border-border/80 bg-muted/45 px-2.5 text-left text-sm font-normal shadow-sm hover:bg-muted/60 sm:px-3.5",
               !iso && "text-muted-foreground",
               buttonClassName
             )}
           >
-            <CalendarIcon className="size-4 text-muted-foreground" />
+            <CalendarIcon className="size-4 shrink-0 text-muted-foreground" />
             {selected ? (
-              <span className="tabular-nums">{format(selected, "dd MMM yyyy")}</span>
+              <span className="min-w-0 truncate tabular-nums">{format(selected, "dd MMM yyyy")}</span>
             ) : (
-              <span>{placeholder}</span>
+              <span className="min-w-0 truncate">{placeholder}</span>
             )}
           </Button>
         </PopoverTrigger>

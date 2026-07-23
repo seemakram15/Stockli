@@ -18,8 +18,11 @@ import type {
   StockFinancialPeerRow,
   StockFinancialsAvailability,
   StockFinancialsData,
+  StockFinancialsRefreshProgress,
+  StockFinancialsRefreshStepId,
   StockFinancialTabId,
 } from "@/lib/types/stock-fundamentals";
+import { STOCK_FINANCIALS_REFRESH_STEPS } from "@/lib/types/stock-fundamentals";
 
 const FUNDAMENTALS_BASE = config.fundamentals.baseUrl.replace(/\/+$/, "");
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -103,6 +106,24 @@ export type StockFinancialsRefreshResult = {
   missingTabs: StockFinancialTabId[];
 };
 
+export type StockFinancialsRefreshOptions = {
+  onProgress?: (event: StockFinancialsRefreshProgress) => void | Promise<void>;
+};
+
+export class StockFinancialsRefreshError extends Error {
+  statusCode: number;
+
+  constructor(message: string, statusCode = 503) {
+    super(message);
+    this.name = "StockFinancialsRefreshError";
+    this.statusCode = statusCode;
+  }
+}
+
+const REFRESH_STEP_MESSAGE = Object.fromEntries(
+  STOCK_FINANCIALS_REFRESH_STEPS.map((step) => [step.id, step.message])
+) as Record<StockFinancialsRefreshStepId, string>;
+
 interface RawDataPoint {
   year?: string | number;
   label?: string | number;
@@ -184,19 +205,40 @@ export async function getStockFinancials(symbolRaw: string) {
 }
 
 export async function refreshStockFinancials(
-  symbolRaw: string
+  symbolRaw: string,
+  options: StockFinancialsRefreshOptions = {}
 ): Promise<StockFinancialsRefreshResult | null> {
   const symbol = normalizeSymbol(symbolRaw);
   if (!symbol) return null;
 
+  const report = createProgressReporter(options.onProgress);
+
+  if (circuitIsOpen()) {
+    await report(
+      "ready",
+      "error",
+      undefined,
+      "Fundamentals are temporarily unreachable. Try again in a few minutes."
+    );
+    throw new StockFinancialsRefreshError(
+      "Fundamentals are temporarily unavailable. Please try again in a few minutes.",
+      503
+    );
+  }
+
+  await report("ready", "active");
+
   const previous = await readStockFinancialsSnapshot(symbol);
-  const value = await fetchStockFinancialsWithRetries(symbol, previous?.value);
+  const value = await fetchStockFinancialsWithRetries(symbol, previous?.value, {
+    onProgress: options.onProgress,
+  });
   const hasMeaningfulFreshData = hasMeaningfulFinancialData(value);
 
   if (previous?.value && !hasMeaningfulFreshData) {
     const previousComplete = hasCompleteFinancialData(previous.value);
     if (!previousComplete) {
       const missingTabs = getMissingFinancialTabs(previous.value);
+      await report("persist", "active");
       await deleteStockFinancialsSnapshot(symbol);
       const incomplete = await markStockFinancialsIncomplete(
         symbol,
@@ -204,9 +246,11 @@ export async function refreshStockFinancials(
         missingTabs,
         "Fresh fundamentals did not include statement rows."
       );
+      await report("persist", "done");
       const hydrated = await enrichOverviewSnapshot(
         attachFinancialAvailability(previous.value, incomplete)
       );
+      await report("done", "done");
       return {
         value: hydrated,
         storedAt: incomplete.updatedAt,
@@ -217,8 +261,11 @@ export async function refreshStockFinancials(
       };
     }
 
+    await report("persist", "active");
     const envelope = await storeStockFinancialsSnapshot(symbol, previous.value);
+    await report("persist", "done");
     const hydrated = await enrichOverviewSnapshot(previous.value);
+    await report("done", "done");
     return {
       value: hydrated,
       storedAt: envelope.storedAt,
@@ -232,8 +279,11 @@ export async function refreshStockFinancials(
   const nextValue = previous?.value ? mergeStockFinancialSnapshots(previous.value, value) : value;
   if (!hasCompleteFinancialData(nextValue)) {
     if (previous?.value && hasCompleteFinancialData(previous.value)) {
+      await report("persist", "active");
       const envelope = await storeStockFinancialsSnapshot(symbol, previous.value);
+      await report("persist", "done");
       const hydrated = await enrichOverviewSnapshot(previous.value);
+      await report("done", "done");
       return {
         value: hydrated,
         storedAt: envelope.storedAt,
@@ -244,6 +294,7 @@ export async function refreshStockFinancials(
       };
     }
 
+    await report("persist", "active");
     await deleteStockFinancialsSnapshot(symbol);
     const missingTabs = getMissingFinancialTabs(nextValue);
     const incomplete = await markStockFinancialsIncomplete(
@@ -252,7 +303,9 @@ export async function refreshStockFinancials(
       missingTabs,
       `Incomplete fundamentals: ${missingTabs.join(", ")}`
     );
+    await report("persist", "done");
     const hydrated = await enrichOverviewSnapshot(attachFinancialAvailability(nextValue, incomplete));
+    await report("done", "done");
     return {
       value: hydrated,
       storedAt: new Date().toISOString(),
@@ -263,8 +316,11 @@ export async function refreshStockFinancials(
     };
   }
 
+  await report("persist", "active");
   const envelope = await storeStockFinancialsSnapshot(symbol, nextValue);
+  await report("persist", "done");
   const hydrated = await enrichOverviewSnapshot(nextValue);
+  await report("done", "done");
   return {
     value: hydrated,
     storedAt: envelope.storedAt,
@@ -492,9 +548,19 @@ export async function archiveStockFundamentals({
   };
 }
 
-async function fetchStockFinancials(symbol: string): Promise<StockFinancialsData> {
+async function fetchStockFinancials(
+  symbol: string,
+  options: StockFinancialsRefreshOptions = {}
+): Promise<StockFinancialsData> {
+  const report = createProgressReporter(options.onProgress);
   const company = await resolveCompany(symbol);
   if (!company) {
+    await report(
+      "ready",
+      "error",
+      undefined,
+      `No fundamentals mapping was found for ${symbol}.`
+    );
     return {
       symbol,
       company: null,
@@ -511,12 +577,36 @@ async function fetchStockFinancials(symbol: string): Promise<StockFinancialsData
     };
   }
 
-  const overview = await safeTab(() => buildOverviewTab(company), EMPTY_TABS.overview);
-  const latest = await safeTab(() => buildLatestTab(company), EMPTY_TABS.latest);
-  const income = await safeTab(() => buildStatementTab(company, "income"), EMPTY_TABS.income);
-  const balance = await safeTab(() => buildStatementTab(company, "balance"), EMPTY_TABS.balance);
-  const cashflow = await safeTab(() => buildCashflowTab(company), EMPTY_TABS.cashflow);
-  const ratios = await safeTab(() => buildRatiosTab(company), EMPTY_TABS.ratios);
+  await report("ready", "done");
+
+  const tabJobs: Array<{
+    id: Exclude<StockFinancialsRefreshStepId, "ready" | "persist" | "done">;
+    load: () => Promise<FinancialTabData>;
+    fallback: FinancialTabData;
+  }> = [
+    { id: "overview", load: () => buildOverviewTab(company), fallback: EMPTY_TABS.overview },
+    { id: "latest", load: () => buildLatestTab(company), fallback: EMPTY_TABS.latest },
+    { id: "income", load: () => buildStatementTab(company, "income"), fallback: EMPTY_TABS.income },
+    { id: "balance", load: () => buildStatementTab(company, "balance"), fallback: EMPTY_TABS.balance },
+    { id: "cashflow", load: () => buildCashflowTab(company), fallback: EMPTY_TABS.cashflow },
+    { id: "ratios", load: () => buildRatiosTab(company), fallback: EMPTY_TABS.ratios },
+  ];
+
+  // Load sections in order so the progress dialog advances one step at a time.
+  const settled: Array<readonly [Exclude<StockFinancialsRefreshStepId, "ready" | "persist" | "done">, FinancialTabData]> =
+    [];
+  for (const job of tabJobs) {
+    await report(job.id, "active");
+    const tab = await safeTab(job.load, job.fallback);
+    if (tab.status === "error") {
+      await report(job.id, "error", undefined, "Data not available yet");
+    } else {
+      await report(job.id, "done");
+    }
+    settled.push([job.id, tab] as const);
+  }
+
+  const tabs = Object.fromEntries(settled) as Record<StockFinancialTabId, FinancialTabData>;
 
   return {
     symbol,
@@ -524,12 +614,12 @@ async function fetchStockFinancials(symbol: string): Promise<StockFinancialsData
     source: "fundamentals",
     updatedAt: new Date().toISOString(),
     tabs: {
-      overview,
-      latest,
-      income,
-      balance,
-      cashflow,
-      ratios,
+      overview: tabs.overview,
+      latest: tabs.latest,
+      income: tabs.income,
+      balance: tabs.balance,
+      cashflow: tabs.cashflow,
+      ratios: tabs.ratios,
     },
   };
 }
@@ -925,12 +1015,16 @@ function createIncompleteRecord({
 
 async function fetchStockFinancialsWithRetries(
   symbol: string,
-  baseline?: StockFinancialsData
+  baseline?: StockFinancialsData,
+  options: StockFinancialsRefreshOptions = {}
 ): Promise<StockFinancialsData> {
   let best: StockFinancialsData | null = baseline ?? null;
 
   for (let attempt = 1; attempt <= FINANCIAL_FETCH_ATTEMPTS; attempt += 1) {
-    const next = await fetchStockFinancials(symbol);
+    const next = await fetchStockFinancials(symbol, {
+      // Only stream honest progress on the first pass; later passes fill gaps quietly.
+      onProgress: attempt === 1 ? options.onProgress : undefined,
+    });
     best = best ? mergeStockFinancialSnapshots(best, next) : next;
     if (hasCompleteFinancialData(best)) break;
     if (attempt < FINANCIAL_FETCH_ATTEMPTS) {
@@ -939,6 +1033,25 @@ async function fetchStockFinancialsWithRetries(
   }
 
   return best ?? buildPreparingFinancials(symbol);
+}
+
+function createProgressReporter(
+  onProgress?: StockFinancialsRefreshOptions["onProgress"]
+) {
+  return async (
+    stepId: StockFinancialsRefreshStepId,
+    status: StockFinancialsRefreshProgress["status"],
+    message?: string,
+    detail?: string
+  ) => {
+    if (!onProgress) return;
+    await onProgress({
+      stepId,
+      status,
+      message: message ?? REFRESH_STEP_MESSAGE[stepId],
+      detail,
+    });
+  };
 }
 
 function hasMeaningfulFinancialData(value: StockFinancialsData) {
@@ -1229,8 +1342,7 @@ async function safeTab(
   return {
     ...fallback,
     status: "error",
-    message:
-      "Fundamental data could not be refreshed right now. Cached data will be used when available.",
+    message: "Data not available yet",
   };
 }
 

@@ -13,13 +13,21 @@ import { DatePickerField } from "@/components/ui/date-picker-field";
 import { cn } from "@/lib/utils";
 import { saveCdcDividends } from "@/lib/actions/dividends";
 import { markPortfolioMutated } from "@/lib/cache/portfolio-mutations";
+import {
+  calcCdcManualDividendAmounts,
+  defaultTaxSettings,
+  deriveCdcNetAmount,
+  getWHTRate,
+  recalcCdcAmountsFromGross,
+} from "@/lib/services/tax";
 import type { ParsedFileResult } from "@/app/api/dividends/parse/route";
-import type { CdcParsedData } from "@/lib/types";
+import type { CdcParsedData, TaxSettings } from "@/lib/types";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   portfolioId: string;
+  taxSettings?: TaxSettings;
 }
 
 type FileState =
@@ -56,7 +64,7 @@ const EMPTY_MANUAL: Omit<CdcParsedData, "symbolConfidence" | "matchedCompanyName
   paymentStatus: "Paid",
 };
 
-export function ImportDividendsModal({ open, onOpenChange, portfolioId }: Props) {
+export function ImportDividendsModal({ open, onOpenChange, portfolioId, taxSettings }: Props) {
   const [tab, setTab] = React.useState<"pdf" | "manual">("pdf");
   const [entries, setEntries] = React.useState<FileEntry[]>([]);
   const [manualRecords, setManualRecords] = React.useState<CdcParsedData[]>([]);
@@ -65,6 +73,7 @@ export function ImportDividendsModal({ open, onOpenChange, portfolioId }: Props)
   const [saveResult, setSaveResult] = React.useState<{ saved: number; skipped: number; errors: string[] } | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = React.useState(false);
+  const settings = taxSettings ?? defaultTaxSettings();
 
   function reset() {
     setEntries([]);
@@ -166,12 +175,53 @@ export function ImportDividendsModal({ open, onOpenChange, portfolioId }: Props)
   }
 
   function handleManualField(field: keyof typeof EMPTY_MANUAL, value: string | number) {
-    setManualForm((prev) => ({ ...prev, [field]: value }));
+    setManualForm((prev) => {
+      const next = { ...prev, [field]: value };
+
+      if (field === "ratePerSecurity" || field === "noOfSecurities") {
+        const rate = Number(field === "ratePerSecurity" ? value : next.ratePerSecurity);
+        const qty = Number(field === "noOfSecurities" ? value : next.noOfSecurities);
+        if (rate > 0 && qty > 0) {
+          return { ...next, ...calcCdcManualDividendAmounts(rate, qty, settings) };
+        }
+        return next;
+      }
+
+      if (field === "grossAmount") {
+        const gross = Number(value);
+        if (gross > 0) {
+          return { ...next, ...recalcCdcAmountsFromGross(gross, settings) };
+        }
+        return {
+          ...next,
+          netAmount: deriveCdcNetAmount(gross, next.zakatDeducted, next.taxDeducted),
+        };
+      }
+
+      if (field === "zakatDeducted" || field === "taxDeducted") {
+        const zakat = Number(field === "zakatDeducted" ? value : next.zakatDeducted);
+        const wht = Number(field === "taxDeducted" ? value : next.taxDeducted);
+        return {
+          ...next,
+          netAmount: deriveCdcNetAmount(next.grossAmount, zakat, wht),
+        };
+      }
+
+      return next;
+    });
   }
 
   function addManualRecord() {
     if (!manualForm.symbol || !manualForm.paymentDate) return;
-    setManualRecords((prev) => [...prev, { ...manualForm, symbolConfidence: "none" as const }]);
+    const netAmount = deriveCdcNetAmount(
+      manualForm.grossAmount,
+      manualForm.zakatDeducted,
+      manualForm.taxDeducted
+    );
+    setManualRecords((prev) => [
+      ...prev,
+      { ...manualForm, netAmount, symbolConfidence: "none" as const },
+    ]);
     setManualForm({ ...EMPTY_MANUAL });
   }
 
@@ -200,8 +250,8 @@ export function ImportDividendsModal({ open, onOpenChange, portfolioId }: Props)
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-[min(95vw,1200px)] flex-col gap-0 overflow-hidden p-0">
-        <DialogHeader className="shrink-0 border-b border-border px-5 py-4">
+      <DialogContent className="flex max-h-[90vh] w-[calc(100vw-2rem)] max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
+        <DialogHeader className="shrink-0 border-b border-border px-5 py-4 sm:px-6">
           <DialogTitle className="flex items-center gap-2 text-base">
             <Upload className="size-4 text-primary" />
             Import CDC Dividend Reports
@@ -233,7 +283,7 @@ export function ImportDividendsModal({ open, onOpenChange, portfolioId }: Props)
         ) : (
           <>
             {/* Tabs */}
-            <div className="mx-4 mt-1 flex shrink-0 gap-1 rounded-xl bg-muted/80 p-1">
+            <div className="mx-4 mt-3 flex shrink-0 gap-1 rounded-xl bg-muted/80 p-1 sm:mx-5">
               <TabBtn active={tab === "pdf"} onClick={() => setTab("pdf")} icon={<FileUp className="size-3.5" />}>
                 Import PDF
               </TabBtn>
@@ -245,7 +295,7 @@ export function ImportDividendsModal({ open, onOpenChange, portfolioId }: Props)
             {/* Scrollable body */}
             <div className="flex-1 overflow-y-auto scrollbar-thin">
               {tab === "pdf" && (
-                <div className="space-y-4 p-5">
+                <div className="space-y-4 p-5 sm:p-6">
                   <div
                     className={cn(
                       "relative cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition-colors",
@@ -278,13 +328,18 @@ export function ImportDividendsModal({ open, onOpenChange, portfolioId }: Props)
               )}
 
               {tab === "manual" && (
-                <div className="p-5">
-                  <ManualEntryForm form={manualForm} onChange={handleManualField} onAdd={addManualRecord} />
+                <div className="p-5 sm:p-6">
+                  <ManualEntryForm
+                    form={manualForm}
+                    settings={settings}
+                    onChange={handleManualField}
+                    onAdd={addManualRecord}
+                  />
                 </div>
               )}
 
               {allRecords.length > 0 && (
-                <div className="px-5 pb-5">
+                <div className="px-5 pb-5 sm:px-6 sm:pb-6">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                     Ready to import — {allRecords.length} record{allRecords.length !== 1 ? "s" : ""}
                   </p>
@@ -316,10 +371,10 @@ export function ImportDividendsModal({ open, onOpenChange, portfolioId }: Props)
             </div>
 
             {/* Footer */}
-            <div className="flex shrink-0 gap-2 border-t border-border px-5 py-4">
-              <Button variant="outline" className="flex-1" onClick={() => handleClose(false)}>Cancel</Button>
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border px-5 py-4 sm:flex-row sm:px-6">
+              <Button variant="outline" className="sm:flex-1" onClick={() => handleClose(false)}>Cancel</Button>
               <Button
-                className="flex-1"
+                className="sm:flex-1"
                 disabled={!allRecords.length || isParsing || saving}
                 onClick={handleSave}
               >
@@ -448,7 +503,7 @@ function Field({
   label, required, children,
 }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
-    <div className="space-y-1.5">
+    <div className="min-w-0 space-y-1.5">
       <Label className="text-xs font-medium text-muted-foreground">
         {label}{required && <span className="ml-0.5 text-loss">*</span>}
       </Label>
@@ -459,23 +514,26 @@ function Field({
 
 function ManualEntryForm({
   form,
+  settings,
   onChange,
   onAdd,
 }: {
   form: Omit<CdcParsedData, "symbolConfidence" | "matchedCompanyName">;
+  settings: TaxSettings;
   onChange: (field: keyof typeof EMPTY_MANUAL, value: string | number) => void;
   onAdd: () => void;
 }) {
   const num = (v: string) => parseFloat(v) || 0;
-  const autoNet = Math.max(0, form.grossAmount - form.zakatDeducted - form.taxDeducted);
   const canAdd = !!form.symbol && !!form.paymentDate;
+  const whtPct = Math.round(getWHTRate(settings.taxFiler) * 100);
+  const zakatLabel = settings.zakatOnDividends ? "2.5% zakat" : "zakat off";
 
   return (
-    <div className="space-y-5">
-      {/* Identity row */}
+    <div className="space-y-6">
+      {/* Identity */}
       <div>
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Stock &amp; Period</p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           <Field label="Symbol" required>
             <Input
               className="h-9 font-mono text-sm uppercase font-semibold"
@@ -488,23 +546,25 @@ function ManualEntryForm({
             <DatePickerField
               value={form.paymentDate}
               onChange={(iso) => onChange("paymentDate", iso)}
-              placeholder="Select payment date"
+              placeholder="Select date"
               buttonClassName="h-9"
               required
             />
           </Field>
-          <Field label="Financial Year">
-            <Input
-              className="h-9 text-sm"
-              placeholder="e.g. 2024-25"
-              value={form.financialYear}
-              onChange={(e) => onChange("financialYear", e.target.value)}
-            />
-          </Field>
+          <div className="col-span-2 md:col-span-1">
+            <Field label="Financial Year">
+              <Input
+                className="h-9 text-sm"
+                placeholder="e.g. 2024-25"
+                value={form.financialYear}
+                onChange={(e) => onChange("financialYear", e.target.value)}
+              />
+            </Field>
+          </div>
         </div>
       </div>
 
-      {/* Holdings row */}
+      {/* Holdings */}
       <div>
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Holdings</p>
         <div className="grid grid-cols-2 gap-3">
@@ -529,15 +589,15 @@ function ManualEntryForm({
         </div>
       </div>
 
-      {/* Amounts row */}
+      {/* Amounts */}
       <div>
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Dividend Amounts (Rs.)</p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Field label="Gross Amount">
             <Input
               type="number" min="0" step="0.01"
               className="h-9 text-sm"
-              placeholder="e.g. 2,500.00"
+              placeholder="e.g. 2500.00"
               value={form.grossAmount || ""}
               onChange={(e) => onChange("grossAmount", num(e.target.value))}
             />
@@ -561,35 +621,25 @@ function ManualEntryForm({
             />
           </Field>
           <Field label="Net Amount Paid">
-            <div className="relative">
-              <Input
-                type="number" min="0" step="0.01"
-                className="h-9 text-sm font-semibold text-gain"
-                placeholder="e.g. 1,750.00"
-                value={form.netAmount || ""}
-                onChange={(e) => onChange("netAmount", num(e.target.value))}
-              />
-              {form.grossAmount > 0 && form.netAmount === 0 && (
-                <button
-                  type="button"
-                  onClick={() => onChange("netAmount", autoNet)}
-                  className="absolute inset-y-0 right-2 text-[10px] font-medium text-primary hover:underline"
-                >
-                  Auto
-                </button>
-              )}
-            </div>
+            <Input
+              type="number" min="0" step="0.01"
+              readOnly
+              tabIndex={-1}
+              className="h-9 text-sm font-semibold text-gain bg-muted/40 cursor-default"
+              placeholder="Gross − Zakat − WHT"
+              value={form.netAmount || ""}
+              aria-label="Net amount paid (derived)"
+            />
           </Field>
         </div>
-        {form.grossAmount > 0 && (
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Auto net = Gross − Zakat − WHT = <span className="font-medium text-gain">Rs. {autoNet.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-          </p>
-        )}
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Auto-fills from rate × securities using account settings ({whtPct}% WHT{settings.taxFiler ? " filer" : " non-filer"}, {zakatLabel}).
+          Net is always Gross − Zakat − WHT; edit Gross/Zakat/WHT to adjust.
+        </p>
       </div>
 
       <Button
-        className="w-full gap-2 h-10"
+        className="h-10 w-full gap-2"
         disabled={!canAdd}
         onClick={onAdd}
       >

@@ -1,7 +1,6 @@
 "use client";
 
 import { PlaySquare } from "lucide-react";
-import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { MarketRefreshButton } from "@/components/market/market-refresh-button";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
@@ -13,12 +12,11 @@ import { withFreshParam } from "@/lib/hooks/use-refresh-runner";
 import type { YoutubeVideosData } from "@/lib/services/youtube";
 
 export function CachedYoutubersPage() {
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
-    usePersistentResource<YoutubeVideosData>({
-      cacheKey: "public:youtubers",
-      url: "/api/public/youtubers",
-      refreshInterval: 10 * 60_000,
-    });
+  const { data, error, isLoading, refreshNow } = usePersistentResource<YoutubeVideosData>({
+    cacheKey: "public:youtubers",
+    url: "/api/public/youtubers",
+    refreshInterval: 10 * 60_000,
+  });
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -30,12 +28,6 @@ export function CachedYoutubersPage() {
         accent="rose"
         actions={
           <>
-            <CacheStatusBadge
-              updatedAt={data?.updatedAt}
-              cachedAt={cachedAt}
-              isFromDeviceCache={isFromDeviceCache}
-              isRefreshing={isRefreshing}
-            />
             <MarketRefreshButton
               color="rose"
               label="Refresh videos"

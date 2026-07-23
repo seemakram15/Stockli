@@ -3,9 +3,13 @@ import { parse } from "node-html-parser";
 import { identifyAmcBrand, shortAmcName } from "@/lib/amc-brands";
 import { getStaleCached } from "@/lib/cache/stale";
 import { psxLiveCacheTtlSeconds, shouldRefreshPsxData } from "@/lib/psx/market-hours";
+import {
+  FUND_INVESTMENT_AMOUNT,
+  profitOnInvestment,
+} from "@/lib/services/fund-return-estimate";
 
 const MUFAP_BASE = "https://www.mufap.com.pk";
-const INVESTMENT_AMOUNT = 100_000;
+const INVESTMENT_AMOUNT = FUND_INVESTMENT_AMOUNT;
 const MUFAP_TTL_SECONDS = 15 * 60;
 const MUFAP_DETAIL_TTL_SECONDS = 60 * 60;
 const MUFAP_STALE_SECONDS = 24 * 60 * 60;
@@ -183,7 +187,7 @@ export async function getMufapFundById(fundId: string): Promise<MufapFund | null
       y2: detail.y2 ?? fund.y2,
       y3: detail.y3 ?? fund.y3,
       profitOn100k:
-        detail.d1 != null ? (INVESTMENT_AMOUNT * detail.d1) / 100 : fund.profitOn100k,
+        detail.d1 != null ? profitOnInvestment(detail.d1, INVESTMENT_AMOUNT) : fund.profitOn100k,
     };
   } catch {
     return fund;
@@ -269,7 +273,7 @@ function parsePerformance(html: string, directory: FundDirectory) {
         riskProfile: directoryEntry?.riskProfile ?? null,
         classFilter: classifyFund(sector, category, name),
         profileUrl: fundId ? `${MUFAP_BASE}/FundProfile/FundDetail?FundID=${fundId}` : null,
-        profitOn100k: d1 == null ? null : (INVESTMENT_AMOUNT * d1) / 100,
+        profitOn100k: d1 == null ? null : profitOnInvestment(d1, INVESTMENT_AMOUNT),
         assetAllocation: [],
         topHoldings: [],
         holdingsNote: null,
@@ -513,7 +517,16 @@ function parseHolding(row: Record<string, unknown>, index: number): MufapFundHol
 function classifyFund(sector: string, category: string, name: string): FundClassFilter {
   const haystack = `${sector} ${category} ${name}`.toLowerCase();
   if (haystack.includes("pension") || haystack.includes("vps")) return "pension";
-  if (haystack.includes("islamic") || haystack.includes("shariah")) return "islamic";
+  if (
+    haystack.includes("islamic") ||
+    haystack.includes("shariah") ||
+    haystack.includes("sharia") ||
+    haystack.includes("meezan") ||
+    haystack.includes("alhamra") ||
+    /\bal\s*ameen\b/.test(haystack)
+  ) {
+    return "islamic";
+  }
   return "conventional";
 }
 

@@ -35,14 +35,15 @@ export function UserMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-9 gap-2 px-1.5 sm:pr-3">
+        <Button variant="ghost" className="h-9 gap-2 px-1.5 sm:pr-3" aria-label={displayName ?? email ?? "Account"}>
           <Avatar className="size-7">
             {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName ?? email ?? "Account"} /> : null}
             <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
               {initials(displayName, email)}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden max-w-28 truncate text-sm font-medium sm:inline">
+          {/* Name on roomy hamburger widths; hide on dense lg–xl desktop nav; restore at xl+. */}
+          <span className="hidden max-w-28 truncate text-sm font-medium md:inline lg:hidden xl:inline">
             {displayName ?? email ?? "Account"}
           </span>
         </Button>

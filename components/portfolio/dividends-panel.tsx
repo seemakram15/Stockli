@@ -64,6 +64,7 @@ function SummaryCard({
 
 export function DividendsPanel({
   dividendIncome,
+  taxSettings,
   portfolioId,
 }: {
   dividendIncome: DividendIncomeSummary;
@@ -89,7 +90,12 @@ export function DividendsPanel({
 
   return (
     <>
-      <ImportDividendsModal open={importOpen} onOpenChange={setImportOpen} portfolioId={portfolioId} />
+      <ImportDividendsModal
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        portfolioId={portfolioId}
+        taxSettings={taxSettings}
+      />
 
       <div className="space-y-6 p-4">
         {!hasReceived && (

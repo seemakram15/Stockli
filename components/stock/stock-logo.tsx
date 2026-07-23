@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import * as React from "react";
+import { companyIconPath } from "@/lib/company-icons";
 import { cn } from "@/lib/utils";
 
 const SIZE_CLASSES = {
@@ -26,7 +27,10 @@ export function StockLogo({
 }) {
   const normalized = symbol.trim().toUpperCase();
   const candidates = React.useMemo(() => {
-    const urls = [image, normalized ? `https://admin.askanalyst.com.pk/logo16/${normalized}.svg` : null]
+    const urls = [
+      image,
+      normalized ? companyIconPath(normalized) : null,
+    ]
       .filter((url): url is string => Boolean(url))
       .filter((url, index, array) => array.indexOf(url) === index);
     return urls;

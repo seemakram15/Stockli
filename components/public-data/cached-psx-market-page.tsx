@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { Activity, Landmark, Layers, TrendingUp } from "lucide-react";
-import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { MarketRefreshButton } from "@/components/market/market-refresh-button";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
@@ -22,7 +21,7 @@ import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { PublicMarketPageData } from "@/lib/services/public-market-page";
 
 export function CachedPsxMarketPage() {
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
+  const { data, error, isLoading, refreshNow } =
     usePersistentResource<PublicMarketPageData>({
       cacheKey: "public:psx-market:v3",
       url: "/api/public/market",
@@ -54,12 +53,6 @@ export function CachedPsxMarketPage() {
             {data?.market ? (
               <MarketStatusBadge status={data.market.status} label={data.market.label} />
             ) : null}
-            <CacheStatusBadge
-              updatedAt={data?.updatedAt}
-              cachedAt={cachedAt}
-              isFromDeviceCache={isFromDeviceCache}
-              isRefreshing={isRefreshing}
-            />
             <MarketRefreshButton
               color="emerald"
               label="Refresh PSX"

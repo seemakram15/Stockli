@@ -7,7 +7,7 @@ const MOSQUE_SRC = "/icons/mosque-color.png";
 
 /** True when a fund name is Islamic / Shariah-branded. */
 export function isIslamicOrShariahName(value: string | null | undefined) {
-  return /islamic|shariah|sharia|alhamra|al\s*ameen/i.test(value ?? "");
+  return /islamic|shariah|sharia|alhamra|al\s*ameen|meezan/i.test(value ?? "");
 }
 
 export function IslamicMark({

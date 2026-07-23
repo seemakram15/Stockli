@@ -5,7 +5,7 @@ import { buildPageMetadata } from "@/lib/seo";
 export const metadata: Metadata = buildPageMetadata({
   title: "Useful PSX investing links",
   description:
-    "Curated Pakistan Stock Exchange, SECP, NCCPL, CDC and broker resources for investors on MyStockli.",
+    "Curated PSX, SECP, SBP, NCCPL, CDC, MUFAP and sector research links for Pakistan investors on Stockli.",
   path: "/explore/useful-links",
 });
 

@@ -30,15 +30,30 @@ export interface MFTopHoldingsData {
   updatedAt: string;
 }
 
+function emptyMFTopHoldingsData(): MFTopHoldingsData {
+  return {
+    holdings: [],
+    totalFunds: 0,
+    periodYear: 0,
+    periodMonth: 0,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export async function getMFTopHoldingsData(): Promise<MFTopHoldingsData> {
-  const { value } = await getStaleCached({
-    key: "market:mf-top-holdings-v1",
-    ttlSeconds: 15 * 60,
-    staleSeconds: 6 * 60 * 60,
-    load: loadMFTopHoldingsData,
-    isUsable: (data) => data.holdings.length > 0,
-  });
-  return value;
+  try {
+    const { value } = await getStaleCached({
+      key: "market:mf-top-holdings-v1",
+      ttlSeconds: 15 * 60,
+      staleSeconds: 6 * 60 * 60,
+      load: loadMFTopHoldingsData,
+      isUsable: () => true,
+    });
+    return value;
+  } catch (error) {
+    console.warn("[mf-top-holdings] unavailable:", error);
+    return emptyMFTopHoldingsData();
+  }
 }
 
 async function loadMFTopHoldingsData(): Promise<MFTopHoldingsData> {

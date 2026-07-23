@@ -1,90 +1,20 @@
 "use client";
 
 import * as React from "react";
-import { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  ArrowLeftRight,
-  BadgePercent,
-  Bitcoin,
-  Boxes,
-  CalendarDays,
-  CandlestickChart,
-  ChevronDown,
-  ExternalLink,
-  LayoutDashboard,
-  Landmark,
-  Layers3,
-  LineChart,
-  Lock,
-  Wallet,
-  Star,
-  Target,
-  TrendingUp,
-  Trophy,
-  Globe2,
-  Droplets,
-  Gift,
-  Bell,
-  FileText,
-  History,
-  PieChart,
-  ShieldCheck,
-  Loader2,
-  Link2,
-  PlaySquare,
-  Settings,
-  Newspaper,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronDown, ExternalLink, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { EXPLORE_NAV_ITEMS, MARKET_NAV_ITEMS, NAV_ITEMS, TOOL_NAV_ITEMS } from "@/lib/constants";
+import {
+  ADMIN_NAV_ITEMS,
+  EXPLORE_NAV_ITEMS,
+  MARKET_NAV_ITEMS,
+  NAV_ITEMS,
+  TOOL_NAV_ITEMS,
+  type NavAccent,
+} from "@/lib/constants";
 import { resolvePageKey } from "@/lib/access/page-registry";
+import { NavIconChip, PendingNavIconChip } from "./nav-icons";
 import { PrefetchNavLink } from "./prefetch-nav-link";
-
-const ICONS: Record<string, LucideIcon> = {
-  ArrowLeftRight,
-  BadgePercent,
-  Bitcoin,
-  Boxes,
-  CalendarDays,
-  CandlestickChart,
-  Globe2,
-  Droplets,
-  Gift,
-  LayoutDashboard,
-  Landmark,
-  Layers3,
-  LineChart,
-  Wallet,
-  Star,
-  Target,
-  TrendingUp,
-  Trophy,
-  Bell,
-  FileText,
-  History,
-  PieChart,
-  ShieldCheck,
-  Link2,
-  PlaySquare,
-  Settings,
-  Newspaper,
-};
-
-/** Swaps the nav icon for a spinner while that link's navigation is pending. */
-function NavIcon({ Icon, active }: { Icon: LucideIcon; active: boolean }) {
-  const { pending } = useLinkStatus();
-  if (pending) return <Loader2 className="size-4 shrink-0 animate-spin text-primary" />;
-  return (
-    <Icon
-      className={cn(
-        "size-4 shrink-0",
-        active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-      )}
-    />
-  );
-}
 
 function isLockedForGuest(
   href: string,
@@ -100,6 +30,13 @@ interface NavAccessProps {
   isGuest?: boolean;
   guestPageAccess?: Record<string, boolean> | null;
 }
+
+type NavItemRef = {
+  href: string;
+  label: string;
+  icon: string;
+  accent: NavAccent;
+};
 
 export function NavLinks({
   onNavigate,
@@ -125,20 +62,14 @@ export function NavLinks({
     pathname.startsWith("/explore") ||
     pathname.startsWith("/youtubers") ||
     pathname.startsWith("/admin");
-  const exploreItems = showAdmin
-    ? [
-        ...EXPLORE_NAV_ITEMS,
-        { href: "/admin", label: "Admin", icon: "ShieldCheck" } as const,
-        { href: "/admin/fund-holdings", label: "Fund Holdings", icon: "PieChart" } as const,
-        { href: "/admin/customisation", label: "Customisation", icon: "Settings" } as const,
-      ]
-    : EXPLORE_NAV_ITEMS;
+  const exploreItems: NavItemRef[] = showAdmin
+    ? [...EXPLORE_NAV_ITEMS, ...ADMIN_NAV_ITEMS]
+    : [...EXPLORE_NAV_ITEMS];
 
   return (
     <nav className="flex flex-col gap-1">
       {NAV_ITEMS.map((item) => {
         if (item.href === "/market") {
-          const Icon = ICONS[item.icon];
           return (
             <div key={item.href} className="space-y-1">
               <button
@@ -152,16 +83,7 @@ export function NavLinks({
                     : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                 )}
               >
-                {Icon && (
-                  <Icon
-                    className={cn(
-                      "size-4 shrink-0",
-                      marketActive
-                        ? "text-primary"
-                        : "text-muted-foreground group-hover:text-foreground"
-                    )}
-                  />
-                )}
+                <NavIconChip icon={item.icon} accent={item.accent} />
                 <span className="min-w-0 flex-1">{item.label}</span>
                 <ChevronDown
                   className={cn(
@@ -191,9 +113,10 @@ export function NavLinks({
               key={item.href}
               label={item.label}
               icon={item.icon}
+              accent={item.accent}
               active={toolsActive}
               pathname={pathname}
-              items={TOOL_NAV_ITEMS}
+              items={[...TOOL_NAV_ITEMS]}
               onNavigate={onNavigate}
               prefetchOnMount={prefetchOnMount}
               isGuest={isGuest}
@@ -208,6 +131,7 @@ export function NavLinks({
               key={item.href}
               label={item.label}
               icon={item.icon}
+              accent={item.accent}
               active={exploreActive}
               pathname={pathname}
               items={exploreItems}
@@ -219,14 +143,18 @@ export function NavLinks({
           );
         }
 
-        const Icon = ICONS[item.icon];
         const active =
           pathname === item.href || pathname.startsWith(item.href + "/");
         const locked = isLockedForGuest(item.href, isGuest, guestPageAccess);
 
         if (locked) {
           return (
-            <LockedNavItem key={item.href} label={item.label} icon={item.icon} />
+            <LockedNavItem
+              key={item.href}
+              label={item.label}
+              icon={item.icon}
+              accent={item.accent}
+            />
           );
         }
 
@@ -244,7 +172,7 @@ export function NavLinks({
                 : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
             )}
           >
-            {Icon && <NavIcon Icon={Icon} active={active} />}
+            <PendingNavIconChip icon={item.icon} accent={item.accent} />
             {item.label}
           </PrefetchNavLink>
         );
@@ -253,15 +181,22 @@ export function NavLinks({
   );
 }
 
-function LockedNavItem({ label, icon }: { label: string; icon: string }) {
-  const Icon = ICONS[icon];
+function LockedNavItem({
+  label,
+  icon,
+  accent,
+}: {
+  label: string;
+  icon: string;
+  accent: NavAccent;
+}) {
   return (
     <span
       aria-disabled="true"
       title="Sign in to access"
       className="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground/50"
     >
-      {Icon && <Icon className="size-4 shrink-0" />}
+      <NavIconChip icon={icon} accent={accent} className="opacity-50" />
       <span className="flex-1">{label}</span>
       <Lock className="size-3.5 shrink-0" />
     </span>
@@ -271,6 +206,7 @@ function LockedNavItem({ label, icon }: { label: string; icon: string }) {
 function MobileNavGroup({
   label,
   icon,
+  accent,
   active,
   pathname,
   items,
@@ -281,14 +217,14 @@ function MobileNavGroup({
 }: {
   label: string;
   icon: string;
+  accent: NavAccent;
   active: boolean;
   pathname: string;
-  items: ReadonlyArray<{ href: string; label: string; icon: string }>;
+  items: ReadonlyArray<NavItemRef>;
   onNavigate?: (event: React.MouseEvent<HTMLAnchorElement>, href: string) => void;
   prefetchOnMount: boolean;
 } & NavAccessProps) {
   const [open, setOpen] = React.useState(active);
-  const Icon = ICONS[icon];
 
   React.useEffect(() => {
     if (active) setOpen(true);
@@ -307,14 +243,7 @@ function MobileNavGroup({
             : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
         )}
       >
-        {Icon && (
-          <Icon
-            className={cn(
-              "size-4 shrink-0",
-              active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-            )}
-          />
-        )}
+        <NavIconChip icon={icon} accent={accent} />
         <span className="min-w-0 flex-1">{label}</span>
         <ChevronDown
           className={cn(
@@ -331,6 +260,7 @@ function MobileNavGroup({
               href={item.href}
               label={item.label}
               icon={item.icon}
+              accent={item.accent}
               pathname={pathname}
               onNavigate={onNavigate}
               prefetchOnMount={prefetchOnMount}
@@ -381,7 +311,6 @@ function MarketNavItems({
   return (
     <>
       {MARKET_NAV_ITEMS.map((item) => {
-        const ParentIcon = ICONS[item.icon];
         if ("children" in item) {
           const childActive = Boolean(activeGroups[item.label]);
           const isOpen = openGroups[item.label] ?? childActive;
@@ -403,14 +332,7 @@ function MarketNavItems({
                     : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                 )}
               >
-                {ParentIcon && (
-                  <ParentIcon
-                    className={cn(
-                      "size-4 shrink-0",
-                      childActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-                    )}
-                  />
-                )}
+                <NavIconChip icon={item.icon} accent={item.accent} />
                 <span className="min-w-0 flex-1 truncate">{item.label}</span>
                 <ChevronDown
                   className={cn(
@@ -427,6 +349,7 @@ function MarketNavItems({
                       href={child.href}
                       label={child.label}
                       icon={child.icon}
+                      accent={child.accent}
                       pathname={pathname}
                       onNavigate={onNavigate}
                       prefetchOnMount={prefetchOnMount}
@@ -446,6 +369,7 @@ function MarketNavItems({
             href={item.href}
             label={item.label}
             icon={item.icon}
+            accent={item.accent}
             pathname={pathname}
             onNavigate={onNavigate}
             prefetchOnMount={prefetchOnMount}
@@ -462,6 +386,7 @@ function MarketNavLink({
   href,
   label,
   icon,
+  accent,
   pathname,
   onNavigate,
   prefetchOnMount,
@@ -471,11 +396,11 @@ function MarketNavLink({
   href: string;
   label: string;
   icon: string;
+  accent: NavAccent;
   pathname: string;
   onNavigate?: (event: React.MouseEvent<HTMLAnchorElement>, href: string) => void;
   prefetchOnMount: boolean;
 } & NavAccessProps) {
-  const Icon = ICONS[icon];
   const external = /^https?:\/\//.test(href);
   const active = !external && (pathname === href || (href !== "/market" && pathname.startsWith(href + "/")));
   const locked = !external && isLockedForGuest(href, isGuest, guestPageAccess);
@@ -487,7 +412,7 @@ function MarketNavLink({
         title="Sign in to access"
         className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground/50"
       >
-        {Icon && <Icon className="size-4 shrink-0" />}
+        <NavIconChip icon={icon} accent={accent} className="opacity-50" />
         <span className="min-w-0 flex-1 truncate">{label}</span>
         <Lock className="size-3.5 shrink-0" />
       </span>
@@ -502,7 +427,7 @@ function MarketNavLink({
         rel="noopener noreferrer"
         className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
       >
-        {Icon && <Icon className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />}
+        <NavIconChip icon={icon} accent={accent} />
         <span className="min-w-0 truncate">{label}</span>
         <ExternalLink className="size-3 shrink-0 text-muted-foreground/60" />
       </a>
@@ -522,7 +447,7 @@ function MarketNavLink({
           : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
       )}
     >
-      {Icon && <NavIcon Icon={Icon} active={active} />}
+      <PendingNavIconChip icon={icon} accent={accent} />
       <span className="min-w-0 truncate">{label}</span>
     </PrefetchNavLink>
   );

@@ -10,7 +10,6 @@ import {
   LineChart,
   type LucideIcon,
 } from "lucide-react";
-import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { ViewportLazy } from "@/components/loading/viewport-lazy";
@@ -70,7 +69,7 @@ export function CachedGlobalMarketPage({
 }) {
   const theme = MARKET_THEME[market] ?? MARKET_THEME.world;
   const ThemeIcon = theme.Icon;
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
+  const { data, error, isLoading, refreshNow } =
     usePersistentResource<GlobalMarketData>({
       cacheKey: `public:global-market:${market}`,
       url: `/api/public/global-market/${market}`,
@@ -114,12 +113,6 @@ export function CachedGlobalMarketPage({
         description={data?.description ?? description}
         actions={
           <>
-            <CacheStatusBadge
-              updatedAt={latestUpdatedAt(data)}
-              cachedAt={cachedAt}
-              isFromDeviceCache={isFromDeviceCache}
-              isRefreshing={isRefreshing}
-            />
             <MarketRefreshButton
               color={theme.color}
               label="Refresh"
@@ -332,10 +325,5 @@ function BoardSkeleton() {
   );
 }
 
-function latestUpdatedAt(data: GlobalMarketData | null) {
-  return data?.quotes
-    .map((quote) => quote.updatedAt)
-    .filter(Boolean)
-    .sort()
-    .at(-1) ?? null;
-}
+
+
