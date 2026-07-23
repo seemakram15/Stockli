@@ -40,7 +40,6 @@ import {
   PORTFOLIO_MUTATION_EVENT,
 } from "@/lib/cache/portfolio-mutations";
 import {
-  formatCompact,
   formatMarketPrice,
   formatNumber,
   formatPercent,

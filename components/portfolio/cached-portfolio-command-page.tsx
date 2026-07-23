@@ -154,14 +154,15 @@ export function CachedPortfolioCommandPage({
   }, [refreshNow, refreshPerf]);
 
   const isFirstDataRef = React.useRef(true);
+  const dataUpdatedAt = data?.updatedAt;
   React.useEffect(() => {
-    if (!data || !perfGate.visible) return;
+    if (!dataUpdatedAt || !perfGate.visible) return;
     if (isFirstDataRef.current) {
       isFirstDataRef.current = false;
       return;
     }
     void refreshPerf();
-  }, [data?.updatedAt, perfGate.visible, refreshPerf]);
+  }, [dataUpdatedAt, perfGate.visible, refreshPerf]);
 
   // When returning to this page after a mutation (e.g. creating a portfolio from the detail
   // page or any other flow), the SWR dedup window can prevent the automatic revalidation.

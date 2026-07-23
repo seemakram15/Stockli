@@ -120,7 +120,6 @@ export async function warmCompanyIcons(
 
 async function fetchAndStoreIcon(symbol: string): Promise<CachedCompanyIcon | null> {
   const hitKey = `${CACHE_PREFIX}${symbol}`;
-  const missKey = `${MISS_PREFIX}${symbol}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
