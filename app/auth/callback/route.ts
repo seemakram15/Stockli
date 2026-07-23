@@ -74,7 +74,7 @@ async function redirectAfterSuccess(
     await supabase.auth.signOut();
     return redirectToLoginWithMessage(
       siteUrl,
-      "Email verified successfully. Sign in to continue to your Stockli portfolio.",
+      "Email verified successfully. Sign in to continue to your MyStockli portfolio.",
       email
     );
   }

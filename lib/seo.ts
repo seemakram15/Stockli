@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { APP_NAME } from "@/lib/constants";
 import { config } from "@/lib/config";
 
-/** Primary SEO keywords for Stockli (PSX + multi-market portfolio SaaS). */
+/** Primary SEO keywords for MyStockli (PSX + multi-market portfolio SaaS). */
 export const SEO_KEYWORDS = [
-  "Stockli",
+  "MyStockli",
   "mystockli",
   "PSX portfolio tracker",
   "Pakistan stock exchange",
@@ -98,7 +98,7 @@ export function organizationJsonLd() {
     "@type": "Organization",
     "@id": `${config.siteUrl}/#organization`,
     name: APP_NAME,
-    alternateName: ["mystockli", "My Stockli"],
+    alternateName: ["mystockli", "My Stockli", "Stockli"],
     url: config.siteUrl,
     logo: {
       "@type": "ImageObject",
@@ -202,9 +202,9 @@ export function faqPageJsonLd(faqs: Array<{ question: string; answer: string }>)
 /** Default FAQs for the marketing homepage. */
 export const LANDING_FAQS = [
   {
-    question: "What is Stockli?",
+    question: "What is MyStockli?",
     answer:
-      "Stockli is a Pakistan-focused investing workspace for tracking PSX share prices, KSE-100, mutual funds, ETFs, portfolios, watchlists, and stock fundamentals in one place.",
+      "MyStockli is a Pakistan-focused investing workspace for tracking PSX share prices, KSE-100, mutual funds, ETFs, portfolios, watchlists, and stock fundamentals in one place.",
   },
   {
     question: "Can I browse PSX market data without signing up?",
@@ -212,8 +212,8 @@ export const LANDING_FAQS = [
       "Yes. Public market pages, stock profiles, news, and analysis tools are available for guests. Create a free account when you want portfolios, alerts, and saved watchlists.",
   },
   {
-    question: "Does Stockli cover only the Pakistan Stock Exchange?",
+    question: "Does MyStockli cover only the Pakistan Stock Exchange?",
     answer:
-      "PSX is the core focus, including live prices, sectors, funds, and FIPI/LIPI. Stockli also tracks US, India, world indexes, oil, commodities, and crypto for broader context.",
+      "PSX is the core focus, including live prices, sectors, funds, and FIPI/LIPI. MyStockli also tracks US, India, world indexes, oil, commodities, and crypto for broader context.",
   },
 ] as const;

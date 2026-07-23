@@ -213,7 +213,7 @@ async function fetchFeed<S extends AnySource>(
   try {
     const res = await fetch(feed.url, {
       next: { revalidate: 900 },
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; Stockli/1.0)" },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; MyStockli/1.0)" },
       signal: AbortSignal.timeout(9000),
     });
     if (!res.ok) return [];

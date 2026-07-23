@@ -1,6 +1,6 @@
 /** App-wide constants. */
 
-export const APP_NAME = "Stockli";
+export const APP_NAME = "MyStockli";
 export const APP_TAGLINE = "Track every market portfolio";
 
 /** Price cache TTL in seconds. Keep holdings close to market-watch freshness. */

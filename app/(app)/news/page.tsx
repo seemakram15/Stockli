@@ -8,9 +8,9 @@ export const revalidate = 900;
 export const metadata: Metadata = buildPageMetadata({
   title: "Market news — Pakistan & global",
   description:
-    "Live global and national news with PSX market context. Stay updated on Pakistan stocks, economy and world markets on Stockli.",
+    "Live global and national news with PSX market context. Stay updated on Pakistan stocks, economy and world markets on MyStockli.",
   path: "/news",
-  keywords: ["PSX news", "Pakistan stock news", "market news Pakistan", "Stockli news"],
+  keywords: ["PSX news", "Pakistan stock news", "market news Pakistan", "MyStockli news"],
 });
 
 export default async function NewsPage() {

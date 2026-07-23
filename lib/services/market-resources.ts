@@ -11,7 +11,7 @@ import { getSeedTicker } from "@/lib/psx/symbols";
 import { getMarketRows } from "@/lib/services/prices";
 
 const USER_AGENT =
-  "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.com)";
+  "Mozilla/5.0 (compatible; MyStockli/1.0; +https://mystockli.com)";
 const REQUEST_TIMEOUT_MS = 8_000;
 const DAILY_TTL_SECONDS = 30 * 60;
 const DAILY_STALE_SECONDS = 7 * 24 * 60 * 60;
@@ -574,7 +574,7 @@ async function loadPivotPointsData(): Promise<PivotPointsData> {
     rows: pivotRows,
     updatedAt: new Date().toISOString(),
     sourceUrl: SOURCES.pivotReference,
-    sourceLabel: "Stockli calculation",
+    sourceLabel: "MyStockli calculation",
     method: "Classic floor pivots from latest session high, low and previous close.",
   };
 }

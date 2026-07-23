@@ -3,7 +3,7 @@
 import * as React from "react";
 import { BellRing, CalendarRange, Wallet, XIcon } from "lucide-react";
 import { AuthForm } from "@/components/auth/auth-form";
-import { StockliGlyph } from "@/components/logo";
+import { BrandMark } from "@/components/logo";
 import {
   Dialog,
   DialogClose,
@@ -67,7 +67,7 @@ export function AuthDialogPanel({
         </DialogClose>
 
         <span className="relative flex size-12 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15 backdrop-blur-sm">
-          <StockliGlyph className="size-8" />
+          <BrandMark pair="green" className="size-8" />
         </span>
 
         <DialogHeader className="relative mt-4 space-y-1.5">

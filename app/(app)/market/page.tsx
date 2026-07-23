@@ -5,7 +5,7 @@ import { buildPageMetadata } from "@/lib/seo";
 export const metadata: Metadata = buildPageMetadata({
   title: "PSX live market — Pakistan Stock Exchange",
   description:
-    "Live PSX market board with KSE-100 movers, volumes, sectors and Pakistan stock prices. Track the Pakistan Stock Exchange on Stockli.",
+    "Live PSX market board with KSE-100 movers, volumes, sectors and Pakistan stock prices. Track the Pakistan Stock Exchange on MyStockli.",
   path: "/market",
   keywords: [
     "PSX live",
@@ -13,7 +13,7 @@ export const metadata: Metadata = buildPageMetadata({
     "KSE 100",
     "PSX share price",
     "Pakistan stocks today",
-    "Stockli market",
+    "MyStockli market",
   ],
 });
 

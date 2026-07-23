@@ -34,8 +34,12 @@ export function LandingHeader({
       <header className="fixed inset-x-0 top-0 z-[120] flex h-16 min-w-0 items-center gap-1.5 border-b border-border bg-background/85 px-3 backdrop-blur-xl sm:gap-2 sm:px-6 lg:gap-3 lg:px-8">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <MobileNav isGuest={isGuest} guestPageAccess={guestPageAccess} />
-          <Link href="/" aria-label={`${APP_NAME} home`} className="hidden shrink-0 lg:flex">
-            <Logo beta />
+          <Link
+            href="/"
+            aria-label={`${APP_NAME} home`}
+            className="hidden min-w-0 shrink-0 lg:flex"
+          >
+            <Logo surface="desktop" beta />
           </Link>
           <div className="hidden h-8 w-px shrink-0 bg-border lg:block" />
           <DesktopNav isGuest={isGuest} guestPageAccess={guestPageAccess} />
@@ -65,7 +69,7 @@ export function LandingHeader({
             </>
           ) : (
             <>
-              <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+              <Button asChild variant="ghost" size="sm" className="inline-flex">
                 <Link href="/login">Sign in</Link>
               </Button>
               <Button

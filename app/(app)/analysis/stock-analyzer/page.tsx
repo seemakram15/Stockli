@@ -11,7 +11,7 @@ export const metadata: Metadata = buildPageMetadata({
     "PSX stock analyzer",
     "Pakistan stock analysis",
     "stock fundamentals Pakistan",
-    "Stockli analyzer",
+    "MyStockli analyzer",
   ],
 });
 

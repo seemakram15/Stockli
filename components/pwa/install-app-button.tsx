@@ -110,11 +110,11 @@ export function InstallAppButton({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Install Stockli</DialogTitle>
+            <DialogTitle>Install MyStockli</DialogTitle>
             <DialogDescription>
               {platform === "ios-other"
                 ? "Open this page in Safari to install the app."
-                : "Add Stockli to your home screen — it opens like a native app."}
+                : "Add MyStockli to your home screen — it opens like a native app."}
             </DialogDescription>
           </DialogHeader>
 
@@ -203,7 +203,7 @@ function IOSOtherSteps() {
         <Step
           num={3}
           icon={<Download className="size-4" />}
-          text='Tap "Add" — Stockli appears on your home screen'
+          text='Tap "Add" — MyStockli appears on your home screen'
         />
       </div>
     </div>
@@ -233,7 +233,7 @@ function AndroidSteps() {
         <Step
           num={3}
           icon={<Download className="size-4" />}
-          text='Tap "Add" — the Stockli icon appears on your home screen'
+          text='Tap "Add" — the MyStockli icon appears on your home screen'
         />
       </div>
     </div>
@@ -258,12 +258,12 @@ function DesktopSteps() {
         <Step
           num={2}
           icon={<MoreVertical className="size-4" />}
-          text='Or open the browser menu and choose "Install Stockli" / "Install app"'
+          text='Or open the browser menu and choose "Install MyStockli" / "Install app"'
         />
         <Step
           num={3}
           icon={<Download className="size-4" />}
-          text='Click "Install" — Stockli opens as a desktop app'
+          text='Click "Install" — MyStockli opens as a desktop app'
         />
       </div>
     </div>

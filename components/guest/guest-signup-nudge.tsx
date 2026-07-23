@@ -26,7 +26,7 @@ export function GuestSignupNudge() {
     if (Math.random() >= SHOW_CHANCE) return;
 
     window.localStorage.setItem(STORAGE_KEY, String(now));
-    toast("Enjoying Stockli?", {
+    toast("Enjoying MyStockli?", {
       description: "Create a free account to track your own portfolio and get alerts.",
       duration: 8000,
       action: {

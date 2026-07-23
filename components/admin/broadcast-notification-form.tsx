@@ -23,7 +23,7 @@ const BROADCAST_TYPES = [
     value: "SYSTEM",
     label: "System",
     title: "Platform update",
-    body: "Stockli will be under maintenance tonight from 11:30 PM to 12:00 AM.",
+    body: "MyStockli will be under maintenance tonight from 11:30 PM to 12:00 AM.",
     href: "/dashboard",
     accent: "from-sky-500/15 to-cyan-500/10",
   },
@@ -232,7 +232,7 @@ export function BroadcastNotificationForm({ demo }: { demo?: boolean }) {
                     <ExternalLink className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Use an internal path. When users tap the notification, Stockli opens this page.
+                    Use an internal path. When users tap the notification, MyStockli opens this page.
                   </p>
                 </div>
 
@@ -293,7 +293,7 @@ export function BroadcastNotificationForm({ demo }: { demo?: boolean }) {
                     <div className="rounded-2xl bg-muted/35 px-4 py-3">
                       <p className="text-sm font-medium text-foreground">In-app notification</p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Every signed-in user sees the message inside Stockli.
+                        Every signed-in user sees the message inside MyStockli.
                       </p>
                     </div>
                     <div className="rounded-2xl bg-muted/35 px-4 py-3">

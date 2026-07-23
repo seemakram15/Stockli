@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { IconChip, type Accent } from "@/components/ui/accent";
 import { Button } from "@/components/ui/button";
-import { StockliGlyph } from "@/components/logo";
+import { BrandMark } from "@/components/logo";
 import { writePersistentResourceCache } from "@/lib/hooks/use-persistent-resource";
 import { cn } from "@/lib/utils";
 
@@ -166,7 +166,7 @@ export function AccountWarmup() {
         <div className="relative">
           <div className="flex items-center gap-3">
             <IconChip accent="primary" variant="gradient" size="lg">
-              <StockliGlyph className="size-7" />
+              <BrandMark pair="green" className="size-7" />
             </IconChip>
             <div className="min-w-0">
               <h2 className="text-lg font-bold tracking-tight">

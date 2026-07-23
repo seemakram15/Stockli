@@ -321,7 +321,7 @@ export function StockAnalyzer() {
             <span className="text-gradient-violet">with a clearer report</span>
           </h1>
           <p className="mx-auto mt-4 max-w-3xl text-lg leading-8 text-muted-foreground">
-            Stockli turns company financials, ratios, and price context into an investor-friendly
+            MyStockli turns company financials, ratios, and price context into an investor-friendly
             report with grouped scorecards, clearer charts, and an AI explanation in simple language.
           </p>
         </div>
@@ -914,7 +914,7 @@ function AnalyzeResult({
           <div className="space-y-5">
             {aiError ? (
               <FallbackNotice
-                message={`${aiError} Stockli is showing the deterministic explanation instead.`}
+                message={`${aiError} MyStockli is showing the deterministic explanation instead.`}
               />
             ) : null}
             <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4 shadow-soft">
@@ -1186,7 +1186,7 @@ function CompareResult({
           <div className="space-y-5">
             {aiError ? (
               <FallbackNotice
-                message={`${aiError} Stockli is showing the deterministic comparison instead.`}
+                message={`${aiError} MyStockli is showing the deterministic comparison instead.`}
               />
             ) : null}
             <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4 shadow-soft">

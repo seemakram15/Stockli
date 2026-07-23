@@ -16,7 +16,7 @@ export default function AccountScreen() {
   const c = useColors();
   const { user } = useSession();
 
-  const displayName = user?.user_metadata?.display_name ?? "Stockli User";
+  const displayName = user?.user_metadata?.display_name ?? "MyStockli User";
   const email = user?.email ?? "—";
   const initials = displayName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
 
@@ -129,7 +129,7 @@ export default function AccountScreen() {
         </View>
 
         <Text style={{ textAlign: "center", fontSize: 12, color: c.muted, marginTop: 24 }}>
-          Stockli © 2025
+          MyStockli © 2025
         </Text>
       </ScrollView>
     </SafeAreaView>

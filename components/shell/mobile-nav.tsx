@@ -41,10 +41,15 @@ export function MobileNav({
           <Menu className="size-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="flex w-72 max-w-[calc(100vw-2rem)] flex-col p-0">
-        <SheetHeader className="border-b border-border px-4 pb-4 pt-[calc(3.5rem+env(safe-area-inset-top))]">
+      <SheetContent
+        side="left"
+        className="z-[130] flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-0 p-0"
+      >
+        <SheetHeader className="shrink-0 border-b border-border px-4 pb-5 pt-[max(1.5rem,calc(0.75rem+env(safe-area-inset-top)))] pr-14">
           <SheetTitle asChild>
-            <Logo beta />
+            <div className="flex min-h-10 min-w-0 items-center overflow-visible">
+              <Logo surface="mobile" beta className="min-w-0" />
+            </div>
           </SheetTitle>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto px-3 py-4">

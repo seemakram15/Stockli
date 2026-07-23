@@ -186,7 +186,7 @@ export function ConsentManager({
         <div className="min-w-0">
           <p className="text-sm font-semibold">Allow cookies and alerts on this device</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Stockli uses cookies and device storage to keep pages fast. When you continue, we will
+            MyStockli uses cookies and device storage to keep pages fast. When you continue, we will
             also ask this browser or app for permission to send market, alert, and portfolio updates.
           </p>
         </div>

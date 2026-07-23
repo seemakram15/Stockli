@@ -93,9 +93,9 @@ export function FundamentalsDeviceCachePrompt({ userId }: { userId: string }) {
           <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <Database className="size-5" />
           </div>
-          <DialogTitle>Cache Stockli data on this device</DialogTitle>
+          <DialogTitle>Cache MyStockli data on this device</DialogTitle>
           <DialogDescription>
-            Stockli can save fundamentals, market pages, MUFAP, global boards and other public
+            MyStockli can save fundamentals, market pages, MUFAP, global boards and other public
             Redis-backed data locally so screens open quickly, even when the network is slow.
           </DialogDescription>
         </DialogHeader>

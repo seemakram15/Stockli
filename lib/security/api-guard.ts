@@ -48,8 +48,8 @@ export function isKnownScraper(ua: string): boolean {
 export function isAllowedPublicApiRequest(request: NextRequest): boolean {
   const ua = request.headers.get("user-agent") ?? "";
 
-  // Allow official Stockli mobile app requests
-  if (ua.startsWith("StockliApp/")) return true;
+  // Allow official MyStockli mobile app requests
+  if (ua.startsWith("MyStockliApp/")) return true;
 
   if (isKnownScraper(ua)) return false;
 

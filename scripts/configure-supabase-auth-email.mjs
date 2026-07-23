@@ -72,7 +72,7 @@ async function main() {
   const smtpUser = getEnv("SUPABASE_AUTH_SMTP_USER");
   const smtpPass = getEnv("SUPABASE_AUTH_SMTP_PASS");
   const smtpAdminEmail = getEnv("SUPABASE_AUTH_SMTP_ADMIN_EMAIL");
-  const smtpSenderName = getEnv("SUPABASE_AUTH_SMTP_SENDER_NAME", "Stockli");
+  const smtpSenderName = getEnv("SUPABASE_AUTH_SMTP_SENDER_NAME", "MyStockli");
   const rateLimitEmailSent = Number.parseInt(
     getEnv("SUPABASE_AUTH_RATE_LIMIT_EMAIL_SENT", "30"),
     10
@@ -109,12 +109,12 @@ async function main() {
     smtp_pass: smtpPass,
     smtp_sender_name: smtpSenderName,
     rate_limit_email_sent: rateLimitEmailSent,
-    mailer_subjects_confirmation: "Confirm your Stockli account",
+    mailer_subjects_confirmation: "Confirm your MyStockli account",
     mailer_templates_confirmation_content: confirmationTemplate,
-    mailer_subjects_recovery: "Reset your Stockli password",
+    mailer_subjects_recovery: "Reset your MyStockli password",
     mailer_templates_recovery_content: recoveryTemplate,
     mailer_notifications_password_changed_enabled: true,
-    mailer_subjects_password_changed_notification: "Your Stockli password was changed",
+    mailer_subjects_password_changed_notification: "Your MyStockli password was changed",
     mailer_templates_password_changed_notification_content: passwordChangedTemplate,
   };
 
