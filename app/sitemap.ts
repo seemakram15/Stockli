@@ -46,7 +46,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: number
   ) => {
     if (!path.startsWith("/")) return;
-    const url = path === "/" ? config.siteUrl : `${config.siteUrl}${path}`;
+    // Keep a trailing slash only on the homepage so <loc> matches the canonical host root.
+    const url = path === "/" ? `${config.siteUrl}/` : `${config.siteUrl}${path}`;
     if (seen.has(url)) return;
     seen.add(url);
     entries.push({ url, lastModified: now, changeFrequency, priority });

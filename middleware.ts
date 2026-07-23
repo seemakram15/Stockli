@@ -47,6 +47,12 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const ua = request.headers.get("user-agent") ?? "";
 
+  // Always let search engines fetch crawl policy + sitemap (GSC validators
+  // often use non-browser UAs that would otherwise hit the scraper block).
+  if (pathname === "/robots.txt" || pathname === "/sitemap.xml" || pathname === "/sitemap") {
+    return NextResponse.next();
+  }
+
   // ── Block known scraper UAs on every route — pages and APIs alike ─────────
   if (isKnownScraper(ua)) {
     const isPage = !pathname.startsWith("/api/");
