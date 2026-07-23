@@ -48,7 +48,8 @@ export async function edgeRateLimit(
   if (!redis) return { allowed: true, retryAfter: 0 };
 
   const ip = clientIp(req);
-  const key = `rl:${scope}:${simpleHash(ip)}`;
+  // Include limit + window so raising quotas doesn't inherit a saturated older key.
+  const key = `rl:${scope}:${limit}:${windowSeconds}:${simpleHash(ip)}`;
 
   try {
     const count = await redis.incr(key);

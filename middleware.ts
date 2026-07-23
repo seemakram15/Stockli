@@ -6,16 +6,48 @@ import { edgeRateLimit } from "@/lib/security/edge-rate-limit";
 // Public data routes: no session required but gated by origin + rate limit.
 const PUBLIC_DATA_API_PREFIXES = ["/api/public/", "/api/search"];
 
-// Rate limits — chosen so normal browsing never comes close.
-//   pages:  60/min → a heavy user clicks ~10–15 pages/min; scraper hits hundreds
-//   public: 80/min → market page loads ~3–5 API calls; scraper polls continuously
-//   prices: 20/min → SWR polls every 30 s = 2/min per tab
-//   search: 40/min → debounced typing = ~10/min
-const RATE_LIMITS: { prefix: string; scope: string; limit: number; window: number }[] = [
-  { prefix: "/api/prices",  scope: "prices", limit: 20, window: 60 },
-  { prefix: "/api/public/", scope: "public", limit: 80, window: 60 },
-  { prefix: "/api/search",  scope: "search", limit: 40, window: 60 },
-];
+/**
+ * Rate limits are sized for real app usage (RSC navigations, SWR, warmup),
+ * not bare “one click = one request”. Prefetch traffic is skipped separately.
+ *
+ * Guest browsing stays protected from scrapers; signed-in users get more headroom.
+ */
+const RATE_LIMITS = {
+  pages: { guest: 240, auth: 480, window: 60 },
+  public: { guest: 240, auth: 480, window: 60 },
+  prices: { guest: 120, auth: 240, window: 60 },
+  search: { guest: 120, auth: 240, window: 60 },
+} as const;
+
+function looksAuthenticated(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some(
+      (cookie) =>
+        cookie.name.includes("-auth-token") ||
+        (cookie.name.startsWith("sb-") && cookie.value.length > 0)
+    );
+}
+
+function isRouterPrefetch(request: NextRequest): boolean {
+  const purpose = request.headers.get("purpose") ?? request.headers.get("sec-purpose") ?? "";
+  if (/prefetch/i.test(purpose)) return true;
+  if (request.headers.get("Next-Router-Prefetch") === "1") return true;
+  if (request.headers.get("next-router-prefetch") === "1") return true;
+  if (request.headers.get("x-middleware-prefetch") === "1") return true;
+  return false;
+}
+
+function limitFor(
+  kind: keyof typeof RATE_LIMITS,
+  request: NextRequest
+): { limit: number; window: number } {
+  const rule = RATE_LIMITS[kind];
+  return {
+    limit: looksAuthenticated(request) ? rule.auth : rule.guest,
+    window: rule.window,
+  };
+}
 
 function tooManyRequests(retryAfter: number) {
   return NextResponse.json(
@@ -64,30 +96,44 @@ export async function middleware(request: NextRequest) {
       : NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Router prefetch should not burn a normal user's browsing budget.
+  const skipRateLimit = isGooglebot || isRouterPrefetch(request);
+
   // ── Public data API routes (origin-gated + rate limited) ──────────────────
   if (PUBLIC_DATA_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
     // Googlebot rendering may fetch public JSON without browser Sec-Fetch headers.
     if (!isGooglebot && !isAllowedPublicApiRequest(request)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    const rule = RATE_LIMITS.find((r) => pathname.startsWith(r.prefix));
-    if (rule && !isGooglebot) {
-      const result = await edgeRateLimit(request, rule.scope, rule.limit, rule.window);
-      if (!result.allowed) return tooManyRequests(result.retryAfter);
+    if (!skipRateLimit) {
+      const kind = pathname.startsWith("/api/search")
+        ? "search"
+        : pathname.startsWith("/api/public/")
+          ? "public"
+          : null;
+      if (kind) {
+        const { limit, window } = limitFor(kind, request);
+        const result = await edgeRateLimit(request, kind, limit, window);
+        if (!result.allowed) return tooManyRequests(result.retryAfter);
+      }
     }
     return NextResponse.next();
   }
 
   // ── Prices endpoint (authenticated pages, live polling) ───────────────────
   if (pathname.startsWith("/api/prices")) {
-    const result = await edgeRateLimit(request, "prices", 20, 60);
-    if (!result.allowed) return tooManyRequests(result.retryAfter);
+    if (!skipRateLimit) {
+      const { limit, window } = limitFor("prices", request);
+      const result = await edgeRateLimit(request, "prices", limit, window);
+      if (!result.allowed) return tooManyRequests(result.retryAfter);
+    }
     return NextResponse.next();
   }
 
   // ── Page routes — rate limited to stop bulk HTML scraping ─────────────────
-  if (!isGooglebot) {
-    const pageRateLimit = await edgeRateLimit(request, "pages", 60, 60);
+  if (!skipRateLimit) {
+    const { limit, window } = limitFor("pages", request);
+    const pageRateLimit = await edgeRateLimit(request, "pages", limit, window);
     if (!pageRateLimit.allowed) return blockedPageResponse(429, pageRateLimit.retryAfter);
   }
 
