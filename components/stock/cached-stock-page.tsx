@@ -22,6 +22,8 @@ import { StockLogo } from "@/components/stock/stock-logo";
 import { WatchButton } from "@/components/watch-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLiveHoldings } from "@/lib/hooks/use-live-holdings";
+import { isPortfolioCacheFresh, usePortfolioMutationRefresh } from "@/lib/cache/portfolio-mutations";
+import type { CachedRecord } from "@/lib/hooks/use-persistent-resource";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import { formatCompact, formatDate, formatNumber, formatPercent, formatPKR, plColorClass } from "@/lib/format";
@@ -41,14 +43,23 @@ export function CachedStockPage({ symbol, userId }: { symbol: string; userId: st
   const normalizedSymbol = symbol.toUpperCase();
   const cacheKey = `private:stock:${userId}:${normalizedSymbol}`;
   const cacheClosedOnly = React.useCallback(() => !shouldRefreshPsxData(), []);
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt } =
+  const acceptStockCache = React.useCallback(
+    (record: CachedRecord<StockPageData>) =>
+      cacheClosedOnly() && isPortfolioCacheFresh(record, userId),
+    [cacheClosedOnly, userId]
+  );
+  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
     usePersistentResource<StockPageData>({
       cacheKey,
       url: `/api/private/stocks/${encodeURIComponent(symbol)}`,
       refreshInterval: 60_000,
       pauseWhen: cacheClosedOnly,
-      acceptCacheWhen: cacheClosedOnly,
+      acceptCacheWhen: acceptStockCache,
     });
+
+  usePortfolioMutationRefresh(() => {
+    void refreshNow();
+  }, userId);
 
   if (!data) {
     return (

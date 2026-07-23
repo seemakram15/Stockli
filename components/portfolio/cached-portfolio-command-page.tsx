@@ -36,7 +36,7 @@ import {
   isPortfolioCacheFresh,
   PORTFOLIO_MUTATION_EVENT,
 } from "@/lib/cache/portfolio-mutations";
-import { isMarketOpen, psxLocalDateString, shouldRefreshPsxData } from "@/lib/psx/market-hours";
+import { psxLocalDateString, shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import { formatPKR, formatPercent, plColorClass } from "@/lib/format";
 import { StockIdentity } from "@/components/stock/stock-identity";
 import type { PortfolioCommandPageData } from "@/lib/services/portfolio-command-page";
@@ -210,14 +210,12 @@ export function CachedPortfolioCommandPage({
   const { summary, holdings, portfolios } = dashboard;
   const hasHoldings = holdings.length > 0;
   const hasPortfolios = portfolios.length > 0;
-  const marketOpen = isMarketOpen();
+  const psxLiveWindow = shouldRefreshPsxData();
   const lastCalendarDay = calendar?.days.at(-1) ?? null;
-  // Only trust the calendar's last day as "today" once its own EOD candle has
-  // actually been published for today's date — otherwise it's still
-  // yesterday's row, and overriding with it would show yesterday's P/L as if
-  // it were today's the moment the market closes (before EOD data catches up).
+  // Freeze calendar day-P/L only after the delayed feed settlement window ends —
+  // not at the official bell — so live quotes and the override don't fight.
   const dayPLOverride =
-    !marketOpen && lastCalendarDay && lastCalendarDay.date === psxLocalDateString()
+    !psxLiveWindow && lastCalendarDay && lastCalendarDay.date === psxLocalDateString()
       ? { dayPL: lastCalendarDay.dayPL, dayPLPct: lastCalendarDay.dayPLPct }
       : null;
   const liveByHoldingId = new Map(liveHoldings.map((h) => [h.id, h]));
@@ -327,7 +325,7 @@ export function CachedPortfolioCommandPage({
             portfolios={portfolios}
             holdings={liveHoldings}
             userId={userId}
-            dayPLByPortfolio={marketOpen ? null : portfolioDayPL}
+            dayPLByPortfolio={psxLiveWindow ? null : portfolioDayPL}
           />
 
           <div ref={perfGate.ref} className="grid gap-4 lg:grid-cols-3">

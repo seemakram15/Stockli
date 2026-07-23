@@ -17,6 +17,7 @@ import { IconChip } from "@/components/ui/accent";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePersistentResource, writePersistentResourceCache } from "@/lib/hooks/use-persistent-resource";
+import { isClosedMarketSnapshotCurrent } from "@/lib/cache/portfolio-mutations";
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { PublicMarketPageData } from "@/lib/services/public-market-page";
 
@@ -27,7 +28,8 @@ export function CachedPsxMarketPage() {
       url: "/api/public/market",
       refreshInterval: 60_000,
       pauseWhen: () => !shouldRefreshPsxData(),
-      acceptCacheWhen: () => !shouldRefreshPsxData(),
+      acceptCacheWhen: (record) =>
+        !shouldRefreshPsxData() && isClosedMarketSnapshotCurrent(record),
       legacyCacheKeys: ["public:psx-market", "public:psx-market:v2"],
     });
   const [currentDetail, setCurrentDetail] = React.useState(data?.detail ?? null);

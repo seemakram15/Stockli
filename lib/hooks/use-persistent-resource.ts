@@ -116,7 +116,8 @@ export function usePersistentResource<T>({
 
   React.useEffect(() => {
     if (!hasPauseRule) return undefined;
-    const id = window.setInterval(() => setClockTick((tick) => tick + 1), 60_000);
+    // 30s keeps open↔close transitions snappy without hammering re-renders.
+    const id = window.setInterval(() => setClockTick((tick) => tick + 1), 30_000);
     return () => window.clearInterval(id);
   }, [hasPauseRule]);
 
@@ -127,9 +128,11 @@ export function usePersistentResource<T>({
   const usableCached = cacheAccepted ? activeCached : null;
   const cachedValue = usableCached?.value ?? null;
 
-  // Pause polling only when we already have a snapshot and pauseWhen says so.
-  // Do not require acceptCacheWhen — that rule is for freshness badges, not blanking UI.
-  const isPaused = Boolean(rawCachedValue && pauseWhen?.(rawCachedValue));
+  // Pause only when we have a snapshot AND pauseWhen says so AND the snapshot is
+  // still acceptable to freeze on. If acceptCacheWhen fails (stale EOD, post-mutation),
+  // keep fetching while painting the old snapshot (stale-while-revalidate).
+  const wantsPause = Boolean(rawCachedValue && pauseWhen?.(rawCachedValue));
+  const isPaused = wantsPause && (acceptCacheWhen ? cacheAccepted : true);
   // Start network immediately when enabled; do not wait for IndexedDB (avoids waterfall).
   const swrKey = enabled && !isPaused ? ([cacheKey, url] as const) : null;
 
@@ -176,7 +179,7 @@ export function usePersistentResource<T>({
   );
 
   // Stale-while-revalidate: always paint the last device snapshot while network runs.
-  // `acceptCacheWhen` no longer hides cache — it only marks freshness for badges/pause UX.
+  // `acceptCacheWhen` gates whether we are allowed to *pause* on that snapshot.
   const resolved = swr.data ?? rawCachedValue ?? cachedValue;
   const data = enabled ? resolved : null;
   const showingDeviceCache = Boolean(enabled && data && !swr.data);
@@ -187,6 +190,7 @@ export function usePersistentResource<T>({
     isLoading: enabled && !data && (!cacheReady || swr.isLoading),
     isRefreshing: Boolean(enabled && data && swr.isValidating),
     isFromDeviceCache: showingDeviceCache,
+    isCacheAccepted: cacheAccepted,
     cachedAt: usableCached?.savedAt ?? activeCached?.savedAt ?? null,
     lastCachedAt: activeCached?.savedAt ?? null,
     mutate: swr.mutate,

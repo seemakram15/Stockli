@@ -34,6 +34,7 @@ import {
 import { AccentPill, ACCENT_GRADIENT, IconChip, type Accent } from "@/components/ui/accent";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  isClosedMarketSnapshotCurrent,
   isPortfolioCacheFresh,
   PORTFOLIO_MUTATION_EVENT,
 } from "@/lib/cache/portfolio-mutations";
@@ -218,7 +219,11 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
     pauseWhen: cacheClosedOnly,
     acceptCacheWhen: acceptPortfolioCache,
   });
-  const psx = usePublicHub<PublicMarketData>("public:psx-market:v3", "/api/public/market", cacheClosedOnly);
+  const psx = usePublicHub<PublicMarketData>(
+    "public:psx-market:v3",
+    "/api/public/market",
+    cacheClosedOnly
+  );
 
   // Below-the-fold — fetch only once the section is near the viewport.
   // Tight margins + sequential enable so tall screens don't stampede all APIs at once.
@@ -233,7 +238,7 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
     url: "/api/public/pakistan-commodities",
     refreshInterval: PK_RATES_REFRESH_MS,
     pauseWhen: cacheClosedOnly,
-    acceptCacheWhen: cacheClosedOnly,
+    acceptCacheWhen: (record) => cacheClosedOnly() && isClosedMarketSnapshotCurrent(record),
     enabled: ratesEnabled,
   });
   const fuel = usePersistentResource<PakistanFuelData>({
@@ -247,19 +252,22 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
     "public:global-market:oil",
     "/api/public/global-market/oil",
     cacheClosedOnly,
-    ratesEnabled
+    ratesEnabled,
+    { pauseOnPsxHours: false }
   );
   const world = usePublicHub<GlobalMarketData>(
     "public:global-market:world",
     "/api/public/global-market/world",
     cacheClosedOnly,
-    worldEnabled
+    worldEnabled,
+    { pauseOnPsxHours: false }
   );
   const us = usePublicHub<GlobalMarketData>(
     "public:global-market:us",
     "/api/public/global-market/us",
     cacheClosedOnly,
-    worldEnabled
+    worldEnabled,
+    { pauseOnPsxHours: false }
   );
 
   // Hold market cards until the world feed has painted so we don't compete with ATF requests.
@@ -270,19 +278,22 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
     "public:global-market:india",
     "/api/public/global-market/india",
     cacheClosedOnly,
-    boardsEnabled
+    boardsEnabled,
+    { pauseOnPsxHours: false }
   );
   const commodities = usePublicHub<GlobalMarketData>(
     "public:global-market:commodities",
     "/api/public/global-market/commodities",
     cacheClosedOnly,
-    boardsEnabled
+    boardsEnabled,
+    { pauseOnPsxHours: false }
   );
   const crypto = usePublicHub<GlobalMarketData>(
     "public:global-market:crypto",
     "/api/public/global-market/crypto",
     cacheClosedOnly,
-    boardsEnabled
+    boardsEnabled,
+    { pauseOnPsxHours: false }
   );
 
   const refreshPortfolioRef = React.useRef(portfolio.refreshNow);
@@ -639,20 +650,26 @@ function usePublicHub<T>(
   cacheKey: string,
   url: string,
   cacheClosedOnly: () => boolean,
-  enabled = true
+  enabled = true,
+  options?: { pauseOnPsxHours?: boolean }
 ) {
+  const pauseOnPsxHours = options?.pauseOnPsxHours !== false;
   return usePersistentResource<T>({
     cacheKey,
     url,
     refreshInterval: REFRESH_MS,
-    pauseWhen: cacheClosedOnly,
-    acceptCacheWhen: cacheClosedOnly,
+    // PSX-tied feeds freeze after settlement. Global boards keep polling —
+    // they do not share the Pakistan exchange clock.
+    pauseWhen: pauseOnPsxHours ? cacheClosedOnly : undefined,
+    acceptCacheWhen: pauseOnPsxHours
+      ? (record) => cacheClosedOnly() && isClosedMarketSnapshotCurrent(record)
+      : () => true,
     enabled,
   });
 }
 
 function SessionBadge({ label, status }: { label: string; status: string }) {
-  const live = status === "open" || status === "pre-open";
+  const live = status === "open" || status === "pre-open" || status === "settling";
   return (
     <span
       suppressHydrationWarning

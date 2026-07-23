@@ -34,7 +34,7 @@ import {
   isPortfolioCacheFresh,
   PORTFOLIO_MUTATION_EVENT,
 } from "@/lib/cache/portfolio-mutations";
-import { isMarketOpen, psxLocalDateString, shouldRefreshPsxData } from "@/lib/psx/market-hours";
+import { psxLocalDateString, shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { PortfolioPageData } from "@/lib/services/portfolio-page";
 import type { RealizedPositionPL } from "@/lib/types";
 
@@ -146,7 +146,7 @@ export function CachedPortfolioDetailPage({
     date: d.date,
     close: d.marketValue,
   }));
-  if (hasHoldings && isMarketOpen()) {
+  if (hasHoldings && shouldRefreshPsxData()) {
     const liveTotal = liveHoldings.reduce((sum, h) => sum + h.marketValue, 0);
     if (valueSeries.length > 0 && valueSeries[valueSeries.length - 1].date === today) {
       valueSeries[valueSeries.length - 1] = { date: today, close: liveTotal };
@@ -154,12 +154,9 @@ export function CachedPortfolioDetailPage({
       valueSeries.push({ date: today, close: liveTotal });
     }
   }
-  // Only trust the calendar's last day as "today" once its own EOD candle has
-  // actually been published for today's date — otherwise it's still
-  // yesterday's row, and overriding with it would show yesterday's P/L as if
-  // it were today's the moment the market closes (before EOD data catches up).
+  // Freeze calendar day-P/L only after the delayed feed settlement window ends.
   const dayPLOverride =
-    !isMarketOpen() && lastCalendarDay && lastCalendarDay.date === psxLocalDateString()
+    !shouldRefreshPsxData() && lastCalendarDay && lastCalendarDay.date === psxLocalDateString()
       ? { dayPL: lastCalendarDay.dayPL, dayPLPct: lastCalendarDay.dayPLPct }
       : null;
 

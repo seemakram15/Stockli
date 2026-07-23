@@ -255,6 +255,7 @@ async function createMarketSituationNotification(admin: SupabaseClient, now: Dat
     : ({
         open: "PSX market is open",
         "pre-open": "PSX opens soon",
+        settling: "PSX is settling the session",
         closed: "PSX is closed for today",
         weekend: "PSX is closed for the weekend",
         holiday: "PSX is closed for a holiday",
@@ -266,6 +267,8 @@ async function createMarketSituationNotification(admin: SupabaseClient, now: Dat
       ? "Trading has started. Prices, your portfolio, and alerts are now updating live."
       : status.status === "pre-open"
         ? `Pre-open has started. ${describeCurrentRegularOpen(now)}`
+        : status.status === "settling"
+          ? "The delayed feed is still catching final prints. Quotes will freeze once settlement completes."
         : `The market is closed. ${describeNextTradingWindow(status.nextRefreshAt)}`;
 
   return createNotification(admin, {

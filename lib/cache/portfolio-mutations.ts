@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import type { CachedRecord } from "@/lib/hooks/use-persistent-resource";
 import {
   lastCompletedPsxSessionDate,
@@ -40,7 +41,12 @@ export function isPortfolioCacheFresh<T>(record: CachedRecord<T>, userId?: strin
   return isClosedMarketSnapshotCurrent(record);
 }
 
-function isClosedMarketSnapshotCurrent<T>(record: CachedRecord<T>) {
+/**
+ * True when a frozen (closed-market) device snapshot is still valid for the
+ * latest completed PSX session. Used by `acceptCacheWhen` so stale EOD snapshots
+ * keep fetching instead of pausing forever.
+ */
+export function isClosedMarketSnapshotCurrent<T>(record: CachedRecord<T>) {
   const latestCompletedSessionDate = lastCompletedPsxSessionDate();
   if (!latestCompletedSessionDate) return true;
 
@@ -55,6 +61,28 @@ function isClosedMarketSnapshotCurrent<T>(record: CachedRecord<T>) {
   const snapshotTime = extractSnapshotTime(record);
   if (snapshotTime == null) return true;
   return snapshotTime >= latestCompletedSessionEnd.getTime();
+}
+
+/** Refresh callbacks when this tab or another tab mutates portfolios. */
+export function usePortfolioMutationRefresh(
+  refresh: () => void,
+  userId?: string | null
+) {
+  React.useEffect(() => {
+    const onMutation = () => {
+      refresh();
+    };
+    const mutationKey = portfolioMutationStorageKey(userId);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === mutationKey && event.newValue) refresh();
+    };
+    window.addEventListener(PORTFOLIO_MUTATION_EVENT, onMutation);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(PORTFOLIO_MUTATION_EVENT, onMutation);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [refresh, userId]);
 }
 
 function extractSnapshotTime<T>(record: CachedRecord<T>) {

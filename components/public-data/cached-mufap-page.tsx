@@ -10,6 +10,7 @@ import { EtfTable } from "@/components/market/etf-table";
 import { PageHeader } from "@/components/page-header";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import { withFreshParam } from "@/lib/hooks/use-refresh-runner";
+import { isClosedMarketSnapshotCurrent } from "@/lib/cache/portfolio-mutations";
 import { shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import type { MufapFundsData } from "@/lib/services/mufap";
 
@@ -28,7 +29,8 @@ export function CachedMufapPage({ kind }: { kind: "mutual" | "etfs" }) {
       url: `/api/public/mufap?kind=${etfMode ? "etfs" : "mutual"}`,
       refreshInterval: 5 * 60_000,
       pauseWhen: () => !shouldRefreshPsxData(),
-      acceptCacheWhen: () => !shouldRefreshPsxData(),
+      acceptCacheWhen: (record) =>
+        !shouldRefreshPsxData() && isClosedMarketSnapshotCurrent(record),
     });
 
   return (

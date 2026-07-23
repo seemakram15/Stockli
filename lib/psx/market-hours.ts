@@ -56,7 +56,13 @@ interface MarketSession {
   end: number;
 }
 
-export type MarketStatus = "open" | "closed" | "pre-open" | "weekend" | "holiday";
+export type MarketStatus =
+  | "open"
+  | "closed"
+  | "pre-open"
+  | "settling"
+  | "weekend"
+  | "holiday";
 
 /** Decompose a Date into Pakistan-local parts without external tz libs. */
 function pktParts(date: Date): PktParts {
@@ -234,7 +240,8 @@ export function marketStatus(date: Date = new Date()): {
   }
 
   const mins = parts.hour * 60 + parts.minute;
-  for (const session of tradingSessionsForDate(parts)) {
+  const sessions = tradingSessionsForDate(parts);
+  for (const session of sessions) {
     if (mins >= session.start && mins <= session.end) {
       return {
         status: session.kind,
@@ -242,6 +249,21 @@ export function marketStatus(date: Date = new Date()): {
         nextRefreshAt: null,
       };
     }
+  }
+
+  // Official close has passed but the delayed feed may still print finals.
+  const settling = sessions
+    .filter((session) => session.kind === "open")
+    .some(
+      (session) =>
+        mins > session.end && mins <= session.end + POST_CLOSE_SETTLEMENT_MINUTES
+    );
+  if (settling) {
+    return {
+      status: "settling",
+      label: "Settling",
+      nextRefreshAt: null,
+    };
   }
 
   return {

@@ -3,22 +3,18 @@
 import * as React from "react";
 import { psxSessionCycleId } from "@/lib/psx/market-hours";
 import { deletePersistentResourceCache } from "@/lib/hooks/use-persistent-resource";
+import { invalidateClientPriceCaches } from "@/lib/hooks/use-prices";
 
 const STORAGE_KEY = "stockli:psx-cache-cycle";
 
 /**
- * Market-data device-cache snapshots that are "frozen" while PSX is closed and
- * must be dropped once a new trading session opens, so the fresh session shows
- * live prices instead of yesterday's indexes/quotes.
+ * PSX-tied device-cache snapshots that are frozen while the exchange is closed
+ * and must be dropped once a new trading session opens. Global (US/India/crypto)
+ * boards are intentionally excluded — they follow their own clocks and must not
+ * be wiped by the Pakistan session cycle.
  */
-const MARKET_SNAPSHOT_KEYS = [
+const PSX_SNAPSHOT_KEYS = [
   "public:psx-market:v3",
-  "public:global-market:us",
-  "public:global-market:india",
-  "public:global-market:world",
-  "public:global-market:commodities",
-  "public:global-market:oil",
-  "public:global-market:crypto",
   "public:market-strategy",
   "public:mufap:mutual",
   "public:mufap:etfs",
@@ -26,8 +22,8 @@ const MARKET_SNAPSHOT_KEYS = [
 
 /**
  * Watches the PSX session cycle and, the first time a new trading session is
- * observed (≈09:15 each trading day), removes the previous day's frozen market
- * snapshot from the device cache. After close the snapshot is left untouched so
+ * observed (≈09:15 each trading day), removes the previous day's frozen PSX
+ * snapshots from the device cache. After close the snapshot is left untouched so
  * returning visitors keep getting the instant cached view.
  */
 export function PsxCacheLifecycle() {
@@ -44,8 +40,9 @@ export function PsxCacheLifecycle() {
       }
       if (stored === cycle) return; // Already reset for this session.
 
+      invalidateClientPriceCaches();
       void Promise.all(
-        MARKET_SNAPSHOT_KEYS.map((key) =>
+        PSX_SNAPSHOT_KEYS.map((key) =>
           deletePersistentResourceCache(key).catch(() => undefined)
         )
       ).finally(() => {
@@ -58,7 +55,7 @@ export function PsxCacheLifecycle() {
     }
 
     check();
-    const id = window.setInterval(check, 60_000);
+    const id = window.setInterval(check, 30_000);
     return () => window.clearInterval(id);
   }, []);
 

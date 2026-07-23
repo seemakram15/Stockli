@@ -23,6 +23,7 @@ const STATUS_STYLES: Record<MarketStatus, string> = {
   open: "text-gain",
   closed: "text-muted-foreground",
   "pre-open": "text-amber-600 dark:text-amber-400",
+  settling: "text-sky-600 dark:text-sky-400",
   weekend: "text-muted-foreground",
   holiday: "text-muted-foreground",
 };
@@ -31,6 +32,7 @@ const STATUS_WRAP: Record<MarketStatus, string> = {
   open: "border-gain/30 bg-gain/10",
   closed: "border-border bg-muted/40",
   "pre-open": "border-amber-500/30 bg-amber-500/10",
+  settling: "border-sky-500/30 bg-sky-500/10",
   weekend: "border-border bg-muted/40",
   holiday: "border-border bg-muted/40",
 };
@@ -56,7 +58,7 @@ export function MarketStatusBadge({
         className={cn(
           "size-2 fill-current",
           STATUS_STYLES[status],
-          status === "open" && "animate-pulse"
+          (status === "open" || status === "settling") && "animate-pulse"
         )}
         aria-hidden
       />
