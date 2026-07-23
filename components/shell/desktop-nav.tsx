@@ -1,75 +1,28 @@
 "use client";
 
 import * as React from "react";
-import { useLinkStatus } from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { ChevronDown, ExternalLink, Lock } from "lucide-react";
 import {
-  ArrowLeftRight,
-  BadgePercent,
-  Bell,
-  Bitcoin,
-  Boxes,
-  CalendarDays,
-  CandlestickChart,
-  ChevronDown,
-  ExternalLink,
-  FileText,
-  Droplets,
-  Gift,
-  Globe2,
-  History,
-  Landmark,
-  Layers3,
-  LayoutDashboard,
-  LineChart,
-  Link2,
-  Loader2,
-  Lock,
-  PieChart,
-  PlaySquare,
-  Settings,
-  ShieldCheck,
-  Star,
-  Target,
-  TrendingUp,
-  Wallet,
-  Newspaper,
-  type LucideIcon,
-} from "lucide-react";
-import { EXPLORE_NAV_ITEMS, MARKET_NAV_ITEMS, NAV_ITEMS, TOOL_NAV_ITEMS } from "@/lib/constants";
+  ADMIN_NAV_ITEMS,
+  EXPLORE_NAV_ITEMS,
+  MARKET_NAV_ITEMS,
+  NAV_ITEMS,
+  TOOL_NAV_ITEMS,
+  type NavAccent,
+} from "@/lib/constants";
 import { resolvePageKey } from "@/lib/access/page-registry";
 import { useRouteTransition } from "@/components/navigation/route-transition-provider";
 import { cn } from "@/lib/utils";
+import {
+  NavIconChip,
+  PendingNavIconChip,
+  PendingNavTintedIcon,
+  resolveNavIcon,
+  toAccent,
+} from "./nav-icons";
 import { PrefetchNavLink } from "./prefetch-nav-link";
-
-const ICONS: Record<string, LucideIcon> = {
-  ArrowLeftRight,
-  BadgePercent,
-  Bell,
-  Bitcoin,
-  Boxes,
-  CalendarDays,
-  CandlestickChart,
-  Droplets,
-  FileText,
-  Gift,
-  Globe2,
-  History,
-  Landmark,
-  Layers3,
-  LayoutDashboard,
-  LineChart,
-  Link2,
-  PieChart,
-  PlaySquare,
-  Settings,
-  ShieldCheck,
-  Star,
-  Target,
-  TrendingUp,
-  Wallet,
-  Newspaper,
-};
+import { ACCENT_ICON } from "@/components/ui/accent";
 
 function isLockedForGuest(
   href: string,
@@ -103,18 +56,10 @@ export function DesktopNav({
   const portfoliosItem = NAV_ITEMS.find((item) => item.href === "/portfolios")!;
   const watchlistItem = NAV_ITEMS.find((item) => item.href === "/watchlist")!;
   const alertsItem = NAV_ITEMS.find((item) => item.href === "/alerts")!;
+  const newsItem = NAV_ITEMS.find((item) => item.href === "/news")!;
   const toolsLinks = React.useMemo<DropdownLink[]>(() => [...TOOL_NAV_ITEMS], []);
   const exploreLinks = React.useMemo<DropdownLink[]>(
-    () => [
-      ...EXPLORE_NAV_ITEMS,
-      ...(showAdmin
-        ? [
-            { href: "/admin", label: "Admin", icon: "ShieldCheck" },
-            { href: "/admin/fund-holdings", label: "Fund Holdings", icon: "PieChart" },
-            { href: "/admin/customisation", label: "Customisation", icon: "Settings" },
-          ]
-        : []),
-    ],
+    () => [...EXPLORE_NAV_ITEMS, ...(showAdmin ? ADMIN_NAV_ITEMS : [])],
     [showAdmin]
   );
   const handleNavigate = React.useCallback(
@@ -137,11 +82,15 @@ export function DesktopNav({
   );
 
   return (
-    <nav className="hidden min-w-0 items-center gap-1 lg:flex">
+    // Wide desktop (≥2xl / 1536px): horizontal primary nav.
+    // Mid (lg–2xl): AppSidebar. Below lg: MobileNav sheet.
+    // overflow-visible: absolute Market/Tools/Explore menus are not portalled.
+    <nav className="hidden min-w-0 shrink items-center gap-0.5 overflow-visible 2xl:flex 2xl:gap-1">
       <DesktopNavLink
         href={dashboardItem.href}
         label={dashboardItem.label}
         icon={dashboardItem.icon}
+        accent={dashboardItem.accent}
         active={pathname === dashboardItem.href || pathname.startsWith(dashboardItem.href + "/")}
         onNavigate={handleNavigate}
         isGuest={isGuest}
@@ -151,6 +100,7 @@ export function DesktopNav({
         href={portfoliosItem.href}
         label={portfoliosItem.label}
         icon={portfoliosItem.icon}
+        accent={portfoliosItem.accent}
         active={pathname === portfoliosItem.href || pathname.startsWith(portfoliosItem.href + "/")}
         onNavigate={handleNavigate}
         isGuest={isGuest}
@@ -183,11 +133,13 @@ export function DesktopNav({
         isGuest={isGuest}
         guestPageAccess={guestPageAccess}
       />
+      <div className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden />
       <DesktopNavLink
-        href="/news"
-        label="Latest News"
-        icon="Newspaper"
-        active={pathname === "/news" || pathname.startsWith("/news/")}
+        href={newsItem.href}
+        label={newsItem.label}
+        icon={newsItem.icon}
+        accent={newsItem.accent}
+        active={pathname === newsItem.href || pathname.startsWith(newsItem.href + "/")}
         onNavigate={handleNavigate}
         isGuest={isGuest}
         guestPageAccess={guestPageAccess}
@@ -196,6 +148,7 @@ export function DesktopNav({
         href={watchlistItem.href}
         label={watchlistItem.label}
         icon={watchlistItem.icon}
+        accent={watchlistItem.accent}
         active={pathname === watchlistItem.href || pathname.startsWith(watchlistItem.href + "/")}
         onNavigate={handleNavigate}
         isGuest={isGuest}
@@ -205,6 +158,7 @@ export function DesktopNav({
         href={alertsItem.href}
         label={alertsItem.label}
         icon={alertsItem.icon}
+        accent={alertsItem.accent}
         active={pathname === alertsItem.href || pathname.startsWith(alertsItem.href + "/")}
         onNavigate={handleNavigate}
         isGuest={isGuest}
@@ -218,6 +172,7 @@ type DropdownLink = {
   href: string;
   label: string;
   icon: string;
+  accent: NavAccent;
 };
 
 type DesktopNavigateHandler = (
@@ -304,7 +259,7 @@ function NavDropdown({
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+          "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
           active ? "bg-primary/10 text-primary ring-1 ring-primary/15" : "text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
       >
@@ -325,6 +280,7 @@ function NavDropdown({
                   href={item.href}
                   label={item.label}
                   icon={item.icon}
+                  accent={item.accent}
                   active={pathname === item.href || pathname.startsWith(item.href + "/")}
                   onNavigate={onNavigate}
                   afterNavigate={closeMenu}
@@ -425,7 +381,7 @@ function MarketDropdown({
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+          "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
           active ? "bg-primary/10 text-primary ring-1 ring-primary/15" : "text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
       >
@@ -441,7 +397,6 @@ function MarketDropdown({
             </p>
             <div className="space-y-1">
               {MARKET_NAV_ITEMS.map((item) => {
-                const ParentIcon = ICONS[item.icon];
                 if ("children" in item) {
                   const childActive = item.children.some(
                     (child) => isMarketRouteActive(pathname, child.href)
@@ -461,7 +416,7 @@ function MarketDropdown({
                           groupOpen && "bg-muted/70 text-foreground"
                         )}
                       >
-                        {ParentIcon ? <ParentIcon className="size-4 text-muted-foreground" /> : null}
+                        <NavIconChip icon={item.icon} accent={item.accent} />
                         <span className="min-w-0 flex-1 truncate">{item.label}</span>
                         <ChevronDown className="-rotate-90 size-4 text-muted-foreground" />
                       </button>
@@ -474,6 +429,7 @@ function MarketDropdown({
                                 href={child.href}
                                 label={child.label}
                                 icon={child.icon}
+                                accent={child.accent}
                                 active={isMarketRouteActive(pathname, child.href)}
                                 onNavigate={onNavigate}
                                 afterNavigate={closeMenu}
@@ -494,6 +450,7 @@ function MarketDropdown({
                       href={item.href}
                       label={item.label}
                       icon={item.icon}
+                      accent={item.accent}
                       active={isMarketRouteActive(pathname, item.href)}
                       onNavigate={onNavigate}
                       afterNavigate={closeMenu}
@@ -520,6 +477,7 @@ function DesktopNavLink({
   href,
   label,
   icon,
+  accent,
   active,
   onNavigate,
   isGuest,
@@ -528,22 +486,31 @@ function DesktopNavLink({
   href: string;
   label: string;
   icon: string;
+  accent: NavAccent;
   active: boolean;
   onNavigate?: DesktopNavigateHandler;
   isGuest?: boolean;
   guestPageAccess?: Record<string, boolean> | null;
 }) {
-  const Icon = ICONS[icon];
+  const Icon = resolveNavIcon(icon);
   const locked = isLockedForGuest(href, isGuest, guestPageAccess);
+  const linkClass = cn(
+    "inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
+    active
+      ? "bg-primary/10 text-primary ring-1 ring-primary/15"
+      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+  );
 
   if (locked) {
     return (
       <span
         aria-disabled="true"
         title="Sign in to access"
-        className="inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-muted-foreground/50"
+        className={cn(linkClass, "text-muted-foreground/50")}
       >
-        {Icon ? <Icon className="size-4" /> : null}
+        {Icon ? (
+          <Icon className={cn("size-4", ACCENT_ICON[toAccent(accent)], "opacity-50")} aria-hidden />
+        ) : null}
         <span>{label}</span>
         <Lock className="size-3.5" />
       </span>
@@ -554,13 +521,11 @@ function DesktopNavLink({
     <PrefetchNavLink
       href={href}
       onClick={(event) => onNavigate?.(event, href)}
+      aria-label={label}
       aria-current={active ? "page" : undefined}
-      className={cn(
-        "inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
-        active ? "bg-primary/10 text-primary ring-1 ring-primary/15" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      )}
+      className={linkClass}
     >
-      {Icon ? <PendingIcon Icon={Icon} active={active} /> : null}
+      <PendingNavTintedIcon icon={icon} accent={accent} />
       <span>{label}</span>
     </PrefetchNavLink>
   );
@@ -570,6 +535,7 @@ function DesktopMarketItem({
   href,
   label,
   icon,
+  accent,
   active,
   onNavigate,
   afterNavigate,
@@ -579,13 +545,13 @@ function DesktopMarketItem({
   href: string;
   label: string;
   icon: string;
+  accent: NavAccent;
   active: boolean;
   onNavigate?: DesktopNavigateHandler;
   afterNavigate?: () => void;
   isGuest?: boolean;
   guestPageAccess?: Record<string, boolean> | null;
 }) {
-  const Icon = ICONS[icon];
   const external = /^https?:\/\//.test(href);
   const locked = !external && isLockedForGuest(href, isGuest, guestPageAccess);
 
@@ -596,9 +562,7 @@ function DesktopMarketItem({
         title="Sign in to access"
         className="flex min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground/50"
       >
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground/50">
-          {Icon ? <Icon className="size-4" /> : null}
-        </span>
+        <NavIconChip icon={icon} accent={accent} className="opacity-50" />
         <span className="min-w-0 flex-1 truncate">{label}</span>
         <Lock className="size-3.5 shrink-0" />
       </span>
@@ -614,9 +578,7 @@ function DesktopMarketItem({
         onClick={afterNavigate}
         className="flex min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
       >
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-          {Icon ? <Icon className="size-4" /> : null}
-        </span>
+        <NavIconChip icon={icon} accent={accent} />
         <span className="min-w-0 flex-1 truncate">{label}</span>
         <ExternalLink className="size-3.5 shrink-0 text-muted-foreground/60" />
       </a>
@@ -632,16 +594,8 @@ function DesktopMarketItem({
         active && "bg-accent text-accent-foreground"
       )}
     >
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-        {Icon ? <PendingIcon Icon={Icon} active={active} /> : null}
-      </span>
+      <PendingNavIconChip icon={icon} accent={accent} />
       <span className="min-w-0 flex-1 truncate">{label}</span>
     </PrefetchNavLink>
   );
-}
-
-function PendingIcon({ Icon, active }: { Icon: LucideIcon; active: boolean }) {
-  const { pending } = useLinkStatus();
-  if (pending) return <Loader2 className="size-4 animate-spin text-primary" />;
-  return <Icon className={cn("size-4", active ? "text-primary" : "text-muted-foreground")} />;
 }

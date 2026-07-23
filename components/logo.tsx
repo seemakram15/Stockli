@@ -66,10 +66,10 @@ export function Logo({
     return (
       <span className={cn("inline-flex items-center", className)}>
         <span className="inline-flex items-center gap-2 sm:hidden">
-          <PairMark pair="purple" markClassName="size-8" showText={showText} beta={beta} />
+          <PairMark pair="purple" size="mobile" showText={showText} beta={beta} />
         </span>
-        <span className="hidden items-center gap-2 sm:inline-flex">
-          <PairMark pair="green" markClassName="size-8" showText={showText} beta={beta} />
+        <span className="hidden items-center gap-1.5 sm:inline-flex">
+          <PairMark pair="green" size="desktop" showText={showText} beta={beta} />
         </span>
       </span>
     );
@@ -84,30 +84,46 @@ export function Logo({
   }
 
   const pair = PAIR_BY_SURFACE[surface];
+  const size = surface === "desktop" ? "desktop" : surface === "mobile" ? "mobile" : "default";
   return (
-    <span className={cn("inline-flex items-center gap-2", className)}>
-      <PairMark pair={pair} markClassName="size-8" showText={showText} beta={beta} />
+    <span
+      className={cn(
+        "inline-flex items-center",
+        size === "desktop" ? "gap-1.5" : "gap-2",
+        className
+      )}
+    >
+      <PairMark pair={pair} size={size} showText={showText} beta={beta} />
     </span>
   );
 }
 
 function PairMark({
   pair,
-  markClassName,
+  size = "default",
   showText,
   beta,
 }: {
   pair: BrandPair;
-  markClassName?: string;
+  size?: "desktop" | "mobile" | "default";
   showText: boolean;
   beta: boolean;
 }) {
+  const markClassName =
+    size === "desktop" ? "size-7" : size === "mobile" ? "size-8" : "size-8";
+  const wordmarkClassName =
+    size === "desktop"
+      ? "h-[1.35rem] max-w-[10.5rem] sm:h-6 sm:max-w-[11.5rem]"
+      : size === "mobile"
+        ? "h-5 max-w-[9.5rem]"
+        : "h-6 max-w-[11rem] sm:h-7 sm:max-w-none";
+
   return (
     <>
       <BrandMark pair={pair} className={cn("shrink-0", markClassName)} />
       {showText ? (
         <span className="flex items-center gap-1.5 leading-none">
-          <BrandWordmark pair={pair} />
+          <BrandWordmark pair={pair} className={wordmarkClassName} />
           {beta ? (
             <span className="rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-500">
               Beta
@@ -153,7 +169,7 @@ export function BrandWordmark({
       alt={APP_NAME}
       width={220}
       height={48}
-      className={cn("h-5 w-auto max-w-[9.5rem] object-contain object-left sm:h-7 sm:max-w-none", className)}
+      className={cn("h-5 w-auto max-w-[9.5rem] object-contain object-left", className)}
       priority
     />
   );

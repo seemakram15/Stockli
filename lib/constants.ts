@@ -25,105 +25,163 @@ export const PSX_TRADING_DAYS = [1, 2, 3, 4, 5];
 
 export const KSE100_SYMBOL = "KSE100";
 
-/** Primary navigation. */
+/** Accent tokens for shell nav icons (mirrors `Accent` in components/ui/accent). */
+export type NavAccent =
+  | "primary"
+  | "emerald"
+  | "sky"
+  | "violet"
+  | "amber"
+  | "rose"
+  | "teal"
+  | "indigo"
+  | "orange"
+  | "slate";
+
+/** Primary navigation. Every leaf item uses a unique Lucide icon name. */
 export const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-  { href: "/portfolios", label: "Portfolio", icon: "Wallet" },
-  { href: "/market", label: "Market", icon: "TrendingUp" },
-  { href: "/analysis/fundamentals", label: "Tools", icon: "FileText" },
-  { href: "/explore/useful-links", label: "Explore", icon: "PlaySquare" },
-  { href: "/news", label: "Latest News", icon: "Newspaper" },
-  { href: "/watchlist", label: "Watchlist", icon: "Star" },
-  { href: "/alerts", label: "Alerts", icon: "Bell" },
-] as const;
+  { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard", accent: "emerald" },
+  { href: "/portfolios", label: "Portfolio", icon: "Wallet", accent: "sky" },
+  { href: "/market", label: "Market", icon: "CandlestickChart", accent: "teal" },
+  { href: "/analysis/fundamentals", label: "Tools", icon: "Wrench", accent: "violet" },
+  { href: "/explore/useful-links", label: "Explore", icon: "Compass", accent: "indigo" },
+  { href: "/news", label: "Latest News", icon: "Newspaper", accent: "rose" },
+  { href: "/watchlist", label: "Watchlist", icon: "Star", accent: "amber" },
+  { href: "/alerts", label: "Alerts", icon: "Bell", accent: "orange" },
+] as const satisfies ReadonlyArray<{
+  href: string;
+  label: string;
+  icon: string;
+  accent: NavAccent;
+}>;
 
 export const TOOL_NAV_ITEMS = [
   {
     href: "/analysis/prediction",
     label: "Next Day Prediction",
-    icon: "TrendingUp",
+    icon: "Sparkles",
+    accent: "violet",
   },
   {
     href: "/analysis/stock-analyzer",
     label: "Stock Analyzer",
     icon: "LineChart",
+    accent: "sky",
   },
   {
     href: "/analysis/portfolio-suggestions",
     label: "Portfolio Suggestions",
     icon: "Target",
+    accent: "emerald",
   },
   {
     href: "/analysis/fundamentals",
     label: "Fundamentals & Comparison",
-    icon: "FileText",
+    icon: "Scale",
+    accent: "teal",
   },
   {
     href: "/analysis/pivot-points",
     label: "Stock Pivot Points",
-    icon: "Target",
+    icon: "Crosshair",
+    accent: "amber",
   },
-] as const;
+] as const satisfies ReadonlyArray<{
+  href: string;
+  label: string;
+  icon: string;
+  accent: NavAccent;
+}>;
 
 export const EXPLORE_NAV_ITEMS = [
   {
     href: "https://www.worldmonitor.app/dashboard?lat=28.1153&lon=14.2733&zoom=1.65&view=global&timeRange=7d&layers=conflicts%2Cbases%2Cmilitary",
     label: "World Monitor",
-    icon: "Globe2",
+    icon: "Radar",
+    accent: "sky",
     external: true,
   },
   {
     href: "/explore/useful-links",
     label: "Useful Links",
     icon: "Link2",
+    accent: "indigo",
   },
   {
     href: "/explore/board-meetings",
     label: "Board Meetings",
     icon: "CalendarDays",
+    accent: "violet",
   },
   {
     href: "/explore/book-closures",
     label: "Book Closures",
     icon: "Gift",
+    accent: "rose",
   },
   {
     href: "/explore/dividend-history",
     label: "Dividend History",
     icon: "History",
+    accent: "amber",
   },
   {
     href: "/youtubers",
     label: "Youtuber Videos",
     icon: "PlaySquare",
+    accent: "orange",
   },
-] as const;
+] as const satisfies ReadonlyArray<{
+  href: string;
+  label: string;
+  icon: string;
+  accent: NavAccent;
+  external?: boolean;
+}>;
+
+export const ADMIN_NAV_ITEMS = [
+  { href: "/admin", label: "Admin", icon: "ShieldCheck", accent: "slate" },
+  { href: "/admin/fund-holdings", label: "Fund Holdings", icon: "FolderKanban", accent: "violet" },
+  { href: "/admin/customisation", label: "Customisation", icon: "Settings", accent: "indigo" },
+] as const satisfies ReadonlyArray<{
+  href: string;
+  label: string;
+  icon: string;
+  accent: NavAccent;
+}>;
 
 export const MARKET_NAV_ITEMS = [
   {
     label: "Pakistan Stock Market",
     icon: "Landmark",
+    accent: "emerald",
     children: [
-      { href: "/market", label: "Stock Market", icon: "TrendingUp" },
-      { href: "/market/sectors", label: "Sector Performance", icon: "LineChart" },
-      { href: "/market/mutual-funds", label: "Mutual Funds", icon: "BadgePercent" },
-      { href: "/market/funds-breakdown", label: "Funds Breakdown", icon: "PieChart" },
-      { href: "/market/mf-top-holdings", label: "Top Holdings by MFs", icon: "Trophy" },
-      { href: "/market/strategy", label: "Funds Daily Returns Report", icon: "Target" },
-      { href: "/market/fipi-lipi", label: "FIPI / LIPI Data", icon: "ArrowLeftRight" },
-      { href: "/market/etfs", label: "Exchange Traded Funds", icon: "Layers3" },
+      { href: "/market", label: "Stock Market", icon: "TrendingUp", accent: "emerald" },
+      { href: "/market/sectors", label: "Sector Performance", icon: "BarChart3", accent: "sky" },
+      { href: "/market/mutual-funds", label: "Mutual Funds", icon: "BadgePercent", accent: "violet" },
+      { href: "/market/funds-breakdown", label: "Funds Breakdown", icon: "PieChart", accent: "amber" },
+      { href: "/market/mf-top-holdings", label: "Top Holdings by MFs", icon: "Trophy", accent: "orange" },
+      {
+        href: "/market/strategy",
+        label: "Funds Daily Returns Report",
+        icon: "Activity",
+        accent: "teal",
+      },
+      { href: "/market/fipi-lipi", label: "FIPI / LIPI Data", icon: "ArrowLeftRight", accent: "indigo" },
+      { href: "/market/etfs", label: "Exchange Traded Funds", icon: "Layers3", accent: "rose" },
     ],
   },
   {
     label: "International Markets",
     icon: "Globe2",
+    accent: "sky",
     children: [
-      { href: "/market/us", label: "USA S&P 500", icon: "LineChart" },
-      { href: "/market/india", label: "India Stock Market", icon: "CandlestickChart" },
-      { href: "/market/world", label: "World View", icon: "Globe2" },
+      { href: "/market/us", label: "USA S&P 500", icon: "Flag", accent: "indigo" },
+      { href: "/market/india", label: "India Stock Market", icon: "Map", accent: "orange" },
+      { href: "/market/world", label: "World View", icon: "Earth", accent: "teal" },
     ],
   },
-  { href: "/market/oil", label: "Oil Market", icon: "Droplets" },
-  { href: "/market/commodities", label: "Commodities", icon: "Boxes" },
-  { href: "/market/crypto", label: "Crypto Market", icon: "Bitcoin" },
+  { href: "/market/oil", label: "Oil Market", icon: "Droplets", accent: "slate" },
+  { href: "/market/commodities", label: "Commodities", icon: "Boxes", accent: "amber" },
+  { href: "/market/crypto", label: "Crypto Market", icon: "Bitcoin", accent: "orange" },
 ] as const;

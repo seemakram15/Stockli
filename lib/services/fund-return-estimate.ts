@@ -1,10 +1,12 @@
 import "server-only";
 
 /**
- * Single source of truth for "estimated fund return from published holdings"
- * — used by both /market/strategy and /market/funds-breakdown so the two
- * pages can never independently drift on the same underlying data.
+ * Single source of truth for fund return math (weighted holdings estimate +
+ * Rs-on-100k conversion). Used by funds-breakdown, fund detail, and the
+ * Fund Daily Returns Report so those screens cannot drift.
  */
+
+export const FUND_INVESTMENT_AMOUNT = 100_000;
 
 export interface HoldingLike {
   symbol: string | null;
@@ -31,10 +33,18 @@ export interface FundReturnEstimate {
   totalHoldings: number;
 }
 
+/** Convert a percent return into Rs P/L on a notional investment (default Rs 100k). */
+export function profitOnInvestment(
+  returnPct: number,
+  investmentAmount: number = FUND_INVESTMENT_AMOUNT
+): number {
+  return (returnPct / 100) * investmentAmount;
+}
+
 export function computeFundReturnEstimate(
   holdings: readonly HoldingLike[],
   quoteMap: ReadonlyMap<string, QuoteLike>,
-  investmentAmount: number
+  investmentAmount: number = FUND_INVESTMENT_AMOUNT
 ): FundReturnEstimate {
   let weightedReturnSum = 0;
   let pricedWeight = 0;
@@ -49,7 +59,8 @@ export function computeFundReturnEstimate(
       continue;
     }
     const quote = quoteMap.get(h.symbol!.toUpperCase());
-    if (!quote) {
+    if (!quote || !Number.isFinite(quote.changePct)) {
+      // Soft-fail individual price misses — skip this weight, keep estimating the rest.
       missingPriceWeight += h.percentage;
       continue;
     }
@@ -59,7 +70,8 @@ export function computeFundReturnEstimate(
   }
 
   const returnPct = pricedWeight > 0 ? weightedReturnSum / pricedWeight : null;
-  const estimatedReturn = returnPct != null ? (returnPct / 100) * investmentAmount : null;
+  const estimatedReturn =
+    returnPct != null ? profitOnInvestment(returnPct, investmentAmount) : null;
 
   return {
     returnPct,

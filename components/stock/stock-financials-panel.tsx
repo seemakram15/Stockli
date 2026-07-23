@@ -41,7 +41,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/empty-state";
 import { StockIdentity } from "@/components/stock/stock-identity";
-import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
+import { RefreshFinancialsDialog } from "@/components/stock/refresh-financials-dialog";
+import {
+  usePersistentResource,
+  writePersistentResourceCache,
+} from "@/lib/hooks/use-persistent-resource";
 import { cn } from "@/lib/utils";
 import type {
   FinancialMetric,
@@ -98,14 +102,15 @@ export function StockFinancialsPanel({
   companyName?: string | null;
 }) {
   const normalizedSymbol = symbol.toUpperCase();
-  const { data, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
+  const cacheKey = `public:stock-financials:v4:${normalizedSymbol}`;
+  const { data, isRefreshing, isFromDeviceCache, cachedAt, mutate } =
     usePersistentResource<StockFinancialsData>({
-      cacheKey: `public:stock-financials:v4:${normalizedSymbol}`,
+      cacheKey,
       url: `/api/public/stock-financials/${encodeURIComponent(normalizedSymbol)}`,
       refreshInterval: 60 * 60 * 1000,
       keepPreviousData: false,
     });
-  const isBusy = isRefreshing;
+  const [refreshOpen, setRefreshOpen] = React.useState(false);
   const displayName = data?.company?.name ?? companyName ?? normalizedSymbol;
 
   return (
@@ -137,17 +142,17 @@ export function StockFinancialsPanel({
           <div className="flex flex-wrap items-center gap-2">
             <StatusPill
               cachedAt={cachedAt ?? data?.updatedAt ?? null}
-              isRefreshing={isBusy}
+              isRefreshing={isRefreshing || refreshOpen}
               isFromDeviceCache={isFromDeviceCache}
             />
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => refreshNow().catch(() => undefined)}
-              disabled={isBusy}
+              onClick={() => setRefreshOpen(true)}
+              disabled={refreshOpen}
             >
-              <RefreshCw className={cn("size-4", isRefreshing && "animate-spin")} />
+              <RefreshCw className={cn("size-4", refreshOpen && "animate-spin")} />
               Refresh snapshot
             </Button>
           </div>
@@ -210,6 +215,16 @@ export function StockFinancialsPanel({
           </Tabs>
         )}
       </CardContent>
+      <RefreshFinancialsDialog
+        open={refreshOpen}
+        onOpenChange={setRefreshOpen}
+        symbol={normalizedSymbol}
+        companyName={displayName}
+        onSuccess={async (payload) => {
+          await writePersistentResourceCache(cacheKey, payload.data);
+          await mutate(payload.data, { revalidate: false });
+        }}
+      />
     </Card>
   );
 }

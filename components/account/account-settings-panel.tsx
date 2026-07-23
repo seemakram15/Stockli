@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, ImagePlus, Loader2, LockKeyhole, Mail, ReceiptText, Save, UserRound } from "lucide-react";
+import { Camera, ImagePlus, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,23 +47,10 @@ export function AccountSettingsPanel({
 }) {
   const router = useRouter();
 
-  const [profileState, profileAction, profilePending] = useActionState<AccountActionState, FormData>(
-    updateAccountProfile,
-    {}
-  );
   const [avatarState, avatarAction, avatarPending] = useActionState<AccountActionState, FormData>(
     updateAccountAvatar,
     {}
   );
-  const [emailState, emailAction, emailPending] = useActionState<AccountActionState, FormData>(
-    updateAccountEmail,
-    {}
-  );
-  const [passwordState, passwordAction, passwordPending] = useActionState<
-    AccountActionState,
-    FormData
-  >(updateAccountPassword, {});
-
   const [taxState, taxAction, taxPending] = useActionState<AccountActionState, FormData>(
     updateTaxSettings,
     {}
@@ -71,12 +58,16 @@ export function AccountSettingsPanel({
 
   const [nameValue, setNameValue] = React.useState(displayName ?? "");
   const [emailValue, setEmailValue] = React.useState(email ?? "");
+  const [password, setPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [accountPending, setAccountPending] = React.useState(false);
+  const [accountError, setAccountError] = React.useState<string | null>(null);
+
   const [selectedAvatarName, setSelectedAvatarName] = React.useState("");
   const [selectedAvatarFile, setSelectedAvatarFile] = React.useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = React.useState<string | null>(avatarUrl);
   const avatarFormRef = React.useRef<HTMLFormElement>(null);
   const avatarInputRef = React.useRef<HTMLInputElement>(null);
-  const passwordFormRef = React.useRef<HTMLFormElement>(null);
 
   const [taxFiler, setTaxFiler] = React.useState(taxSettings.taxFiler);
   const [brokerFeePct, setBrokerFeePct] = React.useState(String(taxSettings.brokerFeePct));
@@ -100,17 +91,8 @@ export function AccountSettingsPanel({
   }, [selectedAvatarFile]);
 
   React.useEffect(() => {
-    if (profileState.ok) {
-      toast.success(profileState.message ?? "Saved");
-      router.refresh();
-    } else if (profileState.error) {
-      toast.error(profileState.error);
-    }
-  }, [profileState, router]);
-
-  React.useEffect(() => {
     if (avatarState.ok) {
-      toast.success(avatarState.message ?? "Saved");
+      toast.success(avatarState.message ?? "Photo saved");
       setSelectedAvatarName("");
       setSelectedAvatarFile(null);
       avatarFormRef.current?.reset();
@@ -121,48 +103,104 @@ export function AccountSettingsPanel({
   }, [avatarState, router]);
 
   React.useEffect(() => {
-    if (emailState.ok) {
-      toast.success(emailState.message ?? "Saved");
-      router.refresh();
-    } else if (emailState.error) {
-      toast.error(emailState.error);
-    }
-  }, [emailState, router]);
-
-  React.useEffect(() => {
-    if (passwordState.ok) {
-      toast.success(passwordState.message ?? "Saved");
-      passwordFormRef.current?.reset();
-    } else if (passwordState.error) {
-      toast.error(passwordState.error);
-    }
-  }, [passwordState]);
-
-  React.useEffect(() => {
     if (taxState.ok) {
-      toast.success(taxState.message ?? "Tax settings saved.");
+      toast.success(taxState.message ?? "Tax & fee settings saved");
       router.refresh();
     } else if (taxState.error) {
       toast.error(taxState.error);
     }
   }, [taxState, router]);
 
+  async function saveAccountDetails(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (demo || accountPending) return;
+
+    setAccountError(null);
+    setAccountPending(true);
+
+    try {
+      const trimmedName = nameValue.trim();
+      const trimmedEmail = emailValue.trim().toLowerCase();
+      const currentName = (displayName ?? "").trim();
+      const currentEmail = (email ?? "").trim().toLowerCase();
+      const nameChanged = trimmedName !== currentName;
+      const emailChanged = trimmedEmail !== currentEmail;
+      const passwordFilled = password.length > 0 || confirmPassword.length > 0;
+
+      if (!nameChanged && !emailChanged && !passwordFilled) {
+        toast.message("Nothing to save");
+        return;
+      }
+
+      const messages: string[] = [];
+
+      if (nameChanged) {
+        const fd = new FormData();
+        fd.set("displayName", trimmedName);
+        const result = await updateAccountProfile({}, fd);
+        if (result.error) {
+          setAccountError(result.error);
+          toast.error(result.error);
+          return;
+        }
+        if (result.message) messages.push(result.message);
+      }
+
+      if (emailChanged) {
+        const fd = new FormData();
+        fd.set("email", trimmedEmail);
+        const result = await updateAccountEmail({}, fd);
+        if (result.error) {
+          setAccountError(result.error);
+          toast.error(result.error);
+          return;
+        }
+        if (result.message) messages.push(result.message);
+      }
+
+      if (passwordFilled) {
+        const fd = new FormData();
+        fd.set("password", password);
+        fd.set("confirmPassword", confirmPassword);
+        const result = await updateAccountPassword({}, fd);
+        if (result.error) {
+          setAccountError(result.error);
+          toast.error(result.error);
+          return;
+        }
+        setPassword("");
+        setConfirmPassword("");
+        if (result.message) messages.push(result.message);
+      }
+
+      toast.success(messages[0] ?? "Profile saved");
+      for (const message of messages.slice(1)) {
+        toast.success(message);
+      }
+      router.refresh();
+    } finally {
+      setAccountPending(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <Card variant="feature">
+      {/* Section 1 — Profile photo */}
+      <Card variant="feature" className="rounded-3xl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Camera className="size-4 text-primary" />
-            Profile photo
-          </CardTitle>
-          <CardDescription>
-            Add a clear square image so your account feels personal anywhere you sign in.
-          </CardDescription>
+          <CardTitle className="font-bold">Profile photo</CardTitle>
+          <CardDescription>Choose a clear square image for your account.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="flex flex-col items-center gap-5 rounded-3xl border border-dashed border-border bg-muted/15 px-6 py-8 text-center md:gap-6 md:py-10">
-            <div className="rounded-[2rem] bg-background/90 p-3 shadow-sm ring-1 ring-border/60">
-              <div className="relative flex size-56 items-center justify-center overflow-hidden rounded-[1.6rem] bg-primary/5 md:size-72">
+        <CardContent>
+          <form ref={avatarFormRef} action={avatarAction} className="space-y-5">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={demo || avatarPending}
+                className="group relative mx-auto size-28 shrink-0 overflow-hidden rounded-3xl bg-primary/5 ring-1 ring-border/60 transition hover:ring-primary/40 sm:mx-0 sm:size-32"
+                aria-label="Select profile photo"
+              >
                 {avatarPreviewUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element -- dynamic blob/storage preview works best with a native image here.
                   <img
@@ -171,94 +209,94 @@ export function AccountSettingsPanel({
                     className="size-full object-cover"
                   />
                 ) : (
-                  <div className="flex size-full items-center justify-center bg-primary/10 text-5xl font-semibold text-primary md:text-6xl">
+                  <div className="flex size-full items-center justify-center bg-primary/10 text-3xl font-semibold text-primary">
                     {initials(displayName, email)}
                   </div>
                 )}
-              </div>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                Current profile photo
-              </p>
-              <p className="text-lg font-semibold text-foreground">{displayName ?? "Account"}</p>
-              <p className="text-sm text-muted-foreground">{email ?? "No email available"}</p>
-            </div>
-          </div>
+                <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-foreground/70 py-1.5 text-[11px] font-medium text-background opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+                  <Camera className="size-3.5" />
+                  Change
+                </span>
+              </button>
 
-          <form ref={avatarFormRef} action={avatarAction} className="space-y-4">
-            <div className="space-y-3">
-              <label htmlFor="account-avatar" className="text-sm font-medium">
-                Choose profile image
-              </label>
-              <Input
-                ref={avatarInputRef}
-                id="account-avatar"
-                name="avatar"
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                className="sr-only"
-                onChange={(event) => {
-                  const file = event.target.files?.[0] ?? null;
-                  setSelectedAvatarFile(file);
-                  setSelectedAvatarName(file?.name?.trim() ?? "");
-                }}
-              />
-              <div className="rounded-2xl border border-border bg-background/80 p-4 shadow-sm">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">
-                      {selectedAvatarName ? "Image ready to upload" : "Pick a new profile photo"}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedAvatarName && selectedAvatarFile
-                        ? `${selectedAvatarName} • ${formatFileSize(selectedAvatarFile.size)}`
-                        : "Use a clear square image so it looks sharp across your account."}
-                    </p>
-                  </div>
+              <div className="min-w-0 flex-1 space-y-3 text-center sm:text-left">
+                <div className="space-y-1">
+                  <p className="truncate text-base font-semibold text-foreground">
+                    {displayName ?? "Your profile"}
+                  </p>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {email ?? "No email available"}
+                  </p>
+                </div>
+
+                <Input
+                  ref={avatarInputRef}
+                  id="account-avatar"
+                  name="avatar"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="sr-only"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    setSelectedAvatarFile(file);
+                    setSelectedAvatarName(file?.name?.trim() ?? "");
+                  }}
+                />
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-11 shrink-0 px-4"
+                    className="h-10"
+                    disabled={demo || avatarPending}
                     onClick={() => avatarInputRef.current?.click()}
                   >
                     <ImagePlus className="size-4" />
-                    {selectedAvatarName ? "Change image" : "Choose image"}
+                    {selectedAvatarName ? "Choose another" : "Select image"}
                   </Button>
+                  {selectedAvatarFile ? (
+                    <Button type="submit" className="h-10" disabled={demo || avatarPending}>
+                      {avatarPending ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Save className="size-4" />
+                      )}
+                      Save photo
+                    </Button>
+                  ) : null}
                 </div>
-                <div className="mt-3 rounded-xl bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                  JPG, PNG, or WebP up to 2 MB.
-                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  {selectedAvatarName && selectedAvatarFile
+                    ? `${selectedAvatarName} · ${formatFileSize(selectedAvatarFile.size)}`
+                    : "JPG, PNG, or WebP up to 2 MB."}
+                </p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" className="h-11" disabled={demo || avatarPending}>
-                {avatarPending ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
-                Upload photo
-              </Button>
-              {demo ? (
-                <p className="text-sm text-muted-foreground">
-                  Demo mode is active, so profile updates are disabled until real auth is connected.
-                </p>
-              ) : null}
-            </div>
+
             {avatarState.error ? (
               <p className="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{avatarState.error}</p>
+            ) : null}
+            {demo ? (
+              <p className="text-sm text-muted-foreground">
+                Demo mode is active, so profile updates are disabled until real auth is connected.
+              </p>
             ) : null}
           </form>
         </CardContent>
       </Card>
 
-      <Card>
+      {/* Section 2 — Name, email, password */}
+      <Card className="rounded-3xl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserRound className="size-4 text-primary" />
-            Profile details
-          </CardTitle>
-          <CardDescription>Update the name people see across your MyStockli account.</CardDescription>
+          <CardTitle className="font-bold">Account details</CardTitle>
+          <CardDescription>
+            Update your name, email, and password in one place. Leave password blank to keep your
+            current one.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={profileAction} className="space-y-4">
+          <form onSubmit={saveAccountDetails} className="space-y-5">
             <div className="space-y-2">
               <label htmlFor="account-display-name" className="text-sm font-medium">
                 Full name
@@ -273,46 +311,10 @@ export function AccountSettingsPanel({
                 maxLength={120}
               />
             </div>
-            <div className="flex justify-end">
-              <Button type="submit" className="h-11" disabled={demo || profilePending}>
-                {profilePending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-                Save changes
-              </Button>
-            </div>
-            {profileState.error ? (
-              <p className="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{profileState.error}</p>
-            ) : null}
-          </form>
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="size-4 text-primary" />
-            Email address
-          </CardTitle>
-          <CardDescription>
-            Change your sign-in email. We will ask you to confirm the new address before it goes
-            live.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={emailAction} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="account-current-email" className="text-sm font-medium">
-                Current email
-              </label>
-              <Input
-                id="account-current-email"
-                value={email ?? ""}
-                readOnly
-                className="h-11 bg-muted/30"
-              />
-            </div>
             <div className="space-y-2">
               <label htmlFor="account-email" className="text-sm font-medium">
-                New email address
+                Email
               </label>
               <Input
                 id="account-email"
@@ -326,29 +328,64 @@ export function AccountSettingsPanel({
                 placeholder="you@example.com"
                 className="h-11"
               />
+              <p className="text-xs text-muted-foreground">
+                Changing email sends a confirmation link before the new address becomes active.
+              </p>
             </div>
+
+            <div className="grid gap-4 border-t border-border/70 pt-5 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label htmlFor="account-password" className="text-sm font-medium">
+                  New password
+                </label>
+                <Input
+                  id="account-password"
+                  name="password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="At least 8 characters"
+                  className="h-11"
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="account-confirm-password" className="text-sm font-medium">
+                  Confirm password
+                </label>
+                <Input
+                  id="account-confirm-password"
+                  name="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder="Confirm new password"
+                  className="h-11"
+                  autoComplete="new-password"
+                />
+              </div>
+            </div>
+
             <div className="flex justify-end">
-              <Button type="submit" className="h-11" disabled={demo || emailPending}>
-                {emailPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-                Update email
+              <Button type="submit" className="h-11" disabled={demo || accountPending}>
+                {accountPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                Save
               </Button>
             </div>
-            {emailState.error ? (
-              <p className="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{emailState.error}</p>
+
+            {accountError ? (
+              <p className="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{accountError}</p>
             ) : null}
           </form>
         </CardContent>
       </Card>
 
-      <Card>
+      {/* Section 3 — Tax & fees */}
+      <Card className="rounded-3xl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ReceiptText className="size-4 text-primary" />
-            Tax &amp; fees
-          </CardTitle>
+          <CardTitle className="font-bold">Tax &amp; fees</CardTitle>
           <CardDescription>
-            Set your Pakistan tax filing status and default broker fee. These are used to calculate
-            WHT on dividends, CGT on realized gains, and to pre-fill fees when adding trades.
+            Used for WHT on dividends, CGT on realized gains, and default trade fees.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -419,11 +456,7 @@ export function AccountSettingsPanel({
                 </Label>
                 <p className="text-xs text-muted-foreground">Applies 2.5% Zakat to gross dividend income.</p>
               </div>
-              <Switch
-                id="zakatToggle"
-                checked={zakatEnabled}
-                onCheckedChange={setZakatEnabled}
-              />
+              <Switch id="zakatToggle" checked={zakatEnabled} onCheckedChange={setZakatEnabled} />
             </div>
 
             <div className="space-y-2">
@@ -449,73 +482,19 @@ export function AccountSettingsPanel({
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Leave blank to use the statutory rate ({taxFiler ? "15%" : "30%"} for {taxFiler ? "filers" : "non-filers"}).
+                Leave blank to use the statutory rate ({taxFiler ? "15%" : "30%"} for{" "}
+                {taxFiler ? "filers" : "non-filers"}).
               </p>
             </div>
 
             <div className="flex justify-end">
               <Button type="submit" className="h-11" disabled={demo || taxPending}>
                 {taxPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-                Save tax settings
+                Save
               </Button>
             </div>
             {taxState.error ? (
               <p className="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{taxState.error}</p>
-            ) : null}
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <LockKeyhole className="size-4 text-primary" />
-            Change password
-          </CardTitle>
-          <CardDescription>
-            Choose a new password for your account. Use at least 8 characters.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form ref={passwordFormRef} action={passwordAction} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label htmlFor="account-password" className="text-sm font-medium">
-                  New password
-                </label>
-                <Input
-                  id="account-password"
-                  name="password"
-                  type="password"
-                  placeholder="New password"
-                  className="h-11"
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="account-confirm-password" className="text-sm font-medium">
-                  Confirm password
-                </label>
-                <Input
-                  id="account-confirm-password"
-                  name="confirmPassword"
-                  type="password"
-                  placeholder="Confirm password"
-                  className="h-11"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button type="submit" className="h-11" disabled={demo || passwordPending}>
-                {passwordPending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <LockKeyhole className="size-4" />
-                )}
-                Update password
-              </Button>
-            </div>
-            {passwordState.error ? (
-              <p className="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{passwordState.error}</p>
             ) : null}
           </form>
         </CardContent>

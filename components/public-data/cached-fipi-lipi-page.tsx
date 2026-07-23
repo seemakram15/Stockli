@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { ArrowLeftRight, CalendarRange, Globe2, Users } from "lucide-react";
-import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { MarketRefreshButton } from "@/components/market/market-refresh-button";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
@@ -16,7 +15,7 @@ import type { FipiLipiData } from "@/lib/types/fipi-lipi";
 
 export function CachedFipiLipiPage() {
   const [currency, setCurrency] = React.useState<FlowCurrency>("USD");
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
+  const { data, error, isLoading, refreshNow } =
     usePersistentResource<FipiLipiData>({
       cacheKey: "public:fipi-lipi-v9",
       url: "/api/public/fipi-lipi",
@@ -37,12 +36,6 @@ export function CachedFipiLipiPage() {
         description="Who is buying and selling PSX each day — foreign vs local investors, Regular market."
         actions={
           <>
-            <CacheStatusBadge
-              updatedAt={data?.updatedAt}
-              cachedAt={cachedAt}
-              isFromDeviceCache={isFromDeviceCache}
-              isRefreshing={isRefreshing}
-            />
             <MarketRefreshButton
               color="sky"
               label="Refresh flows"

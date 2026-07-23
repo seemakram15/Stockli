@@ -5,9 +5,11 @@ import { getLatestPublishedHoldingsAll } from "@/lib/services/fund-holdings";
 import { getAllQuotes } from "@/lib/services/prices";
 import { identifyAmcBrand, shortAmcName } from "@/lib/amc-brands";
 import { psxLiveCacheTtlSeconds, shouldRefreshPsxData } from "@/lib/psx/market-hours";
-import { computeFundReturnEstimate } from "@/lib/services/fund-return-estimate";
-
-const INVESTMENT_AMOUNT = 100_000;
+import {
+  FUND_INVESTMENT_AMOUNT,
+  computeFundReturnEstimate,
+  profitOnInvestment,
+} from "@/lib/services/fund-return-estimate";
 
 export interface BreakdownHolding {
   symbol: string | null;
@@ -47,20 +49,38 @@ export interface FundsBreakdownData {
   updatedAt: string;
 }
 
+function emptyBreakdownData(): FundsBreakdownData {
+  return {
+    funds: [],
+    periodYear: 0,
+    periodMonth: 0,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export async function getFundsBreakdownData(): Promise<FundsBreakdownData> {
-  const { value } = await getStaleCached({
-    key: "market:funds-breakdown-v1",
-    ttlSeconds: shouldRefreshPsxData() ? 5 * 60 : psxLiveCacheTtlSeconds(),
-    staleSeconds: shouldRefreshPsxData() ? 6 * 60 * 60 : psxLiveCacheTtlSeconds(),
-    load: loadFundsBreakdownData,
-    isUsable: (data) => data.funds.length > 0,
-  });
-  return value;
+  try {
+    const { value } = await getStaleCached({
+      key: "market:funds-breakdown-v1",
+      ttlSeconds: shouldRefreshPsxData() ? 5 * 60 : psxLiveCacheTtlSeconds(),
+      staleSeconds: shouldRefreshPsxData() ? 6 * 60 * 60 : psxLiveCacheTtlSeconds(),
+      load: loadFundsBreakdownData,
+      // Empty is a valid demo / no-holdings response — don't 500 the API.
+      isUsable: () => true,
+    });
+    return value;
+  } catch (error) {
+    console.warn("[funds-breakdown] unavailable:", error);
+    return emptyBreakdownData();
+  }
 }
 
 async function loadFundsBreakdownData(): Promise<FundsBreakdownData> {
   const [holdingsData, fundsData, allQuotes] = await Promise.all([
-    getLatestPublishedHoldingsAll(),
+    getLatestPublishedHoldingsAll().catch((error) => {
+      console.warn("[funds-breakdown] holdings load failed:", error);
+      return { year: 0, month: 0, funds: [] as Awaited<ReturnType<typeof getLatestPublishedHoldingsAll>>["funds"] };
+    }),
     getMufapFunds().catch(() => null),
     getAllQuotes().catch(() => [] as Awaited<ReturnType<typeof getAllQuotes>>),
   ]);
@@ -92,22 +112,41 @@ async function loadFundsBreakdownData(): Promise<FundsBreakdownData> {
     const holdings: BreakdownHolding[] = hf.holdings.map((h) => {
       const isOther = h.stockName === "Other Holdings" || !h.symbol;
       if (isOther) {
-        return { symbol: h.symbol, stockName: h.stockName, percentage: h.percentage, changePct: null, plAmount: null };
+        return {
+          symbol: h.symbol,
+          stockName: h.stockName,
+          percentage: h.percentage,
+          changePct: null,
+          plAmount: null,
+        };
       }
 
       knownWeight += h.percentage;
       const quote = quoteMap.get(h.symbol!.toUpperCase()) ?? null;
-      if (quote != null) {
+      if (quote != null && Number.isFinite(quote.changePct)) {
         const changePct = quote.changePct;
-        const pl = (h.percentage / 100) * (changePct / 100) * INVESTMENT_AMOUNT;
-        return { symbol: h.symbol, stockName: h.stockName, percentage: h.percentage, changePct, plAmount: pl };
+        const pl = profitOnInvestment(changePct, (h.percentage / 100) * FUND_INVESTMENT_AMOUNT);
+        return {
+          symbol: h.symbol,
+          stockName: h.stockName,
+          percentage: h.percentage,
+          changePct,
+          plAmount: pl,
+        };
       }
-      return { symbol: h.symbol, stockName: h.stockName, percentage: h.percentage, changePct: null, plAmount: null };
+      // Soft-fail missing prices — keep the holding row, omit P/L.
+      return {
+        symbol: h.symbol,
+        stockName: h.stockName,
+        percentage: h.percentage,
+        changePct: null,
+        plAmount: null,
+      };
     });
 
-    // Same weighted-average-over-priced-holdings formula used on /market/strategy,
-    // so the two pages never independently drift on the same underlying data.
-    const estimate = computeFundReturnEstimate(hf.holdings, quoteMap, INVESTMENT_AMOUNT);
+    // Same weighted-average-over-priced-holdings formula used on /market/strategy
+    // and fund detail, so the three screens never independently drift.
+    const estimate = computeFundReturnEstimate(hf.holdings, quoteMap, FUND_INVESTMENT_AMOUNT);
 
     return {
       fundName: hf.fundName,

@@ -12,7 +12,6 @@ import {
   SlidersHorizontal,
   Target,
 } from "lucide-react";
-import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { MarketRefreshButton, type RefreshColor } from "@/components/market/market-refresh-button";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
@@ -47,12 +46,11 @@ import type {
 } from "@/lib/services/market-resources";
 
 export function CachedUsefulLinksPage() {
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
-    usePersistentResource<UsefulLinksData>({
-      cacheKey: "public:useful-links:v2",
-      url: "/api/public/useful-links",
-      refreshInterval: 24 * 60 * 60_000,
-    });
+  const { data, error, isLoading, refreshNow } = usePersistentResource<UsefulLinksData>({
+    cacheKey: "public:useful-links:v3",
+    url: "/api/public/useful-links",
+    refreshInterval: 24 * 60 * 60_000,
+  });
   const [query, setQuery] = React.useState("");
   const normalized = query.trim().toLowerCase();
   const groups =
@@ -60,7 +58,7 @@ export function CachedUsefulLinksPage() {
       .map((group) => ({
         ...group,
         links: group.links.filter((link) =>
-          [link.title, link.description, link.category].some((value) =>
+          [link.title, link.description, link.category, group.title].some((value) =>
             value.toLowerCase().includes(normalized)
           )
         ),
@@ -71,56 +69,56 @@ export function CachedUsefulLinksPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <PageHeader
         title="Useful links"
-        description="Curated economy, sector, rating and research resources for Pakistan market analysis."
+        description="Curated official and sector resources for PSX investing — institutions, economy, banking, energy, autos, cement, power, textile, telecom, pharma and more."
         icon={<Link2 />}
         eyebrow="Research toolkit"
         accent="indigo"
         actions={
-          <>
-            <CacheStatusBadge
-              updatedAt={data?.updatedAt}
-              cachedAt={cachedAt}
-              isFromDeviceCache={isFromDeviceCache}
-              isRefreshing={isRefreshing}
-            />
-            <MarketRefreshButton
-              color="indigo"
-              label="Refresh links"
-              title="Refreshing useful links"
-              onRefresh={async () => {
-                await refreshNow({ url: withFreshParam("/api/public/useful-links") });
-                return "Links refreshed";
-              }}
-              stages={["Fetching curated links", "Updating resource list"]}
-            />
-          </>
+          <MarketRefreshButton
+            color="indigo"
+            label="Refresh links"
+            title="Refreshing useful links"
+            onRefresh={async () => {
+              await refreshNow({ url: withFreshParam("/api/public/useful-links") });
+              return "Links refreshed";
+            }}
+            stages={["Fetching curated links", "Updating resource list"]}
+          />
         }
       />
       <SearchBox
         value={query}
         onChange={setQuery}
-        placeholder="Search economy, sector, ratings or research links..."
+        placeholder="Search institutions, sectors, ratings or research links..."
       />
 
       {groups.length ? (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-5">
           {groups.map((group) => (
-            <Card key={group.title} variant="feature" className="overflow-hidden">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2.5 text-lg">
-                  <IconChip accent="indigo" variant="gradient" size="sm">
-                    <Link2 />
-                  </IconChip>
-                  {group.title}
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">{group.description}</p>
-              </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-2">
-                {group.links.map((link) => (
-                  <LinkCard key={`${link.category}-${link.href}`} link={link} />
-                ))}
-              </CardContent>
-            </Card>
+            <section key={group.title} aria-labelledby={`useful-links-${slugifySection(group.title)}`}>
+              <Card variant="feature" className="overflow-hidden">
+                <CardHeader>
+                  <CardTitle
+                    id={`useful-links-${slugifySection(group.title)}`}
+                    className="flex flex-wrap items-center gap-2.5 text-lg"
+                  >
+                    <IconChip accent="indigo" variant="gradient" size="sm">
+                      <Link2 />
+                    </IconChip>
+                    {group.title}
+                    <Badge variant="outline" className="font-normal">
+                      {group.links.length} {group.links.length === 1 ? "link" : "links"}
+                    </Badge>
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">{group.description}</p>
+                </CardHeader>
+                <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {group.links.map((link) => (
+                    <LinkCard key={`${group.title}-${link.href}`} link={link} />
+                  ))}
+                </CardContent>
+              </Card>
+            </section>
           ))}
         </div>
       ) : isLoading ? (
@@ -136,9 +134,16 @@ export function CachedUsefulLinksPage() {
   );
 }
 
+function slugifySection(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
 function UsefulLinksLoadingGrid() {
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="space-y-5">
       {Array.from({ length: 4 }).map((_, groupIndex) => (
         <Card key={groupIndex} className="overflow-hidden">
           <CardHeader>
@@ -148,8 +153,8 @@ function UsefulLinksLoadingGrid() {
             </div>
             <Skeleton className="h-4 w-4/5" />
           </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            {Array.from({ length: 4 }).map((_, linkIndex) => (
+          <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, linkIndex) => (
               <div
                 key={linkIndex}
                 className="min-h-28 rounded-xl border border-border bg-background p-4"
@@ -192,7 +197,6 @@ export function CachedBoardMeetingsPage() {
       icon={<CalendarDays />}
       accent="sky"
       eyebrow="Corporate calendar"
-      resource={resource}
       onRefresh={async () => {
         await resource.refreshNow({ url: withFreshParam("/api/public/board-meetings") });
         return "Board meetings updated";
@@ -272,7 +276,6 @@ export function CachedBookClosuresPage() {
       icon={<Gift />}
       accent="amber"
       eyebrow="Entitlements"
-      resource={resource}
       onRefresh={async () => {
         await resource.refreshNow({ url: withFreshParam("/api/public/book-closures") });
         return "Book closures updated";
@@ -343,7 +346,6 @@ export function CachedDividendHistoryPage() {
       icon={<History />}
       accent="emerald"
       eyebrow="Payout records"
-      resource={resource}
       onRefresh={async () => {
         await resource.refreshNow({ url: withFreshParam("/api/public/dividend-history") });
         return "Dividend history updated";
@@ -417,31 +419,23 @@ export function CachedPivotPointsPage() {
         eyebrow="Technical levels"
         accent="teal"
         actions={
-          <>
-            <CacheStatusBadge
-              updatedAt={resource.data?.updatedAt}
-              cachedAt={resource.cachedAt}
-              isFromDeviceCache={resource.isFromDeviceCache}
-              isRefreshing={resource.isRefreshing}
-            />
-            <MarketRefreshButton
-              color="cyan"
-              label="Refresh pivots"
-              title="Refreshing pivot points"
-              onRefresh={async () => {
-                const result = await refreshNow({
-                  url: withFreshParam("/api/public/pivot-points"),
-                });
-                const count = result?.rows?.length;
-                return count ? `${count} stocks updated` : undefined;
-              }}
-              stages={[
-                "Fetching latest PSX prices",
-                "Calculating pivot levels",
-                "Updating table",
-              ]}
-            />
-          </>
+          <MarketRefreshButton
+            color="cyan"
+            label="Refresh pivots"
+            title="Refreshing pivot points"
+            onRefresh={async () => {
+              const result = await refreshNow({
+                url: withFreshParam("/api/public/pivot-points"),
+              });
+              const count = result?.rows?.length;
+              return count ? `${count} stocks updated` : undefined;
+            }}
+            stages={[
+              "Fetching latest PSX prices",
+              "Calculating pivot levels",
+              "Updating table",
+            ]}
+          />
         }
       />
 
@@ -604,13 +598,12 @@ function PaginationControls({
   );
 }
 
-function ResourceShell<T>({
+function ResourceShell({
   title,
   description,
   icon,
   accent,
   eyebrow,
-  resource,
   sourceUrl,
   onRefresh,
   refreshColor,
@@ -623,12 +616,6 @@ function ResourceShell<T>({
   icon: React.ReactNode;
   accent: Accent;
   eyebrow: string;
-  resource: {
-    data?: T | null;
-    isRefreshing: boolean;
-    isFromDeviceCache: boolean;
-    cachedAt: string | null;
-  };
   sourceUrl?: string | null;
   onRefresh?: () => Promise<string | void>;
   refreshColor?: RefreshColor;
@@ -636,10 +623,6 @@ function ResourceShell<T>({
   refreshStages?: string[];
   children: React.ReactNode;
 }) {
-  const updatedAt =
-    resource.data && typeof resource.data === "object" && "updatedAt" in resource.data
-      ? String(resource.data.updatedAt ?? "")
-      : null;
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <PageHeader
@@ -650,12 +633,6 @@ function ResourceShell<T>({
         accent={accent}
         actions={
           <>
-            <CacheStatusBadge
-              updatedAt={updatedAt}
-              cachedAt={resource.cachedAt}
-              isFromDeviceCache={resource.isFromDeviceCache}
-              isRefreshing={resource.isRefreshing}
-            />
             {onRefresh && (
               <MarketRefreshButton
                 color={refreshColor ?? "emerald"}

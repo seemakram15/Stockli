@@ -89,3 +89,43 @@ export interface StockFinancialPeerComparison {
   peers: StockFinancialPeerRow[];
   updatedAt: string;
 }
+
+export type StockFinancialsRefreshStepId =
+  | "ready"
+  | "overview"
+  | "latest"
+  | "income"
+  | "balance"
+  | "cashflow"
+  | "ratios"
+  | "persist"
+  | "done";
+
+export type StockFinancialsRefreshStepStatus =
+  | "pending"
+  | "active"
+  | "done"
+  | "error"
+  | "skipped";
+
+export interface StockFinancialsRefreshProgress {
+  stepId: StockFinancialsRefreshStepId;
+  status: StockFinancialsRefreshStepStatus;
+  message: string;
+  detail?: string;
+}
+
+export const STOCK_FINANCIALS_REFRESH_STEPS: Array<{
+  id: StockFinancialsRefreshStepId;
+  message: string;
+}> = [
+  { id: "ready", message: "Getting data ready…" },
+  { id: "overview", message: "Adding overview…" },
+  { id: "latest", message: "Adding latest results…" },
+  { id: "income", message: "Adding income statements…" },
+  { id: "balance", message: "Adding balance sheet…" },
+  { id: "cashflow", message: "Adding cash flow…" },
+  { id: "ratios", message: "Adding ratios…" },
+  { id: "persist", message: "Saving snapshot…" },
+  { id: "done", message: "Refresh complete" },
+];

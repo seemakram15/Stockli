@@ -12,16 +12,34 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(request: Request) {
-  const fresh = wantsFresh(request);
-  if (fresh) {
-    await forcePublicRefresh("funds-breakdown");
-  }
-  const data = await getFundsBreakdownData();
-  const ttl = psxLiveCacheTtlSeconds();
-  return NextResponse.json(
-    { data },
-    {
-      headers: freshCacheHeaders(fresh, ttl, shouldRefreshPsxData()),
+  try {
+    const fresh = wantsFresh(request);
+    let warnings: string[] = [];
+    if (fresh) {
+      const refresh = await forcePublicRefresh("funds-breakdown");
+      warnings = refresh.warnings;
     }
-  );
+    const data = await getFundsBreakdownData();
+    const ttl = psxLiveCacheTtlSeconds();
+    return NextResponse.json(
+      { data, ...(warnings.length ? { warnings } : {}) },
+      {
+        headers: freshCacheHeaders(fresh, ttl, shouldRefreshPsxData()),
+      }
+    );
+  } catch (error) {
+    console.error("[funds-breakdown] GET failed:", error);
+    return NextResponse.json(
+      {
+        data: {
+          funds: [],
+          periodYear: 0,
+          periodMonth: 0,
+          updatedAt: new Date().toISOString(),
+        },
+        warning: error instanceof Error ? error.message : String(error),
+      },
+      { status: 200, headers: { "Cache-Control": "no-store, max-age=0" } }
+    );
+  }
 }

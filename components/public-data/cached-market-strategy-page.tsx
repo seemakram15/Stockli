@@ -10,7 +10,6 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { MarketStrategyBoard } from "@/components/market/market-strategy-board";
@@ -27,7 +26,7 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 
 export function CachedMarketStrategyPage() {
   const [view, setView] = React.useState<"detailed" | "simple">("detailed");
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
+  const { data, error, isLoading, refreshNow } =
     usePersistentResource<HoldingsStrategyData>({
       cacheKey: "public:market-strategy-holdings",
       url: "/api/public/market-strategy-holdings",
@@ -53,12 +52,6 @@ export function CachedMarketStrategyPage() {
         }
         actions={
           <>
-            <CacheStatusBadge
-              updatedAt={data?.updatedAt}
-              cachedAt={cachedAt}
-              isFromDeviceCache={isFromDeviceCache}
-              isRefreshing={isRefreshing}
-            />
             <MarketRefreshButton
               color="violet"
               label="Refresh returns"

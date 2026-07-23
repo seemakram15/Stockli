@@ -46,6 +46,20 @@ const GRADIENT: Record<Accent, string> = {
   slate: "bg-gradient-to-br from-slate-600 to-slate-500 text-white shadow-sm shadow-slate-500/20",
 };
 
+/** Glyph-only tint — for compact nav icons without a chip surface. */
+const ICON: Record<Accent, string> = {
+  primary: "text-primary",
+  emerald: "text-emerald-600 dark:text-emerald-400",
+  sky: "text-sky-600 dark:text-sky-400",
+  violet: "text-violet-600 dark:text-violet-400",
+  amber: "text-amber-600 dark:text-amber-400",
+  rose: "text-rose-600 dark:text-rose-400",
+  teal: "text-teal-600 dark:text-teal-400",
+  indigo: "text-indigo-600 dark:text-indigo-400",
+  orange: "text-orange-600 dark:text-orange-400",
+  slate: "text-slate-600 dark:text-slate-300",
+};
+
 /** Outlined pill style for eyebrows. */
 const PILL: Record<Accent, string> = {
   primary: "border-primary/25 bg-primary/10 text-primary",
@@ -117,4 +131,9 @@ export function AccentPill({
   );
 }
 
-export { SOFT as ACCENT_SOFT, GRADIENT as ACCENT_GRADIENT, PILL as ACCENT_PILL };
+export {
+  SOFT as ACCENT_SOFT,
+  GRADIENT as ACCENT_GRADIENT,
+  PILL as ACCENT_PILL,
+  ICON as ACCENT_ICON,
+};

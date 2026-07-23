@@ -24,6 +24,53 @@ export function calcDividendTaxes(
   return { wht, zakat, net: gross - wht - zakat };
 }
 
+/** Round PKR amounts to 2 dp (CDC report style). */
+function roundPkr(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * Derive CDC "Add Manually" amounts from rate × securities using account tax settings.
+ *
+ * Assumptions (same as auto/history dividends via calcDividendTaxes; PDF import extracts
+ * printed CDC amounts instead of computing):
+ * - Gross = ratePerSecurity × noOfSecurities
+ * - Zakat = 2.5% of gross when zakatOnDividends is enabled, else 0
+ * - WHT = 15% of gross (filer) or 30% (non-filer)
+ * - Net = Gross − Zakat − WHT (always derived)
+ */
+export function calcCdcManualDividendAmounts(
+  ratePerSecurity: number,
+  noOfSecurities: number,
+  settings: TaxSettings
+): { grossAmount: number; zakatDeducted: number; taxDeducted: number; netAmount: number } {
+  const grossAmount = roundPkr(ratePerSecurity * noOfSecurities);
+  const { wht, zakat, net } = calcDividendTaxes(grossAmount, settings);
+  return {
+    grossAmount,
+    zakatDeducted: roundPkr(zakat),
+    taxDeducted: roundPkr(wht),
+    netAmount: roundPkr(net),
+  };
+}
+
+/** Recompute Zakat/WHT/Net from Gross using the same % rates as calcDividendTaxes. */
+export function recalcCdcAmountsFromGross(
+  grossAmount: number,
+  settings: TaxSettings
+): { zakatDeducted: number; taxDeducted: number; netAmount: number } {
+  const { wht, zakat, net } = calcDividendTaxes(grossAmount, settings);
+  return {
+    zakatDeducted: roundPkr(zakat),
+    taxDeducted: roundPkr(wht),
+    netAmount: roundPkr(net),
+  };
+}
+
+export function deriveCdcNetAmount(gross: number, zakat: number, wht: number): number {
+  return roundPkr(Math.max(0, gross - zakat - wht));
+}
+
 export function calcBrokerFee(tradeValue: number, feePct: number): number {
   return tradeValue * (feePct / 100);
 }

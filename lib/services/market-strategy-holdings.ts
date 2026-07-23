@@ -5,10 +5,11 @@ import { getLatestPublishedHoldingsAll } from "@/lib/services/fund-holdings";
 import { getAllQuotes } from "@/lib/services/prices";
 import { identifyAmcBrand, shortAmcName } from "@/lib/amc-brands";
 import { psxLiveCacheTtlSeconds, shouldRefreshPsxData } from "@/lib/psx/market-hours";
-import { computeFundReturnEstimate } from "@/lib/services/fund-return-estimate";
+import {
+  FUND_INVESTMENT_AMOUNT,
+  computeFundReturnEstimate,
+} from "@/lib/services/fund-return-estimate";
 import type { FundClassFilter } from "@/lib/services/mufap";
-
-const INVESTMENT_AMOUNT = 100_000;
 
 export interface HoldingsStrategyFund {
   fundName: string;
@@ -48,20 +49,50 @@ export interface HoldingsStrategyData {
   };
 }
 
+function emptyHoldingsStrategyData(): HoldingsStrategyData {
+  return {
+    funds: [],
+    periodYear: 0,
+    periodMonth: 0,
+    updatedAt: new Date().toISOString(),
+    investmentAmount: FUND_INVESTMENT_AMOUNT,
+    summary: {
+      totalFunds: 0,
+      positiveCount: 0,
+      negativeCount: 0,
+      avgEstimatedReturn: 0,
+      best: null,
+      worst: null,
+    },
+  };
+}
+
 export async function getHoldingsStrategyData(): Promise<HoldingsStrategyData> {
-  const { value } = await getStaleCached({
-    key: "market-strategy:holdings-v1",
-    ttlSeconds: shouldRefreshPsxData() ? 5 * 60 : psxLiveCacheTtlSeconds(),
-    staleSeconds: shouldRefreshPsxData() ? 6 * 60 * 60 : psxLiveCacheTtlSeconds(),
-    load: loadHoldingsStrategyData,
-    isUsable: (data) => data.funds.length > 0,
-  });
-  return value;
+  try {
+    const { value } = await getStaleCached({
+      key: "market-strategy:holdings-v1",
+      ttlSeconds: shouldRefreshPsxData() ? 5 * 60 : psxLiveCacheTtlSeconds(),
+      staleSeconds: shouldRefreshPsxData() ? 6 * 60 * 60 : psxLiveCacheTtlSeconds(),
+      load: loadHoldingsStrategyData,
+      isUsable: () => true,
+    });
+    return value;
+  } catch (error) {
+    console.warn("[market-strategy-holdings] unavailable:", error);
+    return emptyHoldingsStrategyData();
+  }
 }
 
 async function loadHoldingsStrategyData(): Promise<HoldingsStrategyData> {
   const [holdingsData, fundsData, allQuotes] = await Promise.all([
-    getLatestPublishedHoldingsAll(),
+    getLatestPublishedHoldingsAll().catch((error) => {
+      console.warn("[market-strategy-holdings] holdings load failed:", error);
+      return {
+        year: 0,
+        month: 0,
+        funds: [] as Awaited<ReturnType<typeof getLatestPublishedHoldingsAll>>["funds"],
+      };
+    }),
     getMufapFunds().catch(() => null),
     getAllQuotes().catch(() => [] as Awaited<ReturnType<typeof getAllQuotes>>),
   ]);
@@ -84,7 +115,7 @@ async function loadHoldingsStrategyData(): Promise<HoldingsStrategyData> {
     const mufap = mufapByName.get(norm(hf.fundName)) ?? null;
     const brand = identifyAmcBrand(hf.amc);
 
-    const estimate = computeFundReturnEstimate(hf.holdings, quoteMap, INVESTMENT_AMOUNT);
+    const estimate = computeFundReturnEstimate(hf.holdings, quoteMap, FUND_INVESTMENT_AMOUNT);
 
     return {
       fundName: hf.fundName,
@@ -119,7 +150,7 @@ async function loadHoldingsStrategyData(): Promise<HoldingsStrategyData> {
     periodYear: year,
     periodMonth: month,
     updatedAt: new Date().toISOString(),
-    investmentAmount: INVESTMENT_AMOUNT,
+    investmentAmount: FUND_INVESTMENT_AMOUNT,
     summary: {
       totalFunds: strategyFunds.length,
       positiveCount: priced.filter((f) => (f.estimatedReturn ?? 0) > 0).length,

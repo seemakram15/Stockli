@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { Trophy, ChevronDown } from "lucide-react";
-import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { MarketRefreshButton } from "@/components/market/market-refresh-button";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
@@ -131,7 +130,7 @@ function HoldingCard({ holding, rank }: { holding: MFTopHolding; rank: number })
 }
 
 export function CachedMFTopHoldingsPage() {
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
+  const { data, error, isLoading, refreshNow } =
     usePersistentResource<MFTopHoldingsData>({
       cacheKey: "public:mf-top-holdings",
       url: "/api/public/mf-top-holdings",
@@ -160,12 +159,6 @@ export function CachedMFTopHoldingsPage() {
         }
         actions={
           <>
-            <CacheStatusBadge
-              updatedAt={data?.updatedAt}
-              cachedAt={cachedAt}
-              isFromDeviceCache={isFromDeviceCache}
-              isRefreshing={isRefreshing}
-            />
             <MarketRefreshButton
               color="amber"
               label="Refresh holdings"

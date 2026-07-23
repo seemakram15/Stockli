@@ -1,7 +1,6 @@
 "use client";
 
 import { PieChart } from "lucide-react";
-import { CacheStatusBadge } from "@/components/cache/cache-status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { PageLoadingState } from "@/components/loading/page-loading-state";
 import { FundsBreakdownBoard } from "@/components/market/funds-breakdown-board";
@@ -12,7 +11,7 @@ import { withFreshParam } from "@/lib/hooks/use-refresh-runner";
 import type { FundsBreakdownData } from "@/lib/services/funds-breakdown";
 
 export function CachedFundsBreakdownPage() {
-  const { data, error, isLoading, isRefreshing, isFromDeviceCache, cachedAt, refreshNow } =
+  const { data, error, isLoading, refreshNow } =
     usePersistentResource<FundsBreakdownData>({
       cacheKey: "public:funds-breakdown",
       url: "/api/public/funds-breakdown",
@@ -29,19 +28,18 @@ export function CachedFundsBreakdownPage() {
         description="Each fund's stock holdings with live PSX daily change and Rs 100k P/L estimate."
         actions={
           <>
-            <CacheStatusBadge
-              updatedAt={data?.updatedAt}
-              cachedAt={cachedAt}
-              isFromDeviceCache={isFromDeviceCache}
-              isRefreshing={isRefreshing}
-            />
             <MarketRefreshButton
               color="violet"
               label="Refresh holdings"
               title="Refreshing funds breakdown"
               onRefresh={async () => {
-                await refreshNow({ url: withFreshParam("/api/public/funds-breakdown") });
-                return "Holdings data refreshed";
+                const result = await refreshNow({
+                  url: withFreshParam("/api/public/funds-breakdown"),
+                });
+                const count = result?.funds?.length;
+                return count
+                  ? `${count} funds updated with live PSX prices`
+                  : "Holdings snapshot refreshed";
               }}
               stages={[
                 "Fetching fund holdings + live PSX prices",
@@ -52,7 +50,7 @@ export function CachedFundsBreakdownPage() {
         }
       />
 
-      {data ? (
+      {data && data.funds.length > 0 ? (
         <FundsBreakdownBoard data={data} />
       ) : isLoading ? (
         <PageLoadingState message="Loading fund holdings…" variant="list" />
@@ -62,7 +60,7 @@ export function CachedFundsBreakdownPage() {
           title="Holdings data unavailable"
           description={
             error?.message ??
-            "No published holdings found or prices could not be loaded. Please try again shortly."
+            "No published holdings found or prices could not be loaded. Publish fund holdings in admin, or try refresh again shortly."
           }
         />
       )}

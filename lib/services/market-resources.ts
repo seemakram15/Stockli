@@ -17,12 +17,12 @@ const DAILY_TTL_SECONDS = 30 * 60;
 const DAILY_STALE_SECONDS = 7 * 24 * 60 * 60;
 
 const SOURCES = {
-  usefulLinks: "https://ksestocks.com/blog/useful-links-psx/",
   boardMeetingsPrimary: "https://scstrade.com/MarketStatistics/MS_BoardMeetings.aspx",
   boardMeetingsFallback: "https://ksestocks.com/blog/psx-kse-board-meetings-schedule/",
   bookClosuresPrimary: "https://scstrade.com/MarketStatistics/MS_xDates.aspx",
   bookClosuresFallback: "https://www.ksestocks.com/BookClosures",
-  dividendPrimary: "https://dps.psx.com.pk/payouts",
+  // Prefer KSE Stocks — do not scrape dps.psx.com.pk for payouts.
+  dividendPrimary: "https://ksestocks.com/blog/dividend-schedule/",
   dividendFallback: "https://ksestocks.com/blog/dividend-schedule/",
   pivotReference: "https://www.ksestocks.com/PivotPoints",
 };
@@ -159,252 +159,549 @@ interface SscBookClosureRaw {
   bm_bc_exp?: string;
 }
 
+const CURATED_USEFUL_LINK_GROUPS: UsefulLinkGroup[] = [
+  {
+    title: "Market institutions",
+    description: "Official PSX ecosystem sites for trading, regulation, custody and clearing.",
+    links: [
+      {
+        title: "Pakistan Stock Exchange",
+        description: "Official PSX homepage — market news, listings and investor tools.",
+        href: "https://www.psx.com.pk/",
+        category: "Institutions",
+        official: true,
+      },
+      {
+        title: "PSX Investor Guide",
+        description: "How investing on PSX works, brokers, CDC and NCCPL roles.",
+        href: "https://www.psx.com.pk/psx/resources-and-tools/investors/guide-to-investors",
+        category: "Institutions",
+        official: true,
+      },
+      {
+        title: "PSX Data Portal (DPS)",
+        description: "Official company announcements, financials and market data portal.",
+        href: "https://dps.psx.com.pk/",
+        category: "Institutions",
+        official: true,
+      },
+      {
+        title: "Listed Companies",
+        description: "PSX directory of listed companies.",
+        href: "https://www.psx.com.pk/psx/resources-and-tools/listings/listed-companies",
+        category: "Institutions",
+        official: true,
+      },
+      {
+        title: "Find a Broker",
+        description: "PSX brokerage firm directory for account opening.",
+        href: "https://www.psx.com.pk/psx/resources-and-tools/brokerage-firms/",
+        category: "Institutions",
+        official: true,
+      },
+      {
+        title: "SECP",
+        description: "Securities and Exchange Commission of Pakistan — capital market regulator.",
+        href: "https://www.secp.gov.pk/",
+        category: "Institutions",
+        official: true,
+      },
+      {
+        title: "SECP Investor Basics",
+        description: "Investor education and financial basics from SECP.",
+        href: "https://www.secp.gov.pk/for-investors/financial-basics/",
+        category: "Institutions",
+        official: true,
+      },
+      {
+        title: "SECP Capital Market Statistics",
+        description: "Official capital markets data and statistics.",
+        href: "https://www.secp.gov.pk/data-and-statistics/capital-markets/",
+        category: "Institutions",
+        official: true,
+      },
+      {
+        title: "NCCPL",
+        description: "National Clearing Company — trade clearing, UIN and settlement.",
+        href: "https://www.nccpl.com.pk/",
+        category: "Institutions",
+        official: true,
+      },
+      {
+        title: "CDC Pakistan",
+        description: "Central Depository Company — share custody and investor accounts.",
+        href: "https://www.cdcpakistan.com/",
+        category: "Institutions",
+        official: true,
+      },
+      {
+        title: "MUFAP",
+        description: "Mutual Funds Association of Pakistan — NAVs and industry stats.",
+        href: "https://www.mufap.com.pk/",
+        category: "Institutions",
+        official: true,
+      },
+      {
+        title: "PMEX",
+        description: "Pakistan Mercantile Exchange — commodities futures market.",
+        href: "https://www.pmex.com.pk/",
+        category: "Institutions",
+        official: true,
+      },
+    ],
+  },
+  {
+    title: "Economy",
+    description: "Macro calendars, inflation, trade and rates resources for Pakistan.",
+    links: [
+      {
+        title: "SBP Monetary Policy",
+        description: "Monetary policy statements, calendar and rate decisions.",
+        href: "https://www.sbp.org.pk/our-operations/monetary-policy",
+        category: "Economy",
+        official: true,
+      },
+      {
+        title: "SBP Economic Data",
+        description: "Inflation, FX reserves, interest rates and other macro series.",
+        href: "https://www.sbp.org.pk/economic-data",
+        category: "Economy",
+        official: true,
+      },
+      {
+        title: "SBP Interest & Exchange Rates",
+        description: "Policy rate, PKRV-related rates and FX reference pages.",
+        href: "https://www.sbp.org.pk/rates/",
+        category: "Economy",
+        official: true,
+      },
+      {
+        title: "PKRV / PIB Pricing (MUFAP)",
+        description: "Daily PKRV / PKISRV / PKFRV pricing used for bond rate direction.",
+        href: "https://www.mufap.com.pk/WebRegulations/Index?Head=Pricing&title=PKRV/PKISRV/PKFRV",
+        category: "Economy",
+        official: true,
+      },
+      {
+        title: "PBS Price Statistics",
+        description: "CPI, WPI and SPI inflation / price publications.",
+        href: "https://www.pbs.gov.pk/price-statistics/",
+        category: "Economy",
+        official: true,
+      },
+      {
+        title: "PBS External Trade Statistics",
+        description: "Official import and export trade statistics.",
+        href: "https://www.pbs.gov.pk/external-trade-statistics/",
+        category: "Economy",
+        official: true,
+      },
+      {
+        title: "Pakistan Economic Survey",
+        description: "Finance Division economic survey (latest published year).",
+        href: "https://www.finance.gov.pk/survey_2024.html",
+        category: "Economy",
+        official: true,
+      },
+      {
+        title: "Federal Board of Revenue",
+        description: "Tax circulars, SROs and fiscal updates that move markets.",
+        href: "https://www.fbr.gov.pk/",
+        category: "Economy",
+        official: true,
+      },
+    ],
+  },
+  {
+    title: "Banking & financials",
+    description: "Banking association and central-bank financial stability resources.",
+    links: [
+      {
+        title: "Pakistan Banks Association",
+        description: "Industry body for commercial banks in Pakistan.",
+        href: "https://pba.org.pk/",
+        category: "Banking",
+        official: true,
+      },
+      {
+        title: "SBP Financial Stability Review",
+        description: "Central bank review of banking-system risks and resilience.",
+        href: "https://www.sbp.org.pk/fsr/index.htm",
+        category: "Banking",
+        official: true,
+      },
+      {
+        title: "SBP Publications Hub",
+        description: "Scheduled banks statistics and other SBP publications.",
+        href: "https://www.sbp.org.pk/our-operations/publications",
+        category: "Banking",
+        official: true,
+      },
+    ],
+  },
+  {
+    title: "Oil & gas",
+    description: "Fuel pricing and oil marketing industry references.",
+    links: [
+      {
+        title: "OGRA",
+        description: "Oil & Gas Regulatory Authority — petroleum product regulation and prices.",
+        href: "https://www.ogra.org.pk/",
+        category: "Oil & Gas",
+        official: true,
+      },
+      {
+        title: "OCAC",
+        description: "Oil Companies Advisory Council — oil marketing sector updates.",
+        href: "https://www.ocac.org.pk/",
+        category: "Oil & Gas",
+        official: true,
+      },
+    ],
+  },
+  {
+    title: "Auto sector",
+    description: "Production, sales, prices and public response signals for local auto companies.",
+    links: [
+      {
+        title: "Monthly Production & Sales (PAMA)",
+        description: "Month-wise production and sales of automotive assemblers.",
+        href: "https://pama.org.pk/monthly-production-sales-of-vehicles/",
+        category: "Auto",
+        official: true,
+      },
+      {
+        title: "Annual Production & Sales (PAMA)",
+        description: "Historic annual production and sales for the auto sector.",
+        href: "https://pama.org.pk/annual-sales-production/",
+        category: "Auto",
+        official: true,
+      },
+      {
+        title: "PakWheels",
+        description: "Car reviews, prices and public response to new launches.",
+        href: "https://www.pakwheels.com/",
+        category: "Auto",
+      },
+    ],
+  },
+  {
+    title: "Cement sector",
+    description: "Cement industry association and coal input-cost tracking.",
+    links: [
+      {
+        title: "APCMA",
+        description: "All Pakistan Cement Manufacturers Association.",
+        href: "https://www.apcma.com/",
+        category: "Cement",
+        official: true,
+      },
+      {
+        title: "International Coal Prices",
+        description: "Coal price series useful for cement input-cost tracking.",
+        href: "https://tradingeconomics.com/commodity/coal",
+        category: "Cement",
+      },
+    ],
+  },
+  {
+    title: "Fertilizer sector",
+    description: "Fertilizer and farm-input price publications.",
+    links: [
+      {
+        title: "PBS Price Statistics (SPI / CPI)",
+        description: "Official price stats used to track fertilizer bag and farm-input prices.",
+        href: "https://www.pbs.gov.pk/price-statistics/",
+        category: "Fertilizer",
+        official: true,
+      },
+      {
+        title: "PACRA Sector Research",
+        description: "Credit-agency sector studies including fertilizer names.",
+        href: "https://www.pacra.com/research",
+        category: "Fertilizer",
+      },
+    ],
+  },
+  {
+    title: "Power sector",
+    description: "Power regulator tariff and determination material.",
+    links: [
+      {
+        title: "NEPRA",
+        description: "National Electric Power Regulatory Authority — tariffs and determinations.",
+        href: "https://www.nepra.org.pk/",
+        category: "Power",
+        official: true,
+      },
+    ],
+  },
+  {
+    title: "Textile sector",
+    description: "Industry association updates for the textile value chain.",
+    links: [
+      {
+        title: "APTMA Press Releases",
+        description: "All Pakistan Textile Mills Association updates and press releases.",
+        href: "https://aptma.org.pk/press-releases/",
+        category: "Textile",
+        official: true,
+      },
+      {
+        title: "APTMA",
+        description: "Official APTMA homepage for policy and industry context.",
+        href: "https://aptma.org.pk/",
+        category: "Textile",
+        official: true,
+      },
+    ],
+  },
+  {
+    title: "Tech & telecom",
+    description: "Telecom indicators and regulator publications for listed telcos and tech names.",
+    links: [
+      {
+        title: "PTA Telecom Indicators",
+        description: "Pakistan Telecommunication Authority subscriber and sector indicators.",
+        href: "https://www.pta.gov.pk/category/telecom-indicators",
+        category: "Telecom",
+        official: true,
+      },
+      {
+        title: "PTA",
+        description: "Telecom regulator homepage — licenses, spectrum and industry news.",
+        href: "https://www.pta.gov.pk/",
+        category: "Telecom",
+        official: true,
+      },
+    ],
+  },
+  {
+    title: "Pharmaceutical sector",
+    description: "Regulator lists and research hubs for listed pharma companies.",
+    links: [
+      {
+        title: "Essential Medicines List (DRAP)",
+        description: "National essential medicine lists from the drug regulator.",
+        href: "https://www.dra.gov.pk/publications/national-essential-medicine-lists/",
+        category: "Pharma",
+        official: true,
+      },
+      {
+        title: "DRAP",
+        description: "Drug Regulatory Authority of Pakistan homepage.",
+        href: "https://www.dra.gov.pk/",
+        category: "Pharma",
+        official: true,
+      },
+      {
+        title: "PACRA Research",
+        description: "PACRA sector research hub (includes pharmaceuticals).",
+        href: "https://www.pacra.com/research",
+        category: "Pharma",
+      },
+      {
+        title: "VIS Sector Reports",
+        description: "VIS credit-rating sector reports including pharmaceuticals.",
+        href: "https://vis.com.pk/",
+        category: "Pharma",
+      },
+    ],
+  },
+  {
+    title: "Mutual funds",
+    description: "Official mutual-fund industry NAVs, stats and directories.",
+    links: [
+      {
+        title: "MUFAP Daily Industry Stats",
+        description: "Daily mutual fund industry statistics from MUFAP.",
+        href: "https://www.mufap.com.pk/Industry/IndustryStatDaily?tab=1",
+        category: "Funds",
+        official: true,
+      },
+      {
+        title: "MUFAP Fund Directory",
+        description: "Directory of mutual funds and fund profiles.",
+        href: "https://www.mufap.com.pk/FundProfile/FundDirectory",
+        category: "Funds",
+        official: true,
+      },
+      {
+        title: "Stockli Mutual Funds",
+        description: "Browse mutual funds inside Stockli.",
+        href: "/market/mutual-funds",
+        category: "Funds",
+      },
+      {
+        title: "Stockli Funds Breakdown",
+        description: "Fund holdings and breakdown tools on Stockli.",
+        href: "/market/funds-breakdown",
+        category: "Funds",
+      },
+    ],
+  },
+  {
+    title: "Market analysis tools",
+    description: "PSX charts, research screens and announcement portals.",
+    links: [
+      {
+        title: "PSX Data Portal",
+        description: "Official DPS announcements and company filings.",
+        href: "https://dps.psx.com.pk/",
+        category: "Analysis",
+        official: true,
+      },
+      {
+        title: "AskAnalyst",
+        description: "Pakistan equity research and analysis site.",
+        href: "https://askanalyst.com.pk/",
+        category: "Analysis",
+      },
+      {
+        title: "SCS Trade",
+        description: "Market statistics including board meetings and book closures.",
+        href: "https://scstrade.com/",
+        category: "Analysis",
+      },
+      {
+        title: "TradingView KSE-100",
+        description: "Interactive KSE-100 chart and technical tools.",
+        href: "https://www.tradingview.com/symbols/PSX-KSE100/",
+        category: "Analysis",
+      },
+      {
+        title: "Investing.com KSE-100",
+        description: "KSE-100 quotes, news and historical data.",
+        href: "https://www.investing.com/indices/karachi-100",
+        category: "Analysis",
+      },
+      {
+        title: "Stockli Pivot Points",
+        description: "Classic floor pivots for PSX symbols on Stockli.",
+        href: "/analysis/pivot-points",
+        category: "Analysis",
+      },
+    ],
+  },
+  {
+    title: "Corporate actions",
+    description: "Board meetings, book closures and dividend schedules for PSX names.",
+    links: [
+      {
+        title: "Board Meetings (Stockli)",
+        description: "Upcoming and recent PSX board meeting schedule.",
+        href: "/explore/board-meetings",
+        category: "Corporate",
+      },
+      {
+        title: "Book Closures (Stockli)",
+        description: "Book-closure / entitlement dates for listed companies.",
+        href: "/explore/book-closures",
+        category: "Corporate",
+      },
+      {
+        title: "Dividend History (Stockli)",
+        description: "Recent dividend payout history for PSX symbols.",
+        href: "/explore/dividend-history",
+        category: "Corporate",
+      },
+    ],
+  },
+  {
+    title: "Rating agencies",
+    description: "Sector research and entity ratings from Pakistan credit rating agencies.",
+    links: [
+      {
+        title: "PACRA Research",
+        description: "Sector research across Pakistan's economy.",
+        href: "https://www.pacra.com/research",
+        category: "Ratings",
+      },
+      {
+        title: "PACRA Ratings",
+        description: "Latest rating reports for public and private companies.",
+        href: "https://www.pacra.com/rating_resources_new",
+        category: "Ratings",
+      },
+      {
+        title: "VIS Credit Rating",
+        description: "VIS homepage — recent ratings and sector reports.",
+        href: "https://vis.com.pk/",
+        category: "Ratings",
+      },
+      {
+        title: "VIS Document Library",
+        description: "Published VIS rating and sector report documents.",
+        href: "https://docs.vis.com.pk/",
+        category: "Ratings",
+      },
+    ],
+  },
+];
+
+/**
+ * Curated PSX / Pakistan investor links.
+ * Kept as a static catalog (not scraped) so the page stays reliable when
+ * third-party blogs or association sites change layout.
+ */
 export async function getUsefulLinksData(): Promise<UsefulLinksData> {
   return {
     updatedAt: new Date().toISOString(),
-    sourceUrl: SOURCES.usefulLinks,
-    groups: [
-      {
-        title: "Economy",
-        description: "Macro calendars, inflation, trade and rates resources for Pakistan.",
-        links: [
-          {
-            title: "SBP Monetary Policy Dates",
-            description: "The dates for the State Bank's next meeting for monetary policy.",
-            href: "https://www.sbp.org.pk/m_policy/mp-calendar.asp",
-            category: "Economy",
-            official: true,
-          },
-          {
-            title: "SBP Economic Data",
-            description: "Centralized data on inflation, FX reserves, interest rates, and more.",
-            href: "https://www.sbp.org.pk/ecodata/index2.asp",
-            category: "Economy",
-            official: true,
-          },
-          {
-            title: "Pakistan Investment Bonds Rates",
-            description: "Daily PIB rates useful in determining interest rate direction.",
-            href: "https://www.mufap.com.pk/WebRegulations/Index?Head=Pricing&title=PKRV/PKISRV/PKFRV",
-            category: "Economy",
-            official: true,
-          },
-          {
-            title: "PBS Inflation",
-            description: "Monthly CPI/WPI reports and weekly SPI data.",
-            href: "https://www.pbs.gov.pk/",
-            category: "Economy",
-            official: true,
-          },
-          {
-            title: "Finance Ministry Economic Updates",
-            description: "Pakistan Economic Survey and monthly economic updates.",
-            href: "https://www.finance.gov.pk/survey_2023.html",
-            category: "Economy",
-            official: true,
-          },
-          {
-            title: "Pakistan Trade Statistics",
-            description: "Trade statistics including imports and exports.",
-            href: "https://www.pbs.gov.pk/trade-tables",
-            category: "Economy",
-            official: true,
-          },
-        ],
-      },
-      {
-        title: "Auto Sector",
-        description: "Production, sales, prices and public response signals for local auto companies.",
-        links: [
-          {
-            title: "Monthly Production & Sales Data",
-            description: "Month-wise production and sales data of automotive assemblers in Pakistan.",
-            href: "https://pama.org.pk/monthly-production-sales-of-vehicles/",
-            category: "Auto",
-            official: true,
-          },
-          {
-            title: "Annual Production & Sales Data",
-            description: "Historic annual production and sales data of automotive assemblers in Pakistan.",
-            href: "https://pama.org.pk/annual-sales-production/",
-            category: "Auto",
-            official: true,
-          },
-          {
-            title: "Pakwheels",
-            description: "Car reviews, prices, and public response to new launches.",
-            href: "https://www.pakwheels.com/",
-            category: "Auto",
-          },
-        ],
-      },
-      {
-        title: "Textile Sector",
-        description: "Industry association updates for the textile chain.",
-        links: [
-          {
-            title: "APTMA Press Releases",
-            description: "Official APTMA press releases and textile sector updates.",
-            href: "https://aptma.org.pk/press-releases/",
-            category: "Textile",
-            official: true,
-          },
-        ],
-      },
-      {
-        title: "Cement Sector",
-        description: "Cement dispatch and coal input cost resources.",
-        links: [
-          {
-            title: "APCMA",
-            description: "All Pakistan Cement Manufacturers Association.",
-            href: "https://www.apcma.com/",
-            category: "Cement",
-            official: true,
-          },
-          {
-            title: "International Coal Prices",
-            description: "International coal price data for cement input-cost tracking.",
-            href: "https://tradingeconomics.com/commodity/coal",
-            category: "Cement",
-          },
-        ],
-      },
-      {
-        title: "Power Sector",
-        description: "Tariff determinations and power-sector regulatory material.",
-        links: [
-          {
-            title: "NEPRA Tariff Determinations",
-            description: "NEPRA power tariff details.",
-            href: "https://nepra.org.pk/tariff/",
-            category: "Power",
-            official: true,
-          },
-        ],
-      },
-      {
-        title: "Fertilizer Sector",
-        description: "Bag prices and industry statistics for fertilizer companies.",
-        links: [
-          {
-            title: "Fertilizer Bag Prices",
-            description: "Open the SPI annexure to check fertilizer bag prices in Pakistan.",
-            href: "https://www.pbs.gov.pk/spi",
-            category: "Fertilizer",
-            official: true,
-          },
-          {
-            title: "Fertilizer Statistics Pakistan",
-            description: "Fertilizer industry statistics.",
-            href: "http://www.nfdc.gov.pk/",
-            category: "Fertilizer",
-            official: true,
-          },
-        ],
-      },
-      {
-        title: "Pharmaceutical Sector",
-        description: "Essential medicine lists, market research and sector reports.",
-        links: [
-          {
-            title: "Essential Medicines List (DRAP)",
-            description: "National essential medicine lists from DRAP.",
-            href: "https://www.dra.gov.pk/publications/national-essential-medicine-lists/",
-            category: "Pharma",
-            official: true,
-          },
-          {
-            title: "IQVIA Reports on Pakistan",
-            description: "IQVIA insights into Pakistan's pharma sector.",
-            href: "https://www.iqvia.com/insights/points-of-view#q=pakistan",
-            category: "Pharma",
-          },
-          {
-            title: "ICAP Report on Pharmaceutical Sector",
-            description: "ICAP yearly report on the pharmaceutical sector.",
-            href: "https://www.icap.org.pk/paib/pdf/guidelines/PharmaIndustry2ndEdition.pdf",
-            category: "Pharma",
-          },
-          {
-            title: "VIS Ratings Report on Pharma",
-            description: "VIS Ratings annual report on the pharmaceutical sector.",
-            href: "https://docs.vis.com.pk/docs/PakistanPharmaceuticalSectorReport-Oct-2023.pdf",
-            category: "Pharma",
-          },
-          {
-            title: "PACRA Research on Pharma",
-            description: "PACRA research report on the pharmaceutical sector.",
-            href: "https://www.pacra.com/view/storage/app/Pharmaceuticals%20-%20PACRA%20Research%20-%20May%2724_1716980550.pdf",
-            category: "Pharma",
-          },
-        ],
-      },
-      {
-        title: "Rating Agencies",
-        description: "Sector research and ratings from Pakistan's major rating agencies.",
-        links: [
-          {
-            title: "PACRA Research",
-            description: "Research material on different sectors of Pakistan's economy.",
-            href: "https://www.pacra.com/research",
-            category: "Ratings",
-          },
-          {
-            title: "PACRA Ratings",
-            description: "Latest rating reports of public and non-public companies.",
-            href: "https://www.pacra.com/rating_resources_new",
-            category: "Ratings",
-          },
-          {
-            title: "VIS Research",
-            description: "Research material on different sectors of Pakistan's economy.",
-            href: "https://vis.com.pk/kc-sect.aspx",
-            category: "Ratings",
-          },
-          {
-            title: "VIS Ratings",
-            description: "Latest rating reports of public and non-public companies.",
-            href: "https://vis.com.pk/RatingSect.aspx",
-            category: "Ratings",
-          },
-        ],
-      },
-    ],
+    sourceUrl: "",
+    groups: CURATED_USEFUL_LINK_GROUPS,
   };
 }
 
+
 export async function getBoardMeetingsData(): Promise<BoardMeetingsData> {
-  const cached = await getStaleCached({
-    key: "explore:board-meetings:v3",
-    ttlSeconds: DAILY_TTL_SECONDS,
-    staleSeconds: DAILY_STALE_SECONDS,
-    load: loadBoardMeetingsData,
-    isUsable: (data) => data.rows.length > 0,
-  });
-  return cached.value;
+  try {
+    const cached = await getStaleCached({
+      key: "explore:board-meetings:v3",
+      ttlSeconds: DAILY_TTL_SECONDS,
+      staleSeconds: DAILY_STALE_SECONDS,
+      load: loadBoardMeetingsData,
+      // Empty rows are usable so a total primary+fallback miss does not throw.
+      isUsable: (data) => Array.isArray(data.rows),
+    });
+    return cached.value;
+  } catch (error) {
+    softWarnResource("board meetings unavailable", error);
+    return emptyBoardMeetingsData();
+  }
 }
 
 export async function getBookClosuresData(): Promise<BookClosuresData> {
-  const cached = await getStaleCached({
-    key: "explore:book-closures:v2",
-    ttlSeconds: DAILY_TTL_SECONDS,
-    staleSeconds: DAILY_STALE_SECONDS,
-    load: loadBookClosuresData,
-    isUsable: (data) => data.rows.length > 0,
-  });
-  return cached.value;
+  try {
+    const cached = await getStaleCached({
+      key: "explore:book-closures:v2",
+      ttlSeconds: DAILY_TTL_SECONDS,
+      staleSeconds: DAILY_STALE_SECONDS,
+      load: loadBookClosuresData,
+      // Empty rows are usable so a total primary+fallback miss does not throw.
+      isUsable: (data) => Array.isArray(data.rows),
+    });
+    return cached.value;
+  } catch (error) {
+    softWarnResource("book closures unavailable", error);
+    return emptyBookClosuresData();
+  }
 }
 
 export async function getDividendHistoryData(): Promise<DividendHistoryData> {
-  const cached = await getStaleCached({
-    key: "explore:dividend-history:v1",
-    ttlSeconds: DAILY_TTL_SECONDS,
-    staleSeconds: DAILY_STALE_SECONDS,
-    load: loadDividendHistoryData,
-    isUsable: (data) => data.rows.length > 0,
-  });
-  return cached.value;
+  try {
+    const cached = await getStaleCached({
+      key: "explore:dividend-history:v1",
+      ttlSeconds: DAILY_TTL_SECONDS,
+      staleSeconds: DAILY_STALE_SECONDS,
+      load: loadDividendHistoryData,
+      // Empty rows are usable so a total primary+fallback miss does not throw.
+      isUsable: (data) => Array.isArray(data.rows),
+    });
+    return cached.value;
+  } catch (error) {
+    softWarnResource("dividend history unavailable", error);
+    return emptyDividendHistoryData();
+  }
 }
 
 export async function getPivotPointsData(): Promise<PivotPointsData> {
@@ -481,7 +778,7 @@ async function tryLoadSscBoardMeetings(): Promise<BoardMeetingRow[]> {
       })
       .filter((row): row is BoardMeetingRow => Boolean(row));
   } catch (error) {
-    console.warn("[resources] SCS board meetings failed:", error);
+    softWarnResource("SCS board meetings failed", error);
     return [];
   }
 }
@@ -511,26 +808,13 @@ async function loadBookClosuresData(): Promise<BookClosuresData> {
 }
 
 async function loadDividendHistoryData(): Promise<DividendHistoryData> {
-  const [primaryHtml, fallbackHtml] = await Promise.all([
-    tryFetchSource(SOURCES.dividendPrimary),
-    tryFetchSource(SOURCES.dividendFallback),
-  ]);
-
-  const primaryRows = primaryHtml ? parseDividendTables(primaryHtml, "PSX") : [];
-  if (primaryRows.length > 0) {
-    return {
-      rows: primaryRows,
-      updatedAt: new Date().toISOString(),
-      sourceUrl: SOURCES.dividendPrimary,
-      sourceLabel: "PSX",
-    };
-  }
-
-  const rows = fallbackHtml ? parseDividendTables(fallbackHtml, "KSE Stocks") : [];
+  // KSE Stocks only — do not scrape dps.psx.com.pk for payout history.
+  const html = await tryFetchSource(SOURCES.dividendPrimary);
+  const rows = html ? parseDividendTables(html, "KSE Stocks") : [];
   return {
     rows,
     updatedAt: new Date().toISOString(),
-    sourceUrl: SOURCES.dividendFallback,
+    sourceUrl: SOURCES.dividendPrimary,
     sourceLabel: "KSE Stocks",
   };
 }
@@ -612,7 +896,7 @@ async function tryFetchSource(url: string): Promise<string | null> {
   try {
     return await fetchSource(url);
   } catch (error) {
-    console.warn(`[resources] fetch failed for ${url}:`, error);
+    softWarnResource(`fetch failed for ${url}`, error);
     return null;
   }
 }
@@ -690,7 +974,7 @@ async function tryLoadSscBookClosures(): Promise<BookClosureRow[]> {
       })
       .filter((row): row is BookClosureRow => Boolean(row));
   } catch (error) {
-    console.warn("[resources] SCS book closures failed:", error);
+    softWarnResource("SCS book closures failed", error);
     return [];
   }
 }
@@ -831,4 +1115,69 @@ function numberOrNull(value: number | string | null | undefined): number | null 
   if (value == null) return null;
   const parsed = Number(String(value).replace(/,/g, ""));
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function emptyBoardMeetingsData(): BoardMeetingsData {
+  return {
+    rows: [],
+    updatedAt: new Date().toISOString(),
+    sourceUrl: SOURCES.boardMeetingsFallback,
+    sourceLabel: "KSE Stocks",
+  };
+}
+
+function emptyBookClosuresData(): BookClosuresData {
+  return {
+    rows: [],
+    updatedAt: new Date().toISOString(),
+    sourceUrl: SOURCES.bookClosuresFallback,
+    sourceLabel: "KSE Stocks",
+  };
+}
+
+function emptyDividendHistoryData(): DividendHistoryData {
+  return {
+    rows: [],
+    updatedAt: new Date().toISOString(),
+    sourceUrl: SOURCES.dividendFallback,
+    sourceLabel: "KSE Stocks",
+  };
+}
+
+/** Detect DNS / connectivity / timeout failures (including undici `fetch failed` wrappers). */
+function isNetworkOrDnsFailure(error: unknown): boolean {
+  const text = describeFetchError(error);
+  return /ENOTFOUND|ECONNREFUSED|ETIMEDOUT|ECONNRESET|AbortError|TimeoutError|fetch failed|aborted/i.test(
+    text
+  );
+}
+
+/** One-line message only — never pass the Error object (avoids Next dumping stacks). */
+function softWarnResource(context: string, error: unknown): void {
+  const detail = describeFetchError(error);
+  const suffix = isNetworkOrDnsFailure(error) ? " (network)" : "";
+  console.warn(`[resources] ${context}${suffix}: ${detail}`);
+}
+
+function describeFetchError(error: unknown): string {
+  if (!(error instanceof Error)) return String(error ?? "unknown error");
+
+  const code =
+    typeof (error as NodeJS.ErrnoException).code === "string"
+      ? (error as NodeJS.ErrnoException).code
+      : undefined;
+  const cause = (error as Error & { cause?: unknown }).cause;
+
+  if (cause instanceof Error) {
+    const causeCode =
+      typeof (cause as NodeJS.ErrnoException).code === "string"
+        ? (cause as NodeJS.ErrnoException).code
+        : undefined;
+    if (causeCode) return `${error.message} (${causeCode}: ${cause.message})`;
+    return `${error.message}: ${cause.message}`;
+  }
+
+  if (code) return `${error.message} (${code})`;
+  if (error.name && error.name !== "Error") return `${error.name}: ${error.message}`;
+  return error.message;
 }
