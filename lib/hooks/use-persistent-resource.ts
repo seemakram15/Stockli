@@ -53,16 +53,15 @@ export function usePersistentResource<T>({
   legacyCacheKeys?: string[];
   /**
    * When false, skip network requests (SWR key is null).
-   * Device cache is still read so a previously saved snapshot can paint instantly
-   * once the section enables.
+   * Device cache is still hydrated so a snapshot can paint the moment `enabled` flips.
    */
   enabled?: boolean;
 }) {
   const [cached, setCached] = React.useState<CachedRecord<T> | null>(() =>
-    readMemoryCached<T>(cacheKey, legacyCacheKeys)
+    readInitialCached<T>(cacheKey, legacyCacheKeys)
   );
   const [cacheReady, setCacheReady] = React.useState(() =>
-    Boolean(readMemoryCached<T>(cacheKey, legacyCacheKeys))
+    Boolean(readInitialCached<T>(cacheKey, legacyCacheKeys))
   );
   const [, setClockTick] = React.useState(0);
   const hasPauseRule = Boolean(pauseWhen);
@@ -71,7 +70,7 @@ export function usePersistentResource<T>({
 
   React.useEffect(() => {
     let cancelled = false;
-    const memoryRecord = readMemoryCached<T>(cacheKey, legacyCacheKeys);
+    const memoryRecord = readInitialCached<T>(cacheKey, legacyCacheKeys);
     setCached(memoryRecord);
     setCacheReady(Boolean(memoryRecord));
     legacyCacheKeys.forEach((key) => {
@@ -80,6 +79,14 @@ export function usePersistentResource<T>({
         deleteStorageCached(key).catch(() => undefined);
       }
     });
+    // Private keys are already sync-hydrated from sessionStorage above.
+    // Public keys still need IndexedDB — hydrate without blocking the network.
+    if (isPrivateCacheKey(cacheKey) && memoryRecord) {
+      setCacheReady(true);
+      return () => {
+        cancelled = true;
+      };
+    }
     readStorageCached<T>(cacheKey)
       .then((record) => {
         if (record) writeMemoryCached(record);
@@ -100,12 +107,17 @@ export function usePersistentResource<T>({
   }, [hasPauseRule]);
 
   const activeCached = cached?.key === cacheKey ? cached : null;
-  const usableCached =
-    activeCached && (!acceptCacheWhen || acceptCacheWhen(activeCached)) ? activeCached : null;
-  const cachedValue = usableCached?.value ?? null;
   const rawCachedValue = activeCached?.value ?? null;
-  const isPaused = Boolean(cacheReady && cachedValue && pauseWhen?.(cachedValue));
-  const swrKey = enabled && cacheReady && !isPaused ? ([cacheKey, url] as const) : null;
+  const cacheAccepted =
+    activeCached != null && (!acceptCacheWhen || acceptCacheWhen(activeCached));
+  const usableCached = cacheAccepted ? activeCached : null;
+  const cachedValue = usableCached?.value ?? null;
+
+  // Pause polling only when we already have a snapshot and pauseWhen says so.
+  // Do not require acceptCacheWhen — that rule is for freshness badges, not blanking UI.
+  const isPaused = Boolean(rawCachedValue && pauseWhen?.(rawCachedValue));
+  // Start network immediately when enabled; do not wait for IndexedDB (avoids waterfall).
+  const swrKey = enabled && !isPaused ? ([cacheKey, url] as const) : null;
 
   const swr = useSWR<T>(
     swrKey,
@@ -149,20 +161,19 @@ export function usePersistentResource<T>({
     [cacheKey, swr, url]
   );
 
-  const cacheIsKnownStale =
-    activeCached !== null && acceptCacheWhen !== undefined && !acceptCacheWhen(activeCached);
-  // While disabled, keep cache available for instant paint the moment `enabled` flips.
-  const resolved =
-    swr.data ?? cachedValue ?? (cacheIsKnownStale ? null : rawCachedValue);
+  // Stale-while-revalidate: always paint the last device snapshot while network runs.
+  // `acceptCacheWhen` no longer hides cache — it only marks freshness for badges/pause UX.
+  const resolved = swr.data ?? rawCachedValue ?? cachedValue;
   const data = enabled ? resolved : null;
+  const showingDeviceCache = Boolean(enabled && data && !swr.data);
 
   return {
     data,
     error: swr.error as Error | undefined,
     isLoading: enabled && !data && (!cacheReady || swr.isLoading),
     isRefreshing: Boolean(enabled && data && swr.isValidating),
-    isFromDeviceCache: Boolean(enabled && !swr.data && rawCachedValue),
-    cachedAt: usableCached?.savedAt ?? null,
+    isFromDeviceCache: showingDeviceCache,
+    cachedAt: usableCached?.savedAt ?? activeCached?.savedAt ?? null,
     lastCachedAt: activeCached?.savedAt ?? null,
     mutate: swr.mutate,
     refreshNow,
@@ -474,6 +485,20 @@ function readMemoryCached<T>(
     if (legacy) return { ...legacy, key: cacheKey };
   }
   return null;
+}
+
+/** Sync hydrate: memory first, then private sessionStorage (instant portfolio/stock paint). */
+function readInitialCached<T>(
+  cacheKey: string,
+  legacyCacheKeys: string[]
+): CachedRecord<T> | null {
+  const memory = readMemoryCached<T>(cacheKey, legacyCacheKeys);
+  if (memory) return memory;
+  if (typeof window === "undefined") return null;
+  if (!isPrivateCacheKey(cacheKey)) return null;
+  const privateRecord = readPrivateCached<T>(cacheKey);
+  if (privateRecord) writeMemoryCached(privateRecord);
+  return privateRecord;
 }
 
 function writeMemoryCached<T>(record: CachedRecord<T>) {
