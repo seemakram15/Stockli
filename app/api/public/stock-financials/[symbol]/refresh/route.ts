@@ -54,8 +54,8 @@ export async function POST(
     scope: "stock-financials-refresh",
     windowSeconds: 5 * 60,
     buckets: [
-      { key: `ip:${rateLimitKeyPart(ip)}`, limit: 8 },
-      ...(userId ? [{ key: `user:${rateLimitKeyPart(userId)}`, limit: 4 }] : []),
+      { key: `ip:${rateLimitKeyPart(ip)}`, limit: 30 },
+      ...(userId ? [{ key: `user:${rateLimitKeyPart(userId)}`, limit: 20 }] : []),
     ],
   });
   if (!rateLimit.allowed) {
