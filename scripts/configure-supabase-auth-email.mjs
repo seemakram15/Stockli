@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 const isDryRun = process.argv.includes("--dry-run");
-const productionSiteUrl = "https://mystockli.qzz.io";
+const productionSiteUrl = "https://mystockli.com";
+const legacyProductionSiteUrl = "https://mystockli.qzz.io";
 const localSiteUrl = "http://localhost:3001";
 
 async function loadDotEnv(relativePath) {
@@ -88,6 +89,13 @@ async function main() {
     additional_redirect_urls: [
       `${productionSiteUrl}/auth/callback`,
       `${productionSiteUrl}/auth/callback?next=/reset-password`,
+      `https://www.mystockli.com/auth/callback`,
+      `https://www.mystockli.com/auth/callback?next=/reset-password`,
+      // Keep legacy hosts so older emails still complete while DNS cutover settles.
+      `${legacyProductionSiteUrl}/auth/callback`,
+      `${legacyProductionSiteUrl}/auth/callback?next=/reset-password`,
+      `https://www.mystockli.qzz.io/auth/callback`,
+      `https://www.mystockli.qzz.io/auth/callback?next=/reset-password`,
       `${localSiteUrl}/auth/callback`,
       `${localSiteUrl}/auth/callback?next=/reset-password`,
     ],

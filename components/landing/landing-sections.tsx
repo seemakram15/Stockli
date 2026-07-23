@@ -746,7 +746,7 @@ export function ScreenshotShowcase() {
                 <span className="size-2.5 rounded-full bg-amber-400/70" />
                 <span className="size-2.5 rounded-full bg-emerald-400/70" />
                 <span className="ml-3 flex-1 truncate rounded-md border border-border/60 bg-background/70 px-3 py-0.5 text-[11px] text-muted-foreground/80">
-                  mystockli.qzz.io
+                  mystockli.com
                 </span>
               </div>
 

@@ -14,7 +14,7 @@ async function fetchBrentHistory(): Promise<HistoryPoint[]> {
   const res = await fetch(url, {
     headers: {
       accept: "application/json",
-      "User-Agent": "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.qzz.io)",
+      "User-Agent": "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.com)",
     },
     cache: "no-store",
     signal: AbortSignal.timeout(8_000),

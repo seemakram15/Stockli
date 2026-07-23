@@ -1622,7 +1622,7 @@ async function fundamentalsFetch<T>(path: string, init: FetchInit = {}): Promise
   const headers = new Headers(initHeaders);
   headers.set("accept", headers.get("accept") ?? "application/json");
   headers.set("content-type", headers.get("content-type") ?? "application/json");
-  headers.set("user-agent", headers.get("user-agent") ?? "Stockli/1.0 (+https://mystockli.qzz.io)");
+  headers.set("user-agent", headers.get("user-agent") ?? "Stockli/1.0 (+https://mystockli.com)");
 
   try {
     const response = await fetch(`${FUNDAMENTALS_BASE}${path}`, {

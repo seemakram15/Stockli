@@ -104,7 +104,7 @@ export default function OGImage() {
                 display: "flex",
               }}
             >
-              mystockli.qzz.io
+              mystockli.com
             </div>
           </div>
 

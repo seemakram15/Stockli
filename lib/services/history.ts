@@ -23,7 +23,7 @@ const YAHOO_INDEX_HISTORY: Record<string, string> = {
 };
 
 const YAHOO_UA =
-  "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.qzz.io)";
+  "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.com)";
 
 /** Floor unix seconds to UTC midnight so daily bars stay unique for charts. */
 function toUtcDay(ts: number): number {

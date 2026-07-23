@@ -18,7 +18,7 @@ function looksReal(value: string | undefined): boolean {
 }
 
 const defaultStockFundamentalsApiBaseUrl = `https://api.${"ask" + "analyst"}.com.pk/api`;
-const productionSiteUrl = "https://mystockli.qzz.io";
+const productionSiteUrl = "https://mystockli.com";
 
 function normalizedSiteUrl() {
   if (process.env.NODE_ENV !== "production") return "http://localhost:3001";

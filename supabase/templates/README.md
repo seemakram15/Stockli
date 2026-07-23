@@ -14,17 +14,22 @@ These templates cover the current Stockli auth flows:
 
 ## Supabase auth URL settings
 
-- Production site URL: `https://mystockli.qzz.io`
+- Production site URL: `https://mystockli.com`
 - Local development URL: `http://localhost:3001`
 - Additional Redirect URLs:
-  - `https://mystockli.qzz.io/auth/callback`
-  - `https://mystockli.qzz.io/auth/callback?next=/reset-password`
+  - `https://mystockli.com/auth/callback`
+  - `https://mystockli.com/auth/callback?next=/reset-password`
+  - `https://www.mystockli.com/auth/callback`
+  - `https://www.mystockli.com/auth/callback?next=/reset-password`
+  - `https://mystockli.qzz.io/auth/callback` (legacy, temporary)
+  - `https://mystockli.qzz.io/auth/callback?next=/reset-password` (legacy, temporary)
   - `http://localhost:3001/auth/callback`
   - `http://localhost:3001/auth/callback?next=/reset-password`
 
 The app sends `emailRedirectTo` and recovery redirects from `lib/config.ts`, so
-production returns to `mystockli.qzz.io` and local development returns to port `3001`.
+production returns to `mystockli.com` and local development returns to port `3001`.
 The production `.vercel.app` hostname is intentionally not used for auth emails anymore.
+Old `mystockli.qzz.io`, `www.mystockli.qzz.io`, and `www.mystockli.com` hosts permanently redirect to `https://mystockli.com`.
 
 Logo note:
 
@@ -67,7 +72,7 @@ The repo includes:
 
 The apply script also pushes the hosted Supabase auth URL settings so:
 
-- production auth emails return to `https://mystockli.qzz.io`
+- production auth emails return to `https://mystockli.com`
 - local development auth emails can still return to `http://localhost:3001`
 
 Required env vars:

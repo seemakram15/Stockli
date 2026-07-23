@@ -12,7 +12,7 @@ export interface HistoryPoint {
 const YAHOO_BASE = "https://query2.finance.yahoo.com/v8/finance/chart";
 const HEADERS = {
   accept: "application/json",
-  "User-Agent": "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.qzz.io)",
+  "User-Agent": "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.com)",
 };
 
 /** Yahoo tickers that don't follow SYMBOL-USD. */

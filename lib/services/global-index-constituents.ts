@@ -146,7 +146,7 @@ async function fetchHtml(url: string) {
   const res = await fetch(url, {
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.qzz.io)",
+        "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.com)",
     },
     next: { revalidate: 60 * 60 * 12 },
   });

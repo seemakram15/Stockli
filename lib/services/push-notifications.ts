@@ -48,12 +48,25 @@ function configureWebPush() {
   }
 }
 
+async function hasGrantedPushConsent(admin: SupabaseClient, userId: string) {
+  const { data } = await admin
+    .from("profiles")
+    .select("notification_consent_status")
+    .eq("id", userId)
+    .maybeSingle();
+  return data?.notification_consent_status === "granted";
+}
+
 export async function sendPushToUser(
   admin: SupabaseClient,
   userId: string,
   payload: PushPayload
 ) {
   if (!configureWebPush()) return { sent: 0, skipped: "missing-vapid-config" };
+
+  if (!(await hasGrantedPushConsent(admin, userId))) {
+    return { sent: 0, skipped: "consent-not-granted" };
+  }
 
   const { data: rows } = await admin
     .from("push_subscriptions")
@@ -66,11 +79,19 @@ export async function sendPushToUser(
 export async function sendPushToAll(admin: SupabaseClient, payload: PushPayload) {
   if (!configureWebPush()) return { sent: 0, skipped: "missing-vapid-config" };
 
-  const { data: rows } = await admin
-    .from("push_subscriptions")
-    .select("id,user_id,endpoint,p256dh,auth");
+  const [{ data: grantedProfiles }, { data: rows }] = await Promise.all([
+    admin.from("profiles").select("id").eq("notification_consent_status", "granted"),
+    admin.from("push_subscriptions").select("id,user_id,endpoint,p256dh,auth"),
+  ]);
 
-  return sendPushRows(admin, (rows as PushSubscriptionRow[] | null) ?? [], payload);
+  const grantedIds = new Set(
+    ((grantedProfiles as { id: string }[] | null) ?? []).map((profile) => profile.id)
+  );
+  const eligible = ((rows as PushSubscriptionRow[] | null) ?? []).filter((row) =>
+    grantedIds.has(row.user_id)
+  );
+
+  return sendPushRows(admin, eligible, payload);
 }
 
 async function sendPushRows(
@@ -78,6 +99,8 @@ async function sendPushRows(
   rows: PushSubscriptionRow[],
   payload: PushPayload
 ) {
+  if (rows.length === 0) return { sent: 0 };
+
   let sent = 0;
   await Promise.all(
     rows.map(async (row) => {

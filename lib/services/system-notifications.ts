@@ -34,6 +34,8 @@ interface WarmupNotificationOptions {
   quotes: Map<string, Quote>;
   triggerUserId?: string | null;
   psxRefreshError?: string | null;
+  /** Spread push delivery across a few seconds. Disable on the live refresh cron to stay under the 60s limit. */
+  staggerDelivery?: boolean;
 }
 
 /** Minimum absolute day move (%) for a watched stock to notify its watcher. */
@@ -52,15 +54,23 @@ export async function createNotification(admin: SupabaseClient, input: CreateNot
     }
   }
 
-  const { error } = await admin.from("notifications").insert({
-    user_id: input.userId ?? null,
-    type: input.type,
-    title: input.title,
-    body: input.body ?? null,
-    symbol: input.symbol ?? null,
-    href: input.href ?? null,
-  });
-  if (error) throw error;
+  try {
+    const { error } = await admin.from("notifications").insert({
+      user_id: input.userId ?? null,
+      type: input.type,
+      title: input.title,
+      body: input.body ?? null,
+      symbol: input.symbol ?? null,
+      href: input.href ?? null,
+    });
+    if (error) throw error;
+  } catch (error) {
+    // Free the dedupe key so the next cron tick can retry instead of silently burning it.
+    if (input.eventKey) {
+      await admin.from("notification_events").delete().eq("key", input.eventKey);
+    }
+    throw error;
+  }
 
   const payload = {
     title: input.title,
@@ -71,10 +81,16 @@ export async function createNotification(admin: SupabaseClient, input: CreateNot
     symbol: input.symbol,
   };
 
-  if (input.userId) {
-    await sendPushToUser(admin, input.userId, payload);
-  } else {
-    await sendPushToAll(admin, payload);
+  try {
+    if (input.userId) {
+      await sendPushToUser(admin, input.userId, payload);
+    } else {
+      await sendPushToAll(admin, payload);
+    }
+  } catch (error) {
+    // In-app notification already exists; log and continue so one bad push endpoint
+    // never blocks the rest of the notification pipeline.
+    console.warn("[notifications] push delivery failed:", error);
   }
 
   return { created: true };
@@ -87,7 +103,7 @@ export async function createNotification(admin: SupabaseClient, input: CreateNot
  * - Market status changes: 07:00–23:00, fires only when the status changes.
  * - Breaking Pakistan news: 07:00–23:00, at most 2 fresh articles per run.
  * - KSE-100 / watchlist / portfolio: PSX trading hours only.
- * - Global macro (oil, gold, US stocks): 17:00–23:00, after PSX closes.
+ * - Global macro (oil, gold, US stocks): whenever the runner executes; deduped per 4-hour bucket.
  *
  * Every job deduplicates through notification_events, so login-triggered
  * warmups never re-send what a cron tick already delivered.
@@ -98,11 +114,15 @@ export async function runSystemNotificationJobs({
   quotes,
   triggerUserId,
   psxRefreshError,
+  staggerDelivery = true,
 }: WarmupNotificationOptions) {
   const results: Record<string, unknown> = {};
   const { hour } = pktParts(now);
   const quietHours = hour < 7 || hour >= 23;
   const minsAfterOpen = minutesSinceSessionOpen(now);
+  const pause = async () => {
+    if (staggerDelivery) await sleep(2_500);
+  };
 
   // Feed errors fire immediately regardless of time.
   if (psxRefreshError) {
@@ -110,49 +130,46 @@ export async function runSystemNotificationJobs({
     catch (e) { results.marketFeed = String(e); }
   }
 
-  // Each group is separated by a short pause so push notifications reach the
-  // device one at a time instead of arriving in a simultaneous burst.
-
   // Group 1 — market status (fires on status change, so real-time within 15 min).
   if (!quietHours) {
     try { results.marketSituation = await createMarketSituationNotification(admin, now); }
     catch (e) { results.marketSituation = String(e); }
-    await sleep(5_000);
+    await pause();
   }
 
   // Group 2 — KSE-100 opening snapshot (2–17 min after session open).
-  if (!quietHours && minsAfterOpen >= 2 && minsAfterOpen < 17) {
+  if (!quietHours && minsAfterOpen != null && minsAfterOpen >= 2 && minsAfterOpen < 17) {
     try { results.marketOpenKse100 = await createMarketOpenKse100Notification(admin, now); }
     catch (e) { results.marketOpenKse100 = String(e); }
-    await sleep(5_000);
+    await pause();
   }
 
   // Group 3 — breaking news (once per 2-hour bucket).
   if (!quietHours) {
     try { results.news = await createBreakingNewsNotifications(admin, now); }
     catch (e) { results.news = String(e); }
-    await sleep(5_000);
+    await pause();
   }
 
   // Group 4 — KSE-100 intraday move + watchlist (30+ min after open).
-  if (minsAfterOpen >= 30) {
+  if (minsAfterOpen != null && minsAfterOpen >= 30) {
     try { results.kse100 = await createKse100ChangeNotification(admin, now); }
     catch (e) { results.kse100 = String(e); }
-    await sleep(5_000);
+    await pause();
 
     try { results.watchlistMoves = await createWatchlistMoveNotifications(admin, now, quotes, triggerUserId); }
     catch (e) { results.watchlistMoves = String(e); }
-    await sleep(5_000);
+    await pause();
   }
 
   // Group 5 — portfolio pulse (2 hours after open, then every 2 hours).
-  if (minsAfterOpen >= 120) {
+  if (minsAfterOpen != null && minsAfterOpen >= 120) {
     try { results.portfolioPulse = await createPortfolioPulseNotifications(admin, now, quotes, triggerUserId); }
     catch (e) { results.portfolioPulse = String(e); }
-    await sleep(5_000);
+    await pause();
   }
 
-  // Group 6 — oil, gold, US markets (24/7, once per 4-hour bucket).
+  // Group 6 — oil, gold, US markets (whenever the runner executes; deduped per 4-hour bucket).
   try { results.globalMacro = await createGlobalMacroNotifications(admin, now); }
   catch (e) { results.globalMacro = String(e); }
 
@@ -233,16 +250,16 @@ async function createBreakingNewsNotifications(admin: SupabaseClient, now: Date)
   return { created, considered: candidates.length };
 }
 
-function minutesSinceSessionOpen(now: Date): number {
+function minutesSinceSessionOpen(now: Date): number | null {
   const { weekday, hour, minute } = pktParts(now);
   const total = hour * 60 + minute;
   if (weekday === 5) {
     if (total >= 14 * 60 + 32) return total - (14 * 60 + 32);
     if (total >= 9 * 60 + 17) return total - (9 * 60 + 17);
-    return Infinity;
+    return null;
   }
   if (total >= 9 * 60 + 32) return total - (9 * 60 + 32);
-  return Infinity;
+  return null;
 }
 
 async function createMarketSituationNotification(admin: SupabaseClient, now: Date) {

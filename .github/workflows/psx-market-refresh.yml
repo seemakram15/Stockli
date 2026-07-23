@@ -45,23 +45,65 @@ jobs:
           echo "notify_run=$notify_run" >> "$GITHUB_OUTPUT"
           echo "PKT now: $(date '+%Y-%m-%d %H:%M:%S %Z')"
 
+      - name: Ensure cron secret is configured
+        if: steps.window.outputs.should_run == 'true' || steps.window.outputs.notify_run == 'true'
+        env:
+          CRON_SECRET: ${{ secrets.STOCKLI_CRON_SECRET }}
+        run: |
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "::error::STOCKLI_CRON_SECRET is empty."
+            echo "Add it under Repo Settings → Secrets and variables → Actions → Repository secrets"
+            echo "(not an Environment secret unless this job also sets environment:)."
+            echo "Value must exactly match Vercel Production CRON_SECRET."
+            exit 1
+          fi
+          echo "STOCKLI_CRON_SECRET is present (${#CRON_SECRET} chars)."
+
       - name: Trigger Stockli backend refresh
         if: steps.window.outputs.should_run == 'true'
         env:
           CRON_SECRET: ${{ secrets.STOCKLI_CRON_SECRET }}
         run: |
-          curl --fail --show-error --silent \
+          set +e
+          http_code="$(curl --silent --show-error --output /tmp/stockli-cron-body.json \
+            --write-out '%{http_code}' \
+            --max-time 90 \
             -H "Authorization: Bearer ${CRON_SECRET}" \
-            "https://mystockli.qzz.io/api/cron/refresh"
+            "https://mystockli.com/api/cron/refresh")"
+          status=$?
+          set -e
+          echo "HTTP ${http_code} (curl exit ${status})"
+          if [ -f /tmp/stockli-cron-body.json ]; then
+            head -c 4000 /tmp/stockli-cron-body.json || true
+            echo
+          fi
+          if [ "$status" -ne 0 ] || [ "$http_code" != "200" ]; then
+            echo "::error::cron/refresh failed (HTTP ${http_code}, curl ${status})"
+            exit 1
+          fi
 
       - name: Trigger notification sweep
         if: steps.window.outputs.notify_run == 'true'
         env:
           CRON_SECRET: ${{ secrets.STOCKLI_CRON_SECRET }}
         run: |
-          curl --fail --show-error --silent \
+          set +e
+          http_code="$(curl --silent --show-error --output /tmp/stockli-notify-body.json \
+            --write-out '%{http_code}' \
+            --max-time 90 \
             -H "Authorization: Bearer ${CRON_SECRET}" \
-            "https://mystockli.qzz.io/api/cron/notifications"
+            "https://mystockli.com/api/cron/notifications")"
+          status=$?
+          set -e
+          echo "HTTP ${http_code} (curl exit ${status})"
+          if [ -f /tmp/stockli-notify-body.json ]; then
+            head -c 4000 /tmp/stockli-notify-body.json || true
+            echo
+          fi
+          if [ "$status" -ne 0 ] || [ "$http_code" != "200" ]; then
+            echo "::error::cron/notifications failed (HTTP ${http_code}, curl ${status})"
+            exit 1
+          fi
 
       - name: Skip note
         if: steps.window.outputs.should_run != 'true' && steps.window.outputs.notify_run != 'true'

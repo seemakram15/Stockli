@@ -1,4 +1,4 @@
-const CACHE_NAME = "stockli-static-v4";
+const CACHE_NAME = "stockli-static-v5";
 const DATA_CACHE_NAME = "stockli-public-data-v1";
 
 const STATIC_ASSETS = [

@@ -408,7 +408,7 @@ async function fetchQuoteChange(symbol: string): Promise<{ price: number; change
       {
         headers: {
           accept: "application/json",
-          "User-Agent": "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.qzz.io)",
+          "User-Agent": "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.com)",
         },
         next: { revalidate: 300 },
         signal: AbortSignal.timeout(6_000),

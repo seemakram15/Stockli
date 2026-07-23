@@ -84,6 +84,11 @@ export async function POST(request: Request) {
     if (error) return NextResponse.json({ error: "Could not save notification preferences." }, { status: 400 });
   }
 
+  // Revoking browser permission should stop future push fan-out from this account.
+  if (notificationStatus === "denied") {
+    await supabase.from("push_subscriptions").delete().eq("user_id", user.id);
+  }
+
   return NextResponse.json(
     { ok: true },
     {

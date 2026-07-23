@@ -218,26 +218,37 @@ export async function runBackendWarmup({
           (alert.condition === "BELOW" && quote.price <= alert.target_price);
         if (!hit) continue;
 
+        const priceDelta = quote.price - Number(alert.target_price);
+        let notified = false;
+        try {
+          const notifyResult = await createNotification(admin, {
+            userId: alert.user_id,
+            type: "ALERT",
+            title: `Price alert: ${alert.symbol} crossed ${alert.condition === "ABOVE" ? "above" : "below"} Rs ${money(alert.target_price)}`,
+            body: `${alert.symbol} is now Rs ${money(quote.price)} — Rs ${money(Math.abs(priceDelta))} ${priceDelta >= 0 ? "above" : "below"} your alert price.`,
+            symbol: alert.symbol,
+            href: `/stock/${alert.symbol}`,
+            eventKey: `price-alert:${alert.id}:${Math.round(Number(quote.price) * 100)}`,
+            eventPayload: {
+              alertId: alert.id,
+              symbol: alert.symbol,
+              price: quote.price,
+              targetPrice: alert.target_price,
+            },
+          });
+          // Deactivate once delivered, or if this exact price tick was already notified.
+          notified = Boolean(notifyResult.created || notifyResult.reason === "duplicate-event");
+        } catch (err) {
+          result.alertError = String(err);
+          continue;
+        }
+
+        if (!notified) continue;
+
         await admin
           .from("alerts")
           .update({ last_triggered_at: new Date().toISOString(), is_active: false })
           .eq("id", alert.id);
-        const priceDelta = quote.price - Number(alert.target_price);
-        await createNotification(admin, {
-          userId: alert.user_id,
-          type: "ALERT",
-          title: `Price alert: ${alert.symbol} crossed ${alert.condition === "ABOVE" ? "above" : "below"} Rs ${money(alert.target_price)}`,
-          body: `${alert.symbol} is now Rs ${money(quote.price)} — Rs ${money(Math.abs(priceDelta))} ${priceDelta >= 0 ? "above" : "below"} your alert price.`,
-          symbol: alert.symbol,
-          href: `/stock/${alert.symbol}`,
-          eventKey: `price-alert:${alert.id}:${Math.round(Number(quote.price) * 100)}`,
-          eventPayload: {
-            alertId: alert.id,
-            symbol: alert.symbol,
-            price: quote.price,
-            targetPrice: alert.target_price,
-          },
-        });
         triggered.push(alert.symbol as string);
       }
       result.alertsTriggered = triggered;
@@ -253,6 +264,8 @@ export async function runBackendWarmup({
       quotes,
       triggerUserId: userId,
       psxRefreshError,
+      // Live refresh must finish inside Vercel's 60s window; stagger on the dedicated notify cron instead.
+      staggerDelivery: trigger !== "cron",
     });
   } catch (err) {
     result.notificationError = String(err);

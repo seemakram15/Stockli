@@ -61,6 +61,17 @@ export async function POST(request: Request) {
   );
 
   if (error) return NextResponse.json({ error: "Could not save push subscription." }, { status: 400 });
+
+  // Subscribing in the browser is an explicit grant — keep profile consent in sync
+  // so push delivery (which requires granted) works for older accounts too.
+  await supabase
+    .from("profiles")
+    .update({
+      notification_consent_status: "granted",
+      notification_consent_at: new Date().toISOString(),
+    })
+    .eq("id", user.id);
+
   return NextResponse.json(
     { ok: true },
     {
@@ -90,6 +101,19 @@ export async function DELETE(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await safeJson(request);
+  if (body.all === true) {
+    const { error } = await supabase.from("push_subscriptions").delete().eq("user_id", user.id);
+    if (error) return NextResponse.json({ error: "Could not remove push subscriptions." }, { status: 400 });
+    return NextResponse.json(
+      { ok: true },
+      {
+        headers: {
+          "Cache-Control": "private, no-store, max-age=0",
+        },
+      }
+    );
+  }
+
   if (!body.endpoint) {
     return NextResponse.json({ error: "Missing subscription endpoint." }, { status: 400 });
   }
@@ -100,7 +124,7 @@ export async function DELETE(request: Request) {
     .eq("user_id", user.id)
     .eq("endpoint", body.endpoint);
 
-  if (error) return NextResponse.json({ error: "Could not save push subscription." }, { status: 400 });
+  if (error) return NextResponse.json({ error: "Could not remove push subscription." }, { status: 400 });
   return NextResponse.json(
     { ok: true },
     {
@@ -111,9 +135,9 @@ export async function DELETE(request: Request) {
   );
 }
 
-async function safeJson(request: Request): Promise<SubscriptionBody> {
+async function safeJson(request: Request): Promise<SubscriptionBody & { all?: boolean }> {
   try {
-    return (await request.json()) as SubscriptionBody;
+    return (await request.json()) as SubscriptionBody & { all?: boolean };
   } catch {
     return {};
   }

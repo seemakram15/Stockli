@@ -22,7 +22,7 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const forceCanonicalHost = process.env.VERCEL_ENV === "production";
-  if (forceCanonicalHost) {
+  if (forceCanonicalHost && !pathname.startsWith("/api/cron")) {
     const requestHost =
       request.headers.get("x-forwarded-host")?.toLowerCase() ??
       request.headers.get("host")?.toLowerCase();

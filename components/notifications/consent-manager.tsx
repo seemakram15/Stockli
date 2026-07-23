@@ -103,6 +103,14 @@ export function ConsentManager({
       }).catch(() => undefined);
     } else if (supported && permission === "denied" && initialNotificationStatus !== "denied") {
       void postConsent({ notificationStatus: "denied" });
+      void fetch("/api/notifications/push-subscription", {
+        method: "DELETE",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify({ all: true }),
+      }).catch(() => undefined);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncPushSubscription, userId]);
@@ -133,11 +141,10 @@ export function ConsentManager({
       }
 
       const permission = await Notification.requestPermission();
-      await postConsent({
-        notificationStatus: permission === "granted" ? "granted" : permission === "denied" ? "denied" : "unknown",
-      });
-
       if (permission !== "granted") {
+        await postConsent({
+          notificationStatus: permission === "denied" ? "denied" : "unknown",
+        });
         toast.info("Cookies are saved. You can enable notifications later from this browser or app settings.");
         setVisible(false);
         return;
@@ -145,6 +152,7 @@ export function ConsentManager({
 
       await syncPushSubscription({
         vapidPublicKey,
+        syncConsent: true,
         showSuccessToast: true,
       });
       setVisible(false);
@@ -217,6 +225,11 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 async function ensureServiceWorkerRegistration() {
+  // Keep aligned with ServiceWorkerRegister: push SW is production-only.
+  if (process.env.NODE_ENV !== "production") {
+    throw new Error("Push notifications are only available on the live site.");
+  }
+
   const existing = await navigator.serviceWorker.getRegistration();
   if (!existing) {
     await navigator.serviceWorker.register("/sw.js");
