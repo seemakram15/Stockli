@@ -26,6 +26,9 @@ import { getMarketRows } from "@/lib/services/prices";
 import { getAppSettings } from "@/lib/services/app-settings";
 import { PAGE_REGISTRY } from "@/lib/access/page-registry";
 import {
+  buildPageMetadata,
+  faqPageJsonLd,
+  LANDING_FAQS,
   organizationJsonLd,
   softwareApplicationJsonLd,
   websiteJsonLd,
@@ -103,23 +106,13 @@ function LeaderboardFallback() {
   );
 }
 
-export const metadata: Metadata = {
-  title: `${APP_NAME} — All-market portfolio workspace`,
+export const metadata: Metadata = buildPageMetadata({
+  title: "All-market portfolio workspace",
   description:
     "Track PSX, US, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
-  alternates: { canonical: "/" },
-  openGraph: {
-    title: `${APP_NAME} — All-market portfolio workspace`,
-    description:
-      "Track PSX, US, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
-    url: "/",
-  },
-  twitter: {
-    title: `${APP_NAME} — All-market portfolio workspace`,
-    description:
-      "Track PSX, US, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
-  },
-};
+  path: "/",
+});
+
 
 const SERVICE_GROUPS = [
   {
@@ -210,6 +203,7 @@ export default async function Home() {
       organizationJsonLd(),
       websiteJsonLd(siteDescription),
       softwareApplicationJsonLd(siteDescription),
+      faqPageJsonLd([...LANDING_FAQS]),
     ],
   };
 

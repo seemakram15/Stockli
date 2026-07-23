@@ -15,6 +15,7 @@ import { IconChip } from "@/components/ui/accent";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCompact, formatPercent, plColorClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { buildPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +29,15 @@ export async function generateMetadata({
   const { sector } = await params;
   const { index } = await searchParams;
   const selectedIndex = normalizeMarketSectorIndex(index);
+  const sectorName = decodeParam(sector);
   const label = selectedIndex ? ` · ${getMarketSectorIndexLabel(selectedIndex)}` : "";
-  return { title: `${decodeParam(sector)} sector${label}` };
+  const title = `${sectorName} sector${label}`;
+  return buildPageMetadata({
+    title,
+    description: `Live ${sectorName} sector performance, leaders and laggards on the Pakistan Stock Exchange.`,
+    path: `/market/sectors/${encodeURIComponent(sector)}`,
+    keywords: [sectorName, `${sectorName} PSX sector`, "Pakistan sector performance"],
+  });
 }
 
 export default async function MarketSectorPage({

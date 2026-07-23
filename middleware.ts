@@ -46,15 +46,18 @@ function blockedPageResponse(status: 429 | 403, retryAfter?: number) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const ua = request.headers.get("user-agent") ?? "";
+  const isGooglebot = /googlebot|google-inspectiontool|adsbot-google|mediapartners-google/i.test(
+    ua
+  );
 
   // Always let search engines fetch crawl policy + sitemap (GSC validators
   // often use non-browser UAs that would otherwise hit the scraper block).
-  if (pathname === "/robots.txt" || pathname === "/sitemap.xml" || pathname === "/sitemap") {
+  if (pathname === "/robots.txt" || pathname === "/sitemap.xml" || pathname === "/sitemap" || pathname === "/llms.txt") {
     return NextResponse.next();
   }
 
   // ── Block known scraper UAs on every route — pages and APIs alike ─────────
-  if (isKnownScraper(ua)) {
+  if (isKnownScraper(ua) && !isGooglebot) {
     const isPage = !pathname.startsWith("/api/");
     return isPage
       ? blockedPageResponse(403)
@@ -63,11 +66,12 @@ export async function middleware(request: NextRequest) {
 
   // ── Public data API routes (origin-gated + rate limited) ──────────────────
   if (PUBLIC_DATA_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-    if (!isAllowedPublicApiRequest(request)) {
+    // Googlebot rendering may fetch public JSON without browser Sec-Fetch headers.
+    if (!isGooglebot && !isAllowedPublicApiRequest(request)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const rule = RATE_LIMITS.find((r) => pathname.startsWith(r.prefix));
-    if (rule) {
+    if (rule && !isGooglebot) {
       const result = await edgeRateLimit(request, rule.scope, rule.limit, rule.window);
       if (!result.allowed) return tooManyRequests(result.retryAfter);
     }
@@ -82,8 +86,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Page routes — rate limited to stop bulk HTML scraping ─────────────────
-  const pageRateLimit = await edgeRateLimit(request, "pages", 60, 60);
-  if (!pageRateLimit.allowed) return blockedPageResponse(429, pageRateLimit.retryAfter);
+  if (!isGooglebot) {
+    const pageRateLimit = await edgeRateLimit(request, "pages", 60, 60);
+    if (!pageRateLimit.allowed) return blockedPageResponse(429, pageRateLimit.retryAfter);
+  }
 
   return updateSession(request);
 }

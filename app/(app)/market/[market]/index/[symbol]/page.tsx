@@ -9,6 +9,7 @@ import { type MarketUniverse } from "@/lib/services/global-markets";
 import { GlobalIndexConstituentsTable } from "@/components/market/global-index-constituents-table";
 import { PageHeader } from "@/components/page-header";
 import { SmartBackLink } from "@/components/smart-back-link";
+import { buildPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +21,22 @@ export async function generateMetadata({
   params: Promise<{ market: string; symbol: string }>;
 }): Promise<Metadata> {
   const { market, symbol } = await params;
-  if (!isSupported(market)) return { title: "Index constituents" };
-  return { title: getGlobalIndexTitle(decodeURIComponent(symbol)) };
+  const decoded = decodeURIComponent(symbol);
+  if (!isSupported(market)) {
+    return buildPageMetadata({
+      title: "Index constituents",
+      description: "Global index constituents and component weights on Stockli.",
+      path: `/market/${market}/index/${encodeURIComponent(decoded)}`,
+      index: false,
+    });
+  }
+  const title = getGlobalIndexTitle(decoded);
+  return buildPageMetadata({
+    title,
+    description: `${title} constituents, weights and component performance tracked on Stockli.`,
+    path: `/market/${market}/index/${encodeURIComponent(decoded)}`,
+    keywords: [title, decoded, `${market} index constituents`],
+  });
 }
 
 export default async function GlobalIndexConstituentsPage({
