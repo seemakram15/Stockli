@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { requireSuperadmin } from "@/lib/auth/roles";
+import { PRIVATE_ROBOTS } from "@/lib/seo";
+
+export const metadata: Metadata = {
+  robots: PRIVATE_ROBOTS,
+};
 
 /**
  * Gate for the entire admin area. Non-superadmins get a 404 (route existence

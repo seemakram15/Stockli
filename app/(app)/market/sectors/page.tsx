@@ -13,9 +13,16 @@ import {
   MARKET_SECTOR_INDEXES,
   normalizeMarketSectorIndex,
 } from "@/lib/psx/market-indexes";
+import { buildPageMetadata } from "@/lib/seo";
 import { getSectorPerformance } from "@/lib/services/market";
 
-export const metadata: Metadata = { title: "Sector Performance" };
+export const metadata: Metadata = buildPageMetadata({
+  title: "PSX sector performance",
+  description:
+    "Pakistan Stock Exchange sector performance, index movers and sector heat across PSX industries on Stockli.",
+  path: "/market/sectors",
+  keywords: ["PSX sectors", "sector performance Pakistan", "KSE sector", "Stockli sectors"],
+});
 export const dynamic = "force-dynamic";
 
 async function SectorData({ selectedIndex }: { selectedIndex: string }) {

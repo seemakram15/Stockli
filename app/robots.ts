@@ -1,24 +1,42 @@
 import type { MetadataRoute } from "next";
 import { config } from "@/lib/config";
 
+/**
+ * Crawl policy for Stockli.
+ *
+ * Public market/tool pages are indexable (guest browsing must stay enabled in
+ * production so crawlers can render them). Personal and admin areas stay blocked.
+ */
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        allow: [
+          "/",
+          "/market",
+          "/stock",
+          "/analysis",
+          "/explore",
+          "/news",
+          "/youtubers",
+          "/icons/",
+          "/landing/",
+        ],
         disallow: [
           "/dashboard",
           "/portfolios",
-          "/market",
-          "/analysis",
-          "/explore",
           "/watchlist",
           "/alerts",
-          "/youtubers",
+          "/account",
           "/admin",
-          "/api",
-          "/auth",
+          "/api/",
+          "/login",
+          "/signup",
+          "/forgot-password",
+          "/reset-password",
+          "/auth/",
+          "/search",
         ],
       },
     ],

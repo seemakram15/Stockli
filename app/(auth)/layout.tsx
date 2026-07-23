@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import {
   ArrowLeft,
   BellRing,
@@ -11,6 +12,11 @@ import {
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { APP_NAME } from "@/lib/constants";
+import { PRIVATE_ROBOTS } from "@/lib/seo";
+
+export const metadata: Metadata = {
+  robots: PRIVATE_ROBOTS,
+};
 
 const PERKS = [
   { icon: Globe2, tint: "text-sky-300", ring: "ring-sky-300/30 bg-sky-300/10", title: "Every market in one place", desc: "PSX, US, funds, ETFs, oil, commodities & crypto." },

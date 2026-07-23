@@ -1,0 +1,13 @@
+---
+description: Apply Stockli SEO rules whenever changing public pages, metadata, robots, or sitemap
+alwaysApply: false
+---
+
+# Stockli SEO
+
+When editing public-facing routes or SEO files, follow `.cursor/skills/seo-agent/SKILL.md`.
+
+- Use `lib/seo.ts` helpers (`buildPageMetadata`, JSON-LD builders).
+- Keep private areas noindex; never blanket-noindex `app/(app)`.
+- Keep guest browsing required for crawlable market pages in production.
+- Canonical site: `https://mystockli.com`.

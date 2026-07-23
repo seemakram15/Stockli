@@ -5,6 +5,10 @@ Portfolio, Watchlist, Alerts) show sample data instead of a login wall; public
 pages (Market, Tools, Explore, stock detail) show real data to everyone. A
 superadmin panel at `/admin/customisation` controls it all.
 
+**SEO:** Keep guest browsing enabled in production. Googlebot is not a logged-in
+user; if guest browsing is off, market/stock URLs redirect to login and will not
+rank. See `.cursor/skills/seo-agent/SKILL.md`.
+
 ## Three modes, one boolean
 
 `isSampleMode()` (`lib/auth/roles.ts`) is `true` in exactly two cases:

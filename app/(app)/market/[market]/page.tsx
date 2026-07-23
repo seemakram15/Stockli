@@ -5,6 +5,7 @@ import {
   type MarketUniverse,
 } from "@/lib/services/global-markets";
 import { CachedGlobalMarketPage } from "@/components/public-data/cached-global-market-page";
+import { buildPageMetadata } from "@/lib/seo";
 
 const SUPPORTED = ["us", "india", "world", "commodities", "crypto", "oil"] as const;
 
@@ -15,7 +16,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { market } = await params;
   if (!isSupported(market)) return { title: "Market" };
-  return { title: getGlobalMarketMeta(market).title };
+  const meta = getGlobalMarketMeta(market);
+  return buildPageMetadata({
+    title: meta.title,
+    description: meta.description,
+    path: `/market/${market}`,
+  });
 }
 
 export default async function GlobalMarketPage({

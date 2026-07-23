@@ -22,6 +22,7 @@ Node is pinned to the version in `.nvmrc` (`22.23.1`). The cloud VM has a `/exec
 - Anti-scraper middleware (`middleware.ts`) returns `403 Forbidden` to requests with a non-browser user agent (e.g. plain `curl`). Health checks / smoke tests must send a browser `User-Agent` header, otherwise a healthy server looks broken.
 - `npm run lint` (root) also lints `mobile/` and currently reports pre-existing errors/warnings there (mostly `no-explicit-any`, `no-require-imports`). The web app's own code is lint-clean. Do not treat the pre-existing `mobile/` lint failures as regressions.
 - There is no automated test suite in either package (no jest/vitest/playwright). Verification is manual; see `docs/guest-browsing.md`.
+- SEO: public market/tool pages are indexable (`app/robots.ts`, `app/sitemap.ts`, `lib/seo.ts`). Private areas stay noindex. Production guest browsing must stay enabled so Google can crawl app-shell pages. Use `.cursor/skills/seo-agent/SKILL.md` for SEO work. Canonical host is `https://mystockli.com`.
 
 ### Mobile app (`mobile/`)
 

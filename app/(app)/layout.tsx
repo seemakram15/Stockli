@@ -20,15 +20,6 @@ import {
   RouteTransitionProvider,
   RouteTransitionViewport,
 } from "@/components/navigation/route-transition-provider";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
-
 export default async function AppLayout({
   children,
 }: {

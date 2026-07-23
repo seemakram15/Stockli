@@ -20,11 +20,16 @@ import { LOGO_SYMBOLS } from "@/components/landing/stock-logo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSessionContext } from "@/lib/auth/roles";
-import { config, isDemoMode } from "@/lib/config";
+import { isDemoMode } from "@/lib/config";
 import { APP_NAME } from "@/lib/constants";
 import { getMarketRows } from "@/lib/services/prices";
 import { getAppSettings } from "@/lib/services/app-settings";
 import { PAGE_REGISTRY } from "@/lib/access/page-registry";
+import {
+  organizationJsonLd,
+  softwareApplicationJsonLd,
+  websiteJsonLd,
+} from "@/lib/seo";
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -197,26 +202,14 @@ export default async function Home() {
   const primaryHref = isDemoMode ? "/dashboard" : "/signup";
   const primaryLabel = isDemoMode ? "Open demo" : "Start tracking free";
 
+  const siteDescription =
+    "Track PSX, US, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.";
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
-      {
-        "@type": "WebSite",
-        name: APP_NAME,
-        url: config.siteUrl,
-        description:
-          "Track PSX, US, mutual funds, ETFs, crypto, commodities and live portfolio P/L in one installable market workspace.",
-      },
-      {
-        "@type": "SoftwareApplication",
-        name: APP_NAME,
-        applicationCategory: "FinanceApplication",
-        operatingSystem: "Web, iOS, Android, Desktop",
-        url: config.siteUrl,
-        description:
-          "Installable multi-market portfolio and analysis workspace for PSX, US, funds, commodities, oil and crypto.",
-        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-      },
+      organizationJsonLd(),
+      websiteJsonLd(siteDescription),
+      softwareApplicationJsonLd(siteDescription),
     ],
   };
 

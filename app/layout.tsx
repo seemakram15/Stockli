@@ -5,6 +5,7 @@ import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 import { config } from "@/lib/config";
+import { PUBLIC_ROBOTS, SEO_KEYWORDS } from "@/lib/seo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,21 +31,11 @@ export const metadata: Metadata = {
     template: `%s · ${APP_NAME}`,
   },
   description:
-    "An installable all-market portfolio command center. Track live P/L, daily gain/loss calendars, watchlists, alerts, sectors, funds, crypto and global market performance.",
-  keywords: [
-    "Stockli",
-    "PSX portfolio tracker",
-    "Pakistan stock exchange",
-    "market dashboard",
-    "portfolio tracking",
-    "mutual funds Pakistan",
-    "crypto tracker",
-    "commodities tracker",
-    "stock fundamentals",
-  ],
-  robots: {
-    index: true,
-    follow: true,
+    "Track PSX share prices, KSE-100, mutual funds, ETFs, portfolio P/L, watchlists and stock fundamentals on Stockli — Pakistan's all-market investing workspace.",
+  keywords: [...SEO_KEYWORDS],
+  robots: PUBLIC_ROBOTS,
+  alternates: {
+    canonical: "/",
   },
   openGraph: {
     type: "website",
