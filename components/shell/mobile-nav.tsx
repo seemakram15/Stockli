@@ -57,9 +57,7 @@ export function MobileNav({
 
               event.preventDefault();
               beginNavigation(href);
-              React.startTransition(() => {
-                router.push(href);
-              });
+              router.push(href);
               requestAnimationFrame(() => setOpen(false));
             }}
             showAdmin={showAdmin}

@@ -1,8 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { flushSync } from "react-dom";
 import { usePathname } from "next/navigation";
-import type { PageLoadingVariant } from "@/components/loading/page-loading-state";
+import {
+  PageLoadingState,
+  type PageLoadingVariant,
+} from "@/components/loading/page-loading-state";
 
 type RouteTransitionContextValue = {
   beginNavigation: (href: string) => void;
@@ -22,18 +26,29 @@ export function RouteTransitionProvider({
   const beginNavigation = React.useCallback(
     (href: string) => {
       const nextPath = normalizeInternalPath(href);
-      if (!nextPath || matchesPath(pathname, nextPath)) return;
-      setPendingPath(nextPath);
+      if (!nextPath || isSameDestination(pathname, nextPath)) return;
+      // Force the destination skeleton into the DOM before router.push work,
+      // so the click feels instant instead of leaving the old page up for seconds.
+      flushSync(() => {
+        setPendingPath(nextPath);
+      });
     },
     [pathname]
   );
 
   React.useEffect(() => {
     if (!pendingPath) return;
-    if (matchesPath(pathname, pendingPath)) {
+    if (isSameDestination(pathname, pendingPath)) {
       setPendingPath(null);
     }
   }, [pathname, pendingPath]);
+
+  // Safety net — if navigation stalls, don't leave the skeleton forever.
+  React.useEffect(() => {
+    if (!pendingPath) return;
+    const id = window.setTimeout(() => setPendingPath(null), 8_000);
+    return () => window.clearTimeout(id);
+  }, [pendingPath]);
 
   React.useEffect(() => {
     const onClickCapture = (event: MouseEvent) => {
@@ -49,8 +64,10 @@ export function RouteTransitionProvider({
       if (anchor.hasAttribute("download")) return;
 
       const nextPath = normalizeInternalPath(anchor.href);
-      if (!nextPath || matchesPath(pathname, nextPath)) return;
-      setPendingPath(nextPath);
+      if (!nextPath || isSameDestination(pathname, nextPath)) return;
+      flushSync(() => {
+        setPendingPath(nextPath);
+      });
     };
 
     document.addEventListener("click", onClickCapture, true);
@@ -78,8 +95,9 @@ export function useRouteTransition() {
 }
 
 /**
- * Keep the current page mounted during navigation so device-cached destinations
- * can paint instantly. Only show a thin top progress bar — never blank the viewport.
+ * On menu / link click, swap to the destination skeleton immediately.
+ * The previous page must not linger for 2–3s — users need instant feedback.
+ * Once the route commits, children (page + viewport lazy data) take over.
  */
 export function RouteTransitionViewport({
   children,
@@ -87,22 +105,18 @@ export function RouteTransitionViewport({
   children: React.ReactNode;
 }) {
   const { pendingPath } = useRouteTransition();
+  const loadingState = pendingPath ? getLoadingStateForPath(pendingPath) : null;
 
-  return (
-    <>
-      {pendingPath ? (
-        <div
-          className="pointer-events-none fixed inset-x-0 top-0 z-[80] h-0.5 overflow-hidden bg-emerald-500/15"
-          role="progressbar"
-          aria-label="Loading page"
-          aria-busy="true"
-        >
-          <div className="h-full w-1/3 animate-pulse bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.65)]" />
-        </div>
-      ) : null}
-      {children}
-    </>
-  );
+  if (loadingState) {
+    return (
+      <PageLoadingState
+        message={loadingState.message}
+        variant={loadingState.variant}
+      />
+    );
+  }
+
+  return <>{children}</>;
 }
 
 function normalizeInternalPath(href: string) {
@@ -126,13 +140,11 @@ function stripQueryAndHash(href: string) {
   return path || "/";
 }
 
-function matchesPath(currentPath: string, targetPath: string) {
-  if (currentPath === targetPath) return true;
-  if (targetPath === "/") return currentPath === targetPath;
-  return currentPath.startsWith(`${targetPath}/`);
+/** True when the click target is already the active screen (exact path). */
+function isSameDestination(currentPath: string, targetPath: string) {
+  return currentPath === targetPath;
 }
 
-/** Kept for callers that still want path → loading copy mapping. */
 export function getLoadingStateForPath(pathname: string): {
   message: string;
   variant: PageLoadingVariant;

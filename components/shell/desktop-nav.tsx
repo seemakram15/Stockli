@@ -130,9 +130,7 @@ export function DesktopNav({
 
       event.preventDefault();
       beginNavigation(href);
-      React.startTransition(() => {
-        router.push(href);
-      });
+      router.push(href);
       requestAnimationFrame(() => afterNavigate?.());
     },
     [beginNavigation, pathname, router]

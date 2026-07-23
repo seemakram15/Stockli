@@ -142,7 +142,16 @@ It does **not** wipe:
 
 ## Navigation UX
 
-[`RouteTransitionViewport`](../components/navigation/route-transition-provider.tsx) keeps the previous page mounted and shows a thin top progress bar. It must **not** replace the tree with a full-page skeleton — that would hide device cache paint.
+[`RouteTransitionViewport`](../components/navigation/route-transition-provider.tsx) swaps to the **destination skeleton immediately** on click (`flushSync` + `PageLoadingState`). The previous page must not linger for seconds.
+
+After the route commits:
+
+1. Skeleton unmounts.
+2. Page shell mounts.
+3. Device cache paints above-the-fold data when available.
+4. Below-the-fold sections use viewport lazy loading.
+
+Do **not** wrap `router.push` in `React.startTransition` for menu/search navigation — that defers the URL update and makes clicks feel stuck.
 
 ---
 

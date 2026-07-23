@@ -192,9 +192,7 @@ export function GlobalSearch({
   function go(entry: SearchEntry) {
     setOpen(false);
     beginNavigation(entry.href);
-    React.startTransition(() => {
-      router.push(entry.href);
-    });
+    router.push(entry.href);
   }
 
   function onKeyDown(event: React.KeyboardEvent) {
