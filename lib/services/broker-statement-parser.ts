@@ -126,7 +126,7 @@ function extractCompanyMap(text: string): Map<string, string> {
 }
 
 function cleanCompanyName(raw: string): string {
-  let name = raw.replace(/\s+/g, " ").replace(/\.+$/, "").trim();
+  const name = raw.replace(/\s+/g, " ").replace(/\.+$/, "").trim();
   // Reject concatenated multi-company blobs
   const limitedHits = (name.match(/\bLIMITED\b|\bLTD\b/gi) ?? []).length;
   if (limitedHits > 1 || name.length > 72) return "";
