@@ -2,10 +2,7 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import {
-  PageLoadingState,
-  type PageLoadingVariant,
-} from "@/components/loading/page-loading-state";
+import type { PageLoadingVariant } from "@/components/loading/page-loading-state";
 
 type RouteTransitionContextValue = {
   beginNavigation: (href: string) => void;
@@ -80,24 +77,32 @@ export function useRouteTransition() {
   return context;
 }
 
+/**
+ * Keep the current page mounted during navigation so device-cached destinations
+ * can paint instantly. Only show a thin top progress bar — never blank the viewport.
+ */
 export function RouteTransitionViewport({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const { pendingPath } = useRouteTransition();
-  const loadingState = pendingPath ? getLoadingStateForPath(pendingPath) : null;
 
-  if (loadingState) {
-    return (
-      <PageLoadingState
-        message={loadingState.message}
-        variant={loadingState.variant}
-      />
-    );
-  }
-
-  return <>{children}</>;
+  return (
+    <>
+      {pendingPath ? (
+        <div
+          className="pointer-events-none fixed inset-x-0 top-0 z-[80] h-0.5 overflow-hidden bg-emerald-500/15"
+          role="progressbar"
+          aria-label="Loading page"
+          aria-busy="true"
+        >
+          <div className="h-full w-1/3 animate-pulse bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.65)]" />
+        </div>
+      ) : null}
+      {children}
+    </>
+  );
 }
 
 function normalizeInternalPath(href: string) {
@@ -127,7 +132,8 @@ function matchesPath(currentPath: string, targetPath: string) {
   return currentPath.startsWith(`${targetPath}/`);
 }
 
-function getLoadingStateForPath(pathname: string): {
+/** Kept for callers that still want path → loading copy mapping. */
+export function getLoadingStateForPath(pathname: string): {
   message: string;
   variant: PageLoadingVariant;
 } {

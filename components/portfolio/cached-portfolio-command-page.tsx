@@ -195,11 +195,11 @@ export function CachedPortfolioCommandPage({
   // the loading-state early return below.
   const { liveHoldings } = useLiveHoldings(data?.dashboard.holdings ?? EMPTY_HOLDINGS);
 
-  if (!data || forceRefreshing) {
+  if (!data) {
     return (
       <div className="mx-auto max-w-7xl">
         <PageLoadingState
-          message={isLoading || forceRefreshing ? `Loading ${pageLabel.toLowerCase()}...` : `Preparing ${pageLabel.toLowerCase()}...`}
+          message={isLoading ? `Loading ${pageLabel.toLowerCase()}...` : `Preparing ${pageLabel.toLowerCase()}...`}
           variant="portfolio"
         />
       </div>
@@ -270,7 +270,7 @@ export function CachedPortfolioCommandPage({
         label={pageLabel}
         cachedAt={lastCachedAt}
         isFromDeviceCache={isFromDeviceCache}
-        isRefreshing={isRefreshing}
+        isRefreshing={isRefreshing || forceRefreshing}
       />
       {error && data && (
         <p className="text-xs text-muted-foreground">

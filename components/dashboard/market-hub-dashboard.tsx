@@ -221,9 +221,12 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
   const psx = usePublicHub<PublicMarketData>("public:psx-market:v3", "/api/public/market", cacheClosedOnly);
 
   // Below-the-fold — fetch only once the section is near the viewport.
-  const ratesGate = useViewportEnabled({ rootMargin: "280px 0px" });
-  const worldGate = useViewportEnabled({ rootMargin: "320px 0px" });
-  const boardsGate = useViewportEnabled({ rootMargin: "360px 0px" });
+  // Tight margins + sequential enable so tall screens don't stampede all APIs at once.
+  const ratesGate = useViewportEnabled({ rootMargin: "120px 0px" });
+  const worldGate = useViewportEnabled({ rootMargin: "100px 0px" });
+  const boardsGate = useViewportEnabled({ rootMargin: "80px 0px" });
+  const ratesEnabled = ratesGate.visible;
+  const worldEnabled = ratesEnabled && worldGate.visible;
 
   const pkRates = usePersistentResource<PkCommoditiesData>({
     cacheKey: "public:pk-commodities-v12",
@@ -231,50 +234,55 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
     refreshInterval: PK_RATES_REFRESH_MS,
     pauseWhen: cacheClosedOnly,
     acceptCacheWhen: cacheClosedOnly,
-    enabled: ratesGate.visible,
+    enabled: ratesEnabled,
   });
   const fuel = usePersistentResource<PakistanFuelData>({
     cacheKey: "public:pk-fuel-prices-v1",
     url: "/api/public/pakistan-fuel-prices",
     refreshInterval: FUEL_REFRESH_MS,
     acceptCacheWhen: () => true,
-    enabled: ratesGate.visible,
+    enabled: ratesEnabled,
   });
   const oil = usePublicHub<GlobalMarketData>(
     "public:global-market:oil",
     "/api/public/global-market/oil",
     cacheClosedOnly,
-    ratesGate.visible || boardsGate.visible
+    ratesEnabled
   );
   const world = usePublicHub<GlobalMarketData>(
     "public:global-market:world",
     "/api/public/global-market/world",
     cacheClosedOnly,
-    worldGate.visible
+    worldEnabled
   );
   const us = usePublicHub<GlobalMarketData>(
     "public:global-market:us",
     "/api/public/global-market/us",
     cacheClosedOnly,
-    worldGate.visible || boardsGate.visible
+    worldEnabled
   );
+
+  // Hold market cards until the world feed has painted so we don't compete with ATF requests.
+  const boardsEnabled =
+    worldEnabled && boardsGate.visible && (world.data != null || Boolean(world.error));
+
   const india = usePublicHub<GlobalMarketData>(
     "public:global-market:india",
     "/api/public/global-market/india",
     cacheClosedOnly,
-    boardsGate.visible
+    boardsEnabled
   );
   const commodities = usePublicHub<GlobalMarketData>(
     "public:global-market:commodities",
     "/api/public/global-market/commodities",
     cacheClosedOnly,
-    boardsGate.visible
+    boardsEnabled
   );
   const crypto = usePublicHub<GlobalMarketData>(
     "public:global-market:crypto",
     "/api/public/global-market/crypto",
     cacheClosedOnly,
-    boardsGate.visible
+    boardsEnabled
   );
 
   const refreshPortfolioRef = React.useRef(portfolio.refreshNow);
@@ -476,7 +484,7 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
       </section>
 
       <div ref={ratesGate.ref} className="min-h-[12rem]">
-        {ratesGate.visible ? (
+        {ratesEnabled ? (
           <PakistanDailyStrip pkRates={data.pkRates} fuel={data.fuel} oil={data.oil} />
         ) : (
           <HubSectionSkeleton label="Today's key rates" rows={4} />
@@ -484,7 +492,7 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
       </div>
 
       <div ref={worldGate.ref} className="min-h-[28rem]">
-        {worldGate.visible ? (
+        {worldEnabled ? (
           <section className="grid items-stretch gap-4 xl:grid-cols-12">
             <div className="min-h-[28rem] xl:col-span-8 xl:min-h-0">
               <DashboardWorldMapCard
@@ -505,7 +513,7 @@ export function MarketHubDashboard({ userId }: { userId: string }) {
       </div>
 
       <div ref={boardsGate.ref} className="min-h-[26rem]">
-        {boardsGate.visible ? (
+        {boardsEnabled ? (
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
             <DashboardMarketCard
               href="/market"
