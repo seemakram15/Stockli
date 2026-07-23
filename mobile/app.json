@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Stockli",
+    "name": "MyStockli",
     "slug": "stockli",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -21,7 +21,10 @@
         "backgroundColor": "#04100d"
       },
       "package": "com.stockli.app",
-      "permissions": ["NOTIFICATIONS", "RECEIVE_BOOT_COMPLETED"]
+      "permissions": [
+        "NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED"
+      ]
     },
     "web": {
       "bundler": "metro",

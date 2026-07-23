@@ -255,7 +255,7 @@ export function AccountSettingsPanel({
             <UserRound className="size-4 text-primary" />
             Profile details
           </CardTitle>
-          <CardDescription>Update the name people see across your Stockli account.</CardDescription>
+          <CardDescription>Update the name people see across your MyStockli account.</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={profileAction} className="space-y-4">

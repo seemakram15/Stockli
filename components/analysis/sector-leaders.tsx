@@ -188,7 +188,7 @@ export function SectorLeadersPanel({
                 <p className="mt-2 max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
                   These rankings compare companies inside their own sector using earnings, profit
                   margins, cash flow strength, debt position, dividends and valuation signals. If a
-                  few sector metrics are missing, Stockli rebalances the score using the financial
+                  few sector metrics are missing, MyStockli rebalances the score using the financial
                   data already available for that company.
                 </p>
               </div>

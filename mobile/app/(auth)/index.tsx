@@ -64,7 +64,7 @@ export default function LandingScreen() {
           <View style={S.nav}>
             <View style={S.navBrand}>
               <Image source={require("../../assets/images/icon.png")} style={S.navLogo} />
-              <Text style={S.navTitle}>Stockli</Text>
+              <Text style={S.navTitle}>MyStockli</Text>
             </View>
             <TouchableOpacity activeOpacity={0.7} onPress={() => router.push("/(auth)/login")} style={S.navBtn}>
               <Text style={S.navBtnText}>Sign in</Text>
@@ -80,7 +80,7 @@ export default function LandingScreen() {
 
             <Text style={S.headline}>
               Your entire{"\n"}market,{"\n"}
-              <Text style={S.headlineAccent}>on Stockli.</Text>
+              <Text style={S.headlineAccent}>on MyStockli.</Text>
             </Text>
 
             <Text style={S.subtext}>

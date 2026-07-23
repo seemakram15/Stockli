@@ -694,7 +694,7 @@ function emptyMarketData(universe: MarketUniverse): GlobalMarketData {
 async function fetchText(url: string) {
   const response = await fetch(url, {
     headers: {
-      "user-agent": "Stockli World Pulse/1.0",
+      "user-agent": "MyStockli World Pulse/1.0",
       accept: "application/json, text/xml, application/xml, text/plain, */*",
     },
     next: { revalidate: WORLD_PULSE_TTL_SECONDS },

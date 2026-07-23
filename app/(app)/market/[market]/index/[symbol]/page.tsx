@@ -25,7 +25,7 @@ export async function generateMetadata({
   if (!isSupported(market)) {
     return buildPageMetadata({
       title: "Index constituents",
-      description: "Global index constituents and component weights on Stockli.",
+      description: "Global index constituents and component weights on MyStockli.",
       path: `/market/${market}/index/${encodeURIComponent(decoded)}`,
       index: false,
     });
@@ -33,7 +33,7 @@ export async function generateMetadata({
   const title = getGlobalIndexTitle(decoded);
   return buildPageMetadata({
     title,
-    description: `${title} constituents, weights and component performance tracked on Stockli.`,
+    description: `${title} constituents, weights and component performance tracked on MyStockli.`,
     path: `/market/${market}/index/${encodeURIComponent(decoded)}`,
     keywords: [title, decoded, `${market} index constituents`],
   });

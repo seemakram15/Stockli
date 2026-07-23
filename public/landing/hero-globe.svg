@@ -308,5 +308,5 @@
   <text x="116" y="253" fill="#34d399" font-size="11" font-family="ui-sans-serif,sans-serif" font-weight="600">LIVE</text>
 
   <!-- Bottom attribution -->
-  <text x="60" y="1050" fill="rgba(255,255,255,0.1)" font-size="11" font-family="ui-monospace,monospace">STOCKLI · WORLD MARKETS · 51 EXCHANGES · REAL-TIME</text>
+  <text x="60" y="1050" fill="rgba(255,255,255,0.1)" font-size="11" font-family="ui-monospace,monospace">MYSTOCKLI · WORLD MARKETS · 51 EXCHANGES · REAL-TIME</text>
 </svg>

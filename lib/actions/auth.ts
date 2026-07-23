@@ -265,7 +265,7 @@ export async function requestPasswordReset(
   }
 
   const genericResetMessage =
-    "If this email belongs to a Stockli account, we just sent the next step. Please check your inbox, spam, junk, or promotions within 1 to 2 minutes.";
+    "If this email belongs to a MyStockli account, we just sent the next step. Please check your inbox, spam, junk, or promotions within 1 to 2 minutes.";
   const siteUrl = await resolveAuthSiteUrl();
   if (isSupabaseAdminConfigured) {
     const admin = createAdminClient();

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = buildPageMetadata({
   title: "PSX next-day market prediction",
   description:
-    "PSX next-session outlook from live technicals, foreign flows, global macro and news sentiment on Stockli.",
+    "PSX next-session outlook from live technicals, foreign flows, global macro and news sentiment on MyStockli.",
   path: "/analysis/prediction",
   keywords: ["PSX prediction", "KSE-100 outlook", "Pakistan stock market forecast"],
 });

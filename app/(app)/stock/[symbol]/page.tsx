@@ -19,8 +19,8 @@ export async function generateMetadata({
   const company = SEED_TICKERS.find((t) => t.symbol === symbol)?.company;
   const title = company ? `${symbol} share price — ${company}` : `${symbol} share price`;
   const description = company
-    ? `Live ${symbol} (${company}) PSX share price, charts, fundamentals and portfolio tools on Stockli.`
-    : `Live ${symbol} PSX share price, charts, fundamentals and portfolio tools on Stockli.`;
+    ? `Live ${symbol} (${company}) PSX share price, charts, fundamentals and portfolio tools on MyStockli.`
+    : `Live ${symbol} PSX share price, charts, fundamentals and portfolio tools on MyStockli.`;
 
   return buildPageMetadata({
     title,
@@ -33,7 +33,7 @@ export async function generateMetadata({
       `${symbol} stock`,
       company ?? "Pakistan stock exchange",
       "PSX live price",
-      "Stockli",
+      "MyStockli",
     ],
   });
 }
@@ -49,8 +49,8 @@ export default async function StockPage({
   const user = await getSessionUser();
   const company = SEED_TICKERS.find((t) => t.symbol === symbol)?.company;
   const description = company
-    ? `Live ${symbol} (${company}) PSX share price, charts and fundamentals on Stockli.`
-    : `Live ${symbol} PSX share price, charts and fundamentals on Stockli.`;
+    ? `Live ${symbol} (${company}) PSX share price, charts and fundamentals on MyStockli.`
+    : `Live ${symbol} PSX share price, charts and fundamentals on MyStockli.`;
 
   const jsonLd = {
     "@context": "https://schema.org",

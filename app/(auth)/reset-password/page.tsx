@@ -14,9 +14,10 @@ export default async function ResetPasswordPage() {
   return (
     <AuthCardShell
       accent="primary"
+      brandSurface="auth-reset"
       icon={<KeyRound />}
       title="Set a new password"
-      description="Create a fresh password to secure your Stockli account."
+      description="Create a fresh password to secure your MyStockli account."
     >
       {user ? (
         <ResetPasswordForm email={user.email ?? null} />

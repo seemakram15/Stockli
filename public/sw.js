@@ -1,13 +1,14 @@
-const CACHE_NAME = "stockli-static-v5";
-const DATA_CACHE_NAME = "stockli-public-data-v1";
+const CACHE_NAME = "mystockli-static-v6";
+const DATA_CACHE_NAME = "mystockli-public-data-v1";
 
 const STATIC_ASSETS = [
   "/manifest.webmanifest",
-  "/icon.svg",
+  "/icon.png",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/icon-maskable-512.png",
   "/icons/apple-touch-icon.png",
+  "/brand/mystockli-icon.png",
 ];
 
 self.addEventListener("install", (event) => {

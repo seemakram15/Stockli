@@ -37,7 +37,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
         <div className="relative z-10 flex flex-1 flex-col p-10 xl:p-12">
           <Link href="/" aria-label={`${APP_NAME} home`} className="w-fit">
-            <Logo className="text-white" />
+            <Logo surface="desktop" className="text-white" />
           </Link>
 
           <div className="mt-auto max-w-md">
@@ -88,7 +88,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </Link>
           <div className="flex items-center gap-2">
             <span className="lg:hidden">
-              <Logo />
+              <Logo surface="mobile" />
             </span>
             <ThemeToggle />
           </div>

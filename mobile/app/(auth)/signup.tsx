@@ -60,7 +60,7 @@ export default function SignupScreen() {
               {/* Logo */}
               <View style={{ alignItems: "center", marginBottom: 34 }}>
                 <Image source={require("../../assets/images/icon.png")} style={{ width: 76, height: 76, borderRadius: 20, marginBottom: 14 }} />
-                <Text style={{ fontSize: 12, fontWeight: "700", color: "#7a9098", letterSpacing: 2.5, textTransform: "uppercase" }}>Stockli</Text>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: "#7a9098", letterSpacing: 2.5, textTransform: "uppercase" }}>MyStockli</Text>
               </View>
 
               {/* Heading */}

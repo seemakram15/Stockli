@@ -245,7 +245,7 @@ export function GlobalSearch({
             inputRef.current?.focus();
           }}
         >
-          <DialogTitle className="sr-only">Search Stockli</DialogTitle>
+          <DialogTitle className="sr-only">Search MyStockli</DialogTitle>
           <div className="border-b border-border p-4 pr-12 sm:p-5 sm:pr-14">
             <div className="flex h-14 items-center gap-3 rounded-xl border border-border bg-background px-4 shadow-sm">
               <Search className="size-5 text-muted-foreground" />

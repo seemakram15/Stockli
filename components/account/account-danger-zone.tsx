@@ -49,7 +49,7 @@ export function AccountDangerZone({
       <CardHeader>
         <CardTitle className="text-loss">Danger zone</CardTitle>
         <CardDescription>
-          Permanently delete your Stockli account and all connected personal data.
+          Permanently delete your MyStockli account and all connected personal data.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -73,7 +73,7 @@ export function AccountDangerZone({
                 </AlertDialogMedia>
                 <AlertDialogTitle>Delete your account permanently?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will remove your Stockli account and all personal records tied to it. To
+                  This will remove your MyStockli account and all personal records tied to it. To
                   confirm, type <span className="font-semibold text-foreground">{email}</span>.
                 </AlertDialogDescription>
               </AlertDialogHeader>

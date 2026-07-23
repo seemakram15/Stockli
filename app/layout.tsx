@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     template: `%s · ${APP_NAME}`,
   },
   description:
-    "Track PSX share prices, KSE-100, mutual funds, ETFs, portfolio P/L, watchlists and stock fundamentals on Stockli — Pakistan's all-market investing workspace.",
+    "Track PSX share prices, KSE-100, mutual funds, ETFs, portfolio P/L, watchlists and stock fundamentals on MyStockli — Pakistan's all-market investing workspace.",
   keywords: [...SEO_KEYWORDS],
   robots: PUBLIC_ROBOTS,
   // Do NOT set a root canonical to "/". Child pages that omit alternates would

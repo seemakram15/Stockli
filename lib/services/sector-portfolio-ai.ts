@@ -56,7 +56,7 @@ const AGENT_RULES_PATH = path.join(
   "docs/ai/portfolio-suggestions-agent.md"
 );
 const AGENT_RULES_FALLBACK =
-  "You are Stockli's portfolio construction analyst for the Pakistan Stock Exchange. Choose stocks only from the supplied candidate list. Build a diversified basket with strong fundamentals, stronger sectors, sensible role balance, and plain-language explanations. Never output markdown.";
+  "You are MyStockli's portfolio construction analyst for the Pakistan Stock Exchange. Choose stocks only from the supplied candidate list. Build a diversified basket with strong fundamentals, stronger sectors, sensible role balance, and plain-language explanations. Never output markdown.";
 
 let cachedAgentRules: string | null = null;
 
@@ -152,7 +152,7 @@ export async function getSectorLeadersAiInsight({
         preferredModel: model,
         schema: sectorInsightSchema,
         system:
-          "You are Stockli's sector-ranking analyst for the Pakistan Stock Exchange. Only use the supplied numbers. Explain in plain English. Never output markdown.",
+          "You are MyStockli's sector-ranking analyst for the Pakistan Stock Exchange. Only use the supplied numbers. Explain in plain English. Never output markdown.",
         prompt: {
           sector: leaderboard.sector,
           ruleName: leaderboard.ruleName,

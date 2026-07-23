@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { config } from "@/lib/config";
 
 /**
- * Crawl policy for Stockli.
+ * Crawl policy for MyStockli.
  *
  * Public market/tool pages are indexable. `/api/public/*` is explicitly allowed
  * so Googlebot can fetch the JSON that hydrates client market boards.

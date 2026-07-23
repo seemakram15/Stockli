@@ -10,7 +10,7 @@ import { ThemedText } from "@/components/ui/ThemedText";
 import { StockSearchInput } from "@/components/ui/StockSearchInput";
 
 const BASE = process.env.EXPO_PUBLIC_SITE_URL ?? "";
-const MOBILE_UA = "StockliApp/1.0 (Mobile; React-Native)";
+const MOBILE_UA = "MyStockliApp/1.0 (Mobile; React-Native)";
 
 function fetchAllSnapshots() {
   return fetch(`${BASE}/api/public/stock-fundamentals/snapshots?offset=0&limit=500`, {

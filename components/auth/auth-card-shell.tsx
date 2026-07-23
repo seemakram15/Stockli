@@ -1,6 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
-import { StockliGlyph } from "@/components/logo";
+import { Logo, type LogoSurface } from "@/components/logo";
 import { Card } from "@/components/ui/card";
 import { IconChip, type Accent } from "@/components/ui/accent";
 import { APP_NAME } from "@/lib/constants";
@@ -18,6 +18,7 @@ export function AuthCardShell({
   description,
   children,
   footer,
+  brandSurface = "auth",
 }: {
   icon: React.ReactNode;
   accent?: Accent;
@@ -25,6 +26,8 @@ export function AuthCardShell({
   description?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** login/signup → auth (green); reset-password → auth-reset (gold) */
+  brandSurface?: Extract<LogoSurface, "auth" | "auth-reset" | "mobile">;
 }) {
   return (
     <div>
@@ -33,8 +36,7 @@ export function AuthCardShell({
         aria-label={`${APP_NAME} home`}
         className="mb-6 inline-flex items-center gap-2.5 font-semibold lg:hidden"
       >
-        <StockliGlyph className="size-8" />
-        <span className="text-lg leading-none text-gradient-brand">{APP_NAME}</span>
+        <Logo surface={brandSurface} />
       </Link>
 
       <Card variant="feature" className="p-6 sm:p-7">

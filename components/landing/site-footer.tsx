@@ -71,7 +71,7 @@ export function SiteFooter() {
         <div className="grid gap-10 lg:grid-cols-[1.4fr_2fr]">
           {/* Brand */}
           <div>
-            <Logo className="text-white" />
+            <Logo surface="desktop" className="text-white" />
             <p className="mt-4 max-w-sm text-sm leading-6 text-white/60">
               {APP_NAME} is a free, installable command center for tracking PSX and
               global markets — live P/L, daily gain/loss calendars, funds, fundamentals,

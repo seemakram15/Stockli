@@ -107,7 +107,7 @@ export function CachedPortfolioDetailPage({
   // page's first response byte), so set the real one here once we have it.
   const portfolioName = data?.portfolio.name;
   React.useEffect(() => {
-    if (portfolioName) document.title = `${portfolioName} · Stockli`;
+    if (portfolioName) document.title = `${portfolioName} · MyStockli`;
   }, [portfolioName]);
 
   if (!data) {

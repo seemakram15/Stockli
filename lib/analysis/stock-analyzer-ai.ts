@@ -46,7 +46,7 @@ export function buildDeterministicAnalyzeInsight(
   summary: AnalyzerSummary
 ): StockAnalyzeAiInsight {
   return {
-    headline: `${summary.symbol} scores ${summary.totalScore}/100 on Stockli's factor checklist`,
+    headline: `${summary.symbol} scores ${summary.totalScore}/100 on MyStockli's factor checklist`,
     summary: `${summary.name} has a ${summary.verdictTone} snapshot right now. ${summary.verdict} ${summary.factorsAvailable}/${summary.factors.length} factors were available in the cached fundamentals.`,
     strengths: summary.strongestFactors.length
       ? summary.strongestFactors.map(

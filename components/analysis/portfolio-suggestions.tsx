@@ -137,13 +137,13 @@ export function PortfolioSuggestions() {
             </Badge>
             <div>
               <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
-                Let Stockli draft a diversified PSX portfolio
+                Let MyStockli draft a diversified PSX portfolio
               </h1>
               <p className="mt-3 max-w-4xl text-sm leading-7 text-muted-foreground sm:text-base">
-                Tell Stockli how long you want to hold, what kind of return you want, and how many
+                Tell MyStockli how long you want to hold, what kind of return you want, and how many
                 names you are comfortable tracking. AI will draft the basket first from stronger
                 sectors, healthier fundamentals, blue-chip anchors, and cleaner growth names.
-                Stockli then scores that suggested mix on the same numbers.
+                MyStockli then scores that suggested mix on the same numbers.
               </p>
             </div>
           </div>
@@ -163,7 +163,7 @@ export function PortfolioSuggestions() {
                   </p>
                   <h2 className="mt-2 text-2xl font-bold tracking-tight">Build a stronger PSX shortlist</h2>
                   <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-                    Choose the holding period, return style and basket size. Stockli will then try to
+                    Choose the holding period, return style and basket size. MyStockli will then try to
                     mix steadier blue-chip anchors with stronger growth names from healthier sectors.
                   </p>
                 </div>
@@ -187,7 +187,7 @@ export function PortfolioSuggestions() {
 
                 <ToggleGroup
                   label="Goal"
-                  description="Tell Stockli whether you want income, growth, or a blend of both."
+                  description="Tell MyStockli whether you want income, growth, or a blend of both."
                   value={objective}
                   onChange={(value) => setObjective(value as PortfolioObjective)}
                   items={[
@@ -228,7 +228,7 @@ export function PortfolioSuggestions() {
                   <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
                     <div>
                       <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-200">
-                        What Stockli will prefer
+                        What MyStockli will prefer
                       </p>
                       <p className="mt-1 text-sm leading-6 text-muted-foreground">
                         Stronger earnings, cleaner cash flow, manageable debt, healthy dividend support,
@@ -286,8 +286,8 @@ export function PortfolioSuggestions() {
               <SummaryBlurb
                 icon={<Brain className="size-5" />}
                 eyebrow="AI guidance"
-                title="AI picks, Stockli checks"
-                copy="AI suggests the basket first, then Stockli scores the same basket for quality, diversification, return mix, and risk balance."
+                title="AI picks, MyStockli checks"
+                copy="AI suggests the basket first, then MyStockli scores the same basket for quality, diversification, return mix, and risk balance."
               />
             </div>
           </div>
@@ -319,7 +319,7 @@ export function PortfolioSuggestions() {
                   <p className="mt-3 text-sm leading-7 text-muted-foreground">{portfolio.summary}</p>
                   {isFallbackMode ? (
                     <div className="mt-4 rounded-2xl border border-amber-500/25 bg-amber-500/5 p-4 text-sm text-amber-700 dark:text-amber-200">
-                      AI is taking a little longer right now, so Stockli is showing the strongest
+                      AI is taking a little longer right now, so MyStockli is showing the strongest
                       numbers-led basket for the moment.
                     </div>
                   ) : null}
@@ -475,7 +475,7 @@ export function PortfolioSuggestions() {
                 <div>
                   <CardTitle>AI portfolio read</CardTitle>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    AI suggests the basket first, then Stockli checks the same mix against quality,
+                    AI suggests the basket first, then MyStockli checks the same mix against quality,
                     diversification, return balance, and risk support.
                   </p>
                 </div>
@@ -755,8 +755,8 @@ function PortfolioLoading({ action }: { action: "suggest" | "change" }) {
   const title = action === "change" ? "Refreshing your portfolio idea" : "Building your portfolio";
   const summary =
     action === "change"
-      ? "Stockli is trying a fresh combination from the stronger names instead of repeating the same basket."
-      : "Stockli is screening the stronger names first, then checking the AI basket on the same numbers.";
+      ? "MyStockli is trying a fresh combination from the stronger names instead of repeating the same basket."
+      : "MyStockli is screening the stronger names first, then checking the AI basket on the same numbers.";
 
   return (
     <Card>

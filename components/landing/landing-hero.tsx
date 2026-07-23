@@ -150,6 +150,16 @@ export function LandingHero({ demo }: { demo: boolean }) {
                 <ArrowUpRight className="size-4 shrink-0" />
               </Link>
             </Button>
+            {!demo ? (
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="btn-shine gap-2 border-white/20 bg-white/5 font-semibold text-white hover:bg-white/15 hover:text-white sm:hidden"
+              >
+                <Link href="/login">Sign in</Link>
+              </Button>
+            ) : null}
             <InstallAppButton
               label="Install"
               size="lg"

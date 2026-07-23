@@ -194,7 +194,7 @@ async function fetchMufap(path: string) {
   const res = await fetch(`${MUFAP_BASE}${path}`, {
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.com)",
+        "Mozilla/5.0 (compatible; MyStockli/1.0; +https://mystockli.com)",
     },
     next: { revalidate: MUFAP_TTL_SECONDS },
     signal: AbortSignal.timeout(10_000),
@@ -354,7 +354,7 @@ async function fetchMufapFundDetail(fundId: string): Promise<Partial<MufapFund>>
     headers: {
       "Content-Type": "application/json;charset=utf-8",
       "User-Agent":
-        "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.com)",
+        "Mozilla/5.0 (compatible; MyStockli/1.0; +https://mystockli.com)",
     },
     body: JSON.stringify({
       FundID: fundId,
@@ -395,7 +395,7 @@ async function fetchMufapFundDetail(fundId: string): Promise<Partial<MufapFund>>
     assetAllocation: parseAssetAllocation(allocationRow),
     topHoldings,
     holdingsNote: topHoldings.length && readableCount === 0
-      ? "MUFAP has published holding weights for this period, but not readable stock names. Stockli is showing the official allocation data without guessing names."
+      ? "MUFAP has published holding weights for this period, but not readable stock names. MyStockli is showing the official allocation data without guessing names."
       : null,
     detailDate: nullableUnknown(allocationRow.Date ?? summary.Date ?? summary.ReportDate),
     nav: toNumUnknown(returnsRow.CurrentNav),

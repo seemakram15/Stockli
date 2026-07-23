@@ -5,7 +5,7 @@ import { buildPageMetadata } from "@/lib/seo";
 export const metadata: Metadata = buildPageMetadata({
   title: "Mutual funds daily returns report",
   description:
-    "Daily mutual fund returns report for Pakistan funds tracked on Stockli — compare AMC and category performance.",
+    "Daily mutual fund returns report for Pakistan funds tracked on MyStockli — compare AMC and category performance.",
   path: "/market/strategy",
   keywords: ["Pakistan mutual fund returns", "MUFAP daily returns", "AMC performance"],
 });

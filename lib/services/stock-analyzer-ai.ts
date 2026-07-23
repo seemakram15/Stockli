@@ -183,7 +183,7 @@ async function requestAnalyzeInsight(
     preferredModel,
     schema: analyzeInsightSchema,
     system:
-      "You are Stockli's grounded stock analyzer for the Pakistan Stock Exchange. Explain only from the provided data. Keep the language simple for everyday investors. Never output markdown.",
+      "You are MyStockli's grounded stock analyzer for the Pakistan Stock Exchange. Explain only from the provided data. Keep the language simple for everyday investors. Never output markdown.",
     prompt: buildAnalyzePrompt(summary, deterministic),
   });
 }
@@ -199,7 +199,7 @@ async function requestCompareInsight(
     preferredModel,
     schema: compareInsightSchema,
     system:
-      "You are Stockli's grounded stock comparison assistant for the Pakistan Stock Exchange. Stay inside the supplied facts, compare clearly, and never output markdown.",
+      "You are MyStockli's grounded stock comparison assistant for the Pakistan Stock Exchange. Stay inside the supplied facts, compare clearly, and never output markdown.",
     prompt: buildComparePrompt(first, second, comparison, deterministic),
   });
 }

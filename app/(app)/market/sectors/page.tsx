@@ -19,9 +19,9 @@ import { getSectorPerformance } from "@/lib/services/market";
 export const metadata: Metadata = buildPageMetadata({
   title: "PSX sector performance",
   description:
-    "Pakistan Stock Exchange sector performance, index movers and sector heat across PSX industries on Stockli.",
+    "Pakistan Stock Exchange sector performance, index movers and sector heat across PSX industries on MyStockli.",
   path: "/market/sectors",
-  keywords: ["PSX sectors", "sector performance Pakistan", "KSE sector", "Stockli sectors"],
+  keywords: ["PSX sectors", "sector performance Pakistan", "KSE sector", "MyStockli sectors"],
 });
 export const dynamic = "force-dynamic";
 

@@ -238,7 +238,7 @@ async function loadGlobalMarketData(universe: MarketUniverse): Promise<GlobalMar
     description: meta.description,
     sourceLabel:
       universe === "world"
-        ? "Yahoo Finance delayed chart data with Stockli PSX index feed"
+        ? "Yahoo Finance delayed chart data with MyStockli PSX index feed"
         : "Yahoo Finance delayed chart data",
     sourceUrl: "https://finance.yahoo.com/markets/",
     quotes,
@@ -327,7 +327,7 @@ function coinGeckoHeaders() {
   return {
     accept: "application/json",
     "User-Agent":
-      "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.com)",
+      "Mozilla/5.0 (compatible; MyStockli/1.0; +https://mystockli.com)",
   };
 }
 
@@ -338,7 +338,7 @@ async function fetchYahooQuote(item: MarketInstrument): Promise<GlobalMarketQuot
       headers: {
         accept: "application/json",
         "User-Agent":
-          "Mozilla/5.0 (compatible; Stockli/1.0; +https://mystockli.com)",
+          "Mozilla/5.0 (compatible; MyStockli/1.0; +https://mystockli.com)",
       },
       next: { revalidate: 60 },
       signal: AbortSignal.timeout(5_000),

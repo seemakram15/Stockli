@@ -16,7 +16,7 @@ export default function RootError({
 
   return (
     <ErrorState
-      title="Stockli hit a problem"
+      title="MyStockli hit a problem"
       description="The page could not be displayed correctly. Please try again, and if the issue continues contact support so we can look into it."
       reset={reset}
       homeHref="/"

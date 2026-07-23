@@ -73,7 +73,7 @@ export async function getWorldMonitorAiInsight({
         preferredModel: model,
         schema: insightSchema,
         system:
-          "You are Stockli's world monitor analyst. Use only the supplied feed, market and alert data. Explain clearly in plain English. Never output markdown.",
+          "You are MyStockli's world monitor analyst. Use only the supplied feed, market and alert data. Explain clearly in plain English. Never output markdown.",
         prompt: buildWorldMonitorPrompt(pulse.value, deterministic),
       }),
       generatedAt: new Date().toISOString(),

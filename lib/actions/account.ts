@@ -135,7 +135,7 @@ export async function updateAccountProfile(
     data: { display_name: displayName },
   });
   if (authError) {
-    return { error: toActionError(authError, "Your name changed in Stockli, but auth sync failed.") };
+    return { error: toActionError(authError, "Your name changed in MyStockli, but auth sync failed.") };
   }
 
   refreshAccountViews();

@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "Stockli — Track every market portfolio";
+export const alt = "MyStockli — Track every market portfolio";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -89,9 +89,9 @@ export default function OGImage() {
                   justifyContent: "center",
                 }}
               >
-                <span style={{ color: "#fff", fontSize: 32, fontWeight: 900, lineHeight: "1" }}>S</span>
+                <span style={{ color: "#fff", fontSize: 28, fontWeight: 900, lineHeight: "1" }}>M</span>
               </div>
-              <span style={{ color: "#f0fdf4", fontSize: 34, fontWeight: 700 }}>Stockli</span>
+              <span style={{ color: "#f0fdf4", fontSize: 34, fontWeight: 700 }}>MyStockli</span>
             </div>
             <div
               style={{

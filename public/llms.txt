@@ -1,4 +1,4 @@
-# Stockli
+# MyStockli
 
 > Pakistan-focused investing workspace for PSX prices, portfolios, mutual funds, ETFs, and market tools.
 
