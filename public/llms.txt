@@ -1,0 +1,32 @@
+# Stockli
+
+> Pakistan-focused investing workspace for PSX prices, portfolios, mutual funds, ETFs, and market tools.
+
+- Site: https://mystockli.com
+- Sitemap: https://mystockli.com/sitemap.xml
+- Contact: seemakram15@gmail.com
+
+## Public pages
+
+- / — product landing
+- /market — PSX market board
+- /market/sectors — sector performance
+- /market/mutual-funds — MUFAP mutual funds
+- /market/etfs — Pakistan ETFs
+- /market/fipi-lipi — foreign and local investor flows
+- /stock/{SYMBOL} — PSX share price and fundamentals
+- /news — Pakistan market news
+- /analysis/fundamentals — stock fundamentals explorer
+- /analysis/stock-analyzer — stock analyzer
+- /analysis/prediction — next-session PSX outlook
+- /analysis/portfolio-suggestions — portfolio ideas
+- /analysis/pivot-points — pivot levels
+- /explore/board-meetings — board meetings calendar
+- /explore/book-closures — book closures
+- /explore/dividend-history — dividend history
+- /explore/useful-links — investor resources
+- /youtubers — PSX YouTube channels
+
+## Private (not for indexing)
+
+Dashboard, portfolios, watchlists, alerts, account, admin, auth flows, and private APIs.

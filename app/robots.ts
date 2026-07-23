@@ -4,8 +4,9 @@ import { config } from "@/lib/config";
 /**
  * Crawl policy for Stockli.
  *
- * Public market/tool pages are indexable (guest browsing must stay enabled in
- * production so crawlers can render them). Personal and admin areas stay blocked.
+ * Public market/tool pages are indexable. `/api/public/*` is explicitly allowed
+ * so Googlebot can fetch the JSON that hydrates client market boards.
+ * Personal, admin, and private API routes stay blocked.
  */
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -22,6 +23,8 @@ export default function robots(): MetadataRoute.Robots {
           "/youtubers",
           "/icons/",
           "/landing/",
+          "/api/public/",
+          "/llms.txt",
         ],
         disallow: [
           "/dashboard",
@@ -31,6 +34,10 @@ export default function robots(): MetadataRoute.Robots {
           "/account",
           "/admin",
           "/api/",
+          "/api/private/",
+          "/api/cron/",
+          "/api/notifications/",
+          "/api/auth/",
           "/login",
           "/signup",
           "/forgot-password",

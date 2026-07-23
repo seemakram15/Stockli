@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AmcBrandMark } from "@/components/market/amc-brand-mark";
 import { FundHoldingsSection } from "@/components/market/fund-holdings-section";
 import { NavPerformanceChart } from "@/components/charts/nav-performance-chart";
+import { buildPageMetadata } from "@/lib/seo";
 import {
   formatDate,
   formatNumber,
@@ -36,7 +37,29 @@ import {
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Fund profile" };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ fundId: string }>;
+}): Promise<Metadata> {
+  const { fundId } = await params;
+  const fund = await getMufapFundById(fundId);
+  if (!fund) {
+    return buildPageMetadata({
+      title: "Fund profile",
+      description: "Pakistan mutual fund profile on Stockli.",
+      path: `/market/mutual-funds/${fundId}`,
+      index: false,
+    });
+  }
+  return buildPageMetadata({
+    title: fund.name,
+    description: `${fund.name} by ${fund.amc} — NAV, category, returns and holdings on Stockli.`,
+    path: `/market/mutual-funds/${fundId}`,
+    keywords: [fund.name, fund.amc, "Pakistan mutual fund", "MUFAP"],
+  });
+}
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",

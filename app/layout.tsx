@@ -7,6 +7,8 @@ import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 import { config } from "@/lib/config";
 import { PUBLIC_ROBOTS, SEO_KEYWORDS } from "@/lib/seo";
 
+const googleVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -34,12 +36,10 @@ export const metadata: Metadata = {
     "Track PSX share prices, KSE-100, mutual funds, ETFs, portfolio P/L, watchlists and stock fundamentals on Stockli — Pakistan's all-market investing workspace.",
   keywords: [...SEO_KEYWORDS],
   robots: PUBLIC_ROBOTS,
-  alternates: {
-    canonical: "/",
-  },
+  // Do NOT set a root canonical to "/". Child pages that omit alternates would
+  // inherit the homepage as canonical and drop out of Google's index.
   openGraph: {
     type: "website",
-    url: "/",
     siteName: APP_NAME,
     title: `${APP_NAME} — ${APP_TAGLINE}`,
     description:
@@ -52,6 +52,7 @@ export const metadata: Metadata = {
         alt: `${APP_NAME} market workspace`,
       },
     ],
+    locale: "en_PK",
   },
   twitter: {
     card: "summary_large_image",
@@ -60,6 +61,9 @@ export const metadata: Metadata = {
       "Track live P/L, calendars, PSX, US, funds, crypto and global market performance in one installable market workspace.",
     images: ["/landing/market-command-center.webp"],
   },
+  ...(googleVerification
+    ? { verification: { google: googleVerification } }
+    : {}),
   formatDetection: {
     telephone: false,
   },

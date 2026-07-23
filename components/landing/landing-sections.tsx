@@ -66,7 +66,7 @@ export function MarketLeaderboard({
   const lose = losers && losers.length ? losers : SAMPLE_LOSERS;
   const isLive = live && Boolean(gainers?.length);
   const rows = tab === "gainers" ? gain : lose;
-  const ctaHref = authed ? "/market" : "/login?redirectTo=%2Fmarket";
+  const ctaHref = "/market";
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
@@ -149,31 +149,35 @@ export function MarketLeaderboard({
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.4, delay: i * 0.05 }}
-                    className="flex items-center gap-3 px-4 py-3"
                   >
-                    <StockLogo symbol={row.symbol} up={up} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{row.symbol}</p>
-                      <p className="truncate text-xs text-muted-foreground">{row.name}</p>
-                    </div>
-                    <Sparkline
-                      seed={`${row.symbol}-${tab}`}
-                      up={up}
-                      className="hidden shrink-0 md:block"
-                    />
-                    <p className="hidden text-sm font-medium tabular-nums text-muted-foreground sm:block">
-                      Rs {row.price}
-                    </p>
-                    <span
-                      className={cn(
-                        "inline-flex w-20 shrink-0 items-center justify-end gap-1 rounded-lg px-2 py-1 text-sm font-bold tabular-nums",
-                        up ? "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300" : "bg-rose-500/12 text-rose-600 dark:text-rose-300"
-                      )}
+                    <Link
+                      href={`/stock/${row.symbol}`}
+                      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40"
                     >
-                      {up ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
-                      {up ? "+" : ""}
-                      {row.change.toFixed(2)}%
-                    </span>
+                      <StockLogo symbol={row.symbol} up={up} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">{row.symbol}</p>
+                        <p className="truncate text-xs text-muted-foreground">{row.name}</p>
+                      </div>
+                      <Sparkline
+                        seed={`${row.symbol}-${tab}`}
+                        up={up}
+                        className="hidden shrink-0 md:block"
+                      />
+                      <p className="hidden text-sm font-medium tabular-nums text-muted-foreground sm:block">
+                        Rs {row.price}
+                      </p>
+                      <span
+                        className={cn(
+                          "inline-flex w-20 shrink-0 items-center justify-end gap-1 rounded-lg px-2 py-1 text-sm font-bold tabular-nums",
+                          up ? "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300" : "bg-rose-500/12 text-rose-600 dark:text-rose-300"
+                        )}
+                      >
+                        {up ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
+                        {up ? "+" : ""}
+                        {row.change.toFixed(2)}%
+                      </span>
+                    </Link>
                   </motion.div>
                 );
               })}
@@ -352,7 +356,7 @@ const SIGNALS = [
 ];
 
 export function FundamentalsShowcase({ authed }: { authed: boolean }) {
-  const toolsHref = authed ? "/analysis/fundamentals" : "/login?redirectTo=%2Fanalysis%2Ffundamentals";
+  const toolsHref = "/analysis/fundamentals";
   const score = 72;
 
   return (

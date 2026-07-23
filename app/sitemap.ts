@@ -19,6 +19,15 @@ const STATIC_PUBLIC_PATHS: Array<{
   { path: "/market/mf-top-holdings", changeFrequency: "daily", priority: 0.75 },
   { path: "/news", changeFrequency: "hourly", priority: 0.8 },
   { path: "/youtubers", changeFrequency: "weekly", priority: 0.55 },
+  { path: "/analysis/fundamentals", changeFrequency: "daily", priority: 0.8 },
+  { path: "/analysis/stock-analyzer", changeFrequency: "weekly", priority: 0.75 },
+  { path: "/analysis/prediction", changeFrequency: "hourly", priority: 0.8 },
+  { path: "/analysis/portfolio-suggestions", changeFrequency: "weekly", priority: 0.7 },
+  { path: "/analysis/pivot-points", changeFrequency: "daily", priority: 0.65 },
+  { path: "/explore/useful-links", changeFrequency: "monthly", priority: 0.5 },
+  { path: "/explore/board-meetings", changeFrequency: "daily", priority: 0.65 },
+  { path: "/explore/book-closures", changeFrequency: "daily", priority: 0.65 },
+  { path: "/explore/dividend-history", changeFrequency: "weekly", priority: 0.65 },
 ];
 
 function collectMarketHrefs(): string[] {
@@ -46,7 +55,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: number
   ) => {
     if (!path.startsWith("/")) return;
-    // Keep a trailing slash only on the homepage so <loc> matches the canonical host root.
     const url = path === "/" ? `${config.siteUrl}/` : `${config.siteUrl}${path}`;
     if (seen.has(url)) return;
     seen.add(url);
@@ -68,8 +76,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     push(item.href, "weekly", 0.65);
   }
 
-  // High-intent PSX stock landing pages (seed universe of liquid names).
-  for (const ticker of SEED_TICKERS.slice(0, 60)) {
+  // Indexable PSX stock landing pages from the curated seed universe.
+  for (const ticker of SEED_TICKERS) {
     push(`/stock/${ticker.symbol}`, "hourly", 0.7);
   }
 

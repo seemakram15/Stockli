@@ -5,7 +5,7 @@ import { CachedStockPage } from "@/components/stock/cached-stock-page";
 import { normalizeSymbol } from "@/lib/security/validation";
 import { getSessionUser } from "@/lib/services/portfolio";
 import { SEED_TICKERS } from "@/lib/psx/symbols";
-import { buildPageMetadata, stockPageJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, buildPageMetadata, stockPageJsonLd } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +54,14 @@ export default async function StockPage({
 
   const jsonLd = {
     "@context": "https://schema.org",
-    "@graph": [stockPageJsonLd({ symbol, company, description })],
+    "@graph": [
+      stockPageJsonLd({ symbol, company, description }),
+      breadcrumbJsonLd([
+        { name: "Home", path: "/" },
+        { name: "Market", path: "/market" },
+        { name: symbol, path: `/stock/${symbol}` },
+      ]),
+    ],
   };
 
   return (
