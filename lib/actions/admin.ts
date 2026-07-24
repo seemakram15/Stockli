@@ -101,8 +101,8 @@ export async function setUserRole(
     .eq("id", userId);
   if (error) return { error: error.message };
 
-  revalidatePath("/admin");
-  revalidatePath(`/admin/users/${userId}`);
+  revalidatePath("/control-panel/users");
+  revalidatePath(`/control-panel/users/${userId}`);
   return {
     ok: true,
     message: makeAdmin ? "Superadmin granted." : "Superadmin revoked.",
@@ -144,7 +144,7 @@ export async function sendBroadcastNotification(
     href: href || "/dashboard",
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/control-panel/users");
   return {
     ok: true,
     message: "Notification sent to all users with in-app and push delivery where enabled.",
@@ -213,11 +213,11 @@ export async function deleteUserAccount(
     };
   }
 
-  revalidatePath("/admin");
-  revalidatePath(`/admin/users/${userId}`);
+  revalidatePath("/control-panel/users");
+  revalidatePath(`/control-panel/users/${userId}`);
   return {
     ok: true,
     message: `${profile.display_name ?? authUser.user.email ?? "User"} was deleted successfully.`,
-    redirectTo: "/admin",
+    redirectTo: "/control-panel/users",
   };
 }

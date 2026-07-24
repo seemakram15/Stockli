@@ -33,6 +33,7 @@ export default function robots(): MetadataRoute.Robots {
           "/alerts",
           "/account",
           "/admin",
+          "/control-panel",
           "/api/",
           "/api/private/",
           "/api/cron/",

@@ -17,6 +17,26 @@ const nextConfig: NextConfig = {
     // they actually use instead of the whole package.
     optimizePackageImports: ["lucide-react", "recharts", "radix-ui"],
   },
+  async redirects() {
+    return [
+      { source: "/admin", destination: "/control-panel/users", permanent: true },
+      {
+        source: "/admin/users/:id",
+        destination: "/control-panel/users/:id",
+        permanent: true,
+      },
+      {
+        source: "/admin/fund-holdings",
+        destination: "/control-panel/edit-funds-holdings",
+        permanent: true,
+      },
+      {
+        source: "/admin/customisation",
+        destination: "/control-panel/lock-public-pages",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

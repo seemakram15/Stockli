@@ -139,16 +139,31 @@ export const EXPLORE_NAV_ITEMS = [
   external?: boolean;
 }>;
 
-export const ADMIN_NAV_ITEMS = [
-  { href: "/admin", label: "Admin", icon: "ShieldCheck", accent: "slate" },
-  { href: "/admin/fund-holdings", label: "Fund Holdings", icon: "FolderKanban", accent: "violet" },
-  { href: "/admin/customisation", label: "Customisation", icon: "Settings", accent: "indigo" },
+/** Superadmin-only Control Panel links (not shown under Explore). */
+export const CONTROL_PANEL_NAV_ITEMS = [
+  { href: "/control-panel/users", label: "All Users", icon: "Users", accent: "slate" },
+  {
+    href: "/control-panel/edit-funds-holdings",
+    label: "Edit Funds Holdings",
+    icon: "FolderKanban",
+    accent: "violet",
+  },
+  {
+    href: "/control-panel/lock-public-pages",
+    label: "Lock Public Pages",
+    icon: "Lock",
+    accent: "indigo",
+  },
+  { href: "/control-panel/servers", label: "Servers", icon: "Server", accent: "sky" },
 ] as const satisfies ReadonlyArray<{
   href: string;
   label: string;
   icon: string;
   accent: NavAccent;
 }>;
+
+/** @deprecated Use CONTROL_PANEL_NAV_ITEMS */
+export const ADMIN_NAV_ITEMS = CONTROL_PANEL_NAV_ITEMS;
 
 export const MARKET_NAV_ITEMS = [
   {

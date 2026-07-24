@@ -228,12 +228,23 @@ export function getLoadingStateForPath(pathname: string): {
     return { message: "Loading alerts...", variant: "list" };
   }
 
-  if (pathname === "/admin") {
-    return { message: "Loading admin dashboard...", variant: "admin" };
+  if (pathname === "/control-panel/users" || pathname === "/admin") {
+    return { message: "Loading all users...", variant: "admin" };
   }
 
-  if (pathname.startsWith("/admin/users/")) {
+  if (
+    pathname.startsWith("/control-panel/users/") ||
+    pathname.startsWith("/admin/users/")
+  ) {
     return { message: "Loading user account...", variant: "admin-user" };
+  }
+
+  if (pathname.startsWith("/control-panel/servers")) {
+    return { message: "Loading servers...", variant: "list" };
+  }
+
+  if (pathname.startsWith("/control-panel")) {
+    return { message: "Loading control panel...", variant: "admin" };
   }
 
   if (pathname.startsWith("/stock/")) {

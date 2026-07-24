@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { ChevronDown, ExternalLink, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  ADMIN_NAV_ITEMS,
+  CONTROL_PANEL_NAV_ITEMS,
   EXPLORE_NAV_ITEMS,
   MARKET_NAV_ITEMS,
   NAV_ITEMS,
@@ -59,12 +59,11 @@ export function NavLinks({
 
   const toolsActive = pathname === "/analysis/fundamentals" || pathname.startsWith("/analysis/");
   const exploreActive =
-    pathname.startsWith("/explore") ||
-    pathname.startsWith("/youtubers") ||
-    pathname.startsWith("/admin");
-  const exploreItems: NavItemRef[] = showAdmin
-    ? [...EXPLORE_NAV_ITEMS, ...ADMIN_NAV_ITEMS]
-    : [...EXPLORE_NAV_ITEMS];
+    pathname.startsWith("/explore") || pathname.startsWith("/youtubers");
+  const controlPanelActive =
+    pathname.startsWith("/control-panel") || pathname.startsWith("/admin");
+  const exploreItems: NavItemRef[] = [...EXPLORE_NAV_ITEMS];
+  const controlPanelItems: NavItemRef[] = [...CONTROL_PANEL_NAV_ITEMS];
 
   return (
     <nav className="flex flex-col gap-1">
@@ -127,19 +126,34 @@ export function NavLinks({
 
         if (item.label === "Explore") {
           return (
-            <MobileNavGroup
-              key={item.href}
-              label={item.label}
-              icon={item.icon}
-              accent={item.accent}
-              active={exploreActive}
-              pathname={pathname}
-              items={exploreItems}
-              onNavigate={onNavigate}
-              prefetchOnMount={prefetchOnMount}
-              isGuest={isGuest}
-              guestPageAccess={guestPageAccess}
-            />
+            <React.Fragment key={item.href}>
+              <MobileNavGroup
+                label={item.label}
+                icon={item.icon}
+                accent={item.accent}
+                active={exploreActive}
+                pathname={pathname}
+                items={exploreItems}
+                onNavigate={onNavigate}
+                prefetchOnMount={prefetchOnMount}
+                isGuest={isGuest}
+                guestPageAccess={guestPageAccess}
+              />
+              {showAdmin ? (
+                <MobileNavGroup
+                  label="Control Panel"
+                  icon="Server"
+                  accent="slate"
+                  active={controlPanelActive}
+                  pathname={pathname}
+                  items={controlPanelItems}
+                  onNavigate={onNavigate}
+                  prefetchOnMount={prefetchOnMount}
+                  isGuest={isGuest}
+                  guestPageAccess={guestPageAccess}
+                />
+              ) : null}
+            </React.Fragment>
           );
         }
 

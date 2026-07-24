@@ -52,7 +52,7 @@ export function AdminUsersTable({
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <Button asChild variant="ghost" size="icon" className="size-8" title="View account">
-                  <Link href={`/admin/users/${u.id}`} aria-label={`View ${u.displayName ?? u.email}`}>
+                  <Link href={`/control-panel/users/${u.id}`} aria-label={`View ${u.displayName ?? u.email}`}>
                     <Eye className="size-4" />
                   </Link>
                 </Button>
@@ -117,7 +117,7 @@ export function AdminUsersTable({
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <Button asChild variant="ghost" size="icon" className="size-8" title="View account">
-                      <Link href={`/admin/users/${u.id}`} aria-label={`View ${u.displayName ?? u.email}`}>
+                      <Link href={`/control-panel/users/${u.id}`} aria-label={`View ${u.displayName ?? u.email}`}>
                         <Eye className="size-4" />
                       </Link>
                     </Button>

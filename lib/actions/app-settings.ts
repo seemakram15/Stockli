@@ -9,7 +9,7 @@ export async function updateAppSetting(
 ): Promise<{ error?: string }> {
   try {
     await updateAppSettingService(key, enabled);
-    revalidatePath("/admin/customisation");
+    revalidatePath("/control-panel/lock-public-pages");
     return {};
   } catch (e) {
     return { error: String(e) };

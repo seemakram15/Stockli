@@ -28,7 +28,7 @@ export function AdminDeleteUserButton({
   role,
   demo,
   iconOnly = false,
-  redirectTo = "/admin",
+  redirectTo = "/control-panel/users",
 }: {
   userId: string;
   email: string | null;

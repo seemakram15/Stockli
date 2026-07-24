@@ -4,7 +4,7 @@ import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronDown, ExternalLink, Lock } from "lucide-react";
 import {
-  ADMIN_NAV_ITEMS,
+  CONTROL_PANEL_NAV_ITEMS,
   EXPLORE_NAV_ITEMS,
   MARKET_NAV_ITEMS,
   NAV_ITEMS,
@@ -49,18 +49,19 @@ export function DesktopNav({
   const marketActive = pathname === "/market" || pathname.startsWith("/market/");
   const toolsActive = pathname.startsWith("/analysis");
   const exploreActive =
-    pathname.startsWith("/explore") ||
-    pathname.startsWith("/youtubers") ||
-    pathname.startsWith("/admin");
+    pathname.startsWith("/explore") || pathname.startsWith("/youtubers");
+  const controlPanelActive =
+    pathname.startsWith("/control-panel") || pathname.startsWith("/admin");
   const dashboardItem = NAV_ITEMS.find((item) => item.href === "/dashboard")!;
   const portfoliosItem = NAV_ITEMS.find((item) => item.href === "/portfolios")!;
   const watchlistItem = NAV_ITEMS.find((item) => item.href === "/watchlist")!;
   const alertsItem = NAV_ITEMS.find((item) => item.href === "/alerts")!;
   const newsItem = NAV_ITEMS.find((item) => item.href === "/news")!;
   const toolsLinks = React.useMemo<DropdownLink[]>(() => [...TOOL_NAV_ITEMS], []);
-  const exploreLinks = React.useMemo<DropdownLink[]>(
-    () => [...EXPLORE_NAV_ITEMS, ...(showAdmin ? ADMIN_NAV_ITEMS : [])],
-    [showAdmin]
+  const exploreLinks = React.useMemo<DropdownLink[]>(() => [...EXPLORE_NAV_ITEMS], []);
+  const controlPanelLinks = React.useMemo<DropdownLink[]>(
+    () => [...CONTROL_PANEL_NAV_ITEMS],
+    []
   );
   const handleNavigate = React.useCallback(
     (
@@ -133,6 +134,18 @@ export function DesktopNav({
         isGuest={isGuest}
         guestPageAccess={guestPageAccess}
       />
+      {showAdmin ? (
+        <NavDropdown
+          label="Control Panel"
+          sectionLabel="Control Panel"
+          active={controlPanelActive}
+          pathname={pathname}
+          links={controlPanelLinks}
+          onNavigate={handleNavigate}
+          isGuest={isGuest}
+          guestPageAccess={guestPageAccess}
+        />
+      ) : null}
       <div className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden />
       <DesktopNavLink
         href={newsItem.href}

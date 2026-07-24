@@ -9,7 +9,7 @@ import { FORWARDED_USER_HEADER } from "@/lib/auth/user-header-key";
 // watchlist, alerts, market, stock, search) is conditionally gated further
 // down the stack — see lib/auth/roles.ts's getSessionContext(), which
 // synthesizes a guest session for those routes when settings allow it.
-const PROTECTED_PREFIXES = ["/account", "/admin"];
+const PROTECTED_PREFIXES = ["/account", "/admin", "/control-panel"];
 
 const MODAL_AUTH_ROUTES = ["/login", "/signup", "/forgot-password"];
 
