@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/page-header";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import { withFreshParam } from "@/lib/hooks/use-refresh-runner";
 import { AmcBrandMark } from "@/components/market/amc-brand-mark";
-import { IslamicTag, isIslamicOrShariahName } from "@/components/market/islamic-mark";
+import { FundIslamicIcon, isIslamicOrShariahName } from "@/components/market/islamic-mark";
 import { StockIdentity } from "@/components/stock/stock-identity";
 import { identifyAmcBrand } from "@/lib/amc-brands";
 import { cn } from "@/lib/utils";
@@ -113,8 +113,10 @@ function HoldingCard({ holding, rank }: { holding: MFTopHolding; rank: number })
                       key={fund.fundName}
                       className="flex items-center gap-2 rounded-md px-3 py-1.5 hover:bg-muted/40"
                     >
-                      {islamic ? <IslamicTag className="shrink-0" /> : null}
-                      <span className="min-w-0 flex-1 text-xs text-foreground">{fund.fundName}</span>
+                      <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-foreground">
+                        <span className="min-w-0 truncate">{fund.fundName}</span>
+                        {islamic ? <FundIslamicIcon size="md" /> : null}
+                      </span>
                       <span className="shrink-0 text-xs font-semibold tabular-nums">{fund.percentage.toFixed(1)}%</span>
                     </div>
                     );
@@ -180,7 +182,7 @@ export function CachedMFTopHoldingsPage() {
         }
       />
 
-      {data ? (
+      {data && data.holdings.length > 0 ? (
         <div className="space-y-4">
           <p className="text-xs text-muted-foreground">
             {data.holdings.length} stocks tracked across {data.totalFunds} funds

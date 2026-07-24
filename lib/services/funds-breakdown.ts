@@ -10,6 +10,10 @@ import {
   computeFundReturnEstimate,
   profitOnInvestment,
 } from "@/lib/services/fund-return-estimate";
+import {
+  canUseProductionPublicFallback,
+  fetchProductionPublicData,
+} from "@/lib/services/production-public";
 
 export interface BreakdownHolding {
   symbol: string | null;
@@ -61,31 +65,58 @@ function emptyBreakdownData(): FundsBreakdownData {
 export async function getFundsBreakdownData(): Promise<FundsBreakdownData> {
   try {
     const { value } = await getStaleCached({
-      key: "market:funds-breakdown-v1",
+      key: "market:funds-breakdown-v2",
       ttlSeconds: shouldRefreshPsxData() ? 5 * 60 : psxLiveCacheTtlSeconds(),
       staleSeconds: shouldRefreshPsxData() ? 6 * 60 * 60 : psxLiveCacheTtlSeconds(),
       load: loadFundsBreakdownData,
-      // Empty is a valid demo / no-holdings response — don't 500 the API.
-      isUsable: () => true,
+      // Never cache an empty board — that poisons Redis after a demo/no-DB miss.
+      isUsable: (data) => data.funds.length > 0,
     });
     return value;
   } catch (error) {
     console.warn("[funds-breakdown] unavailable:", error);
+    // Last resort for local demo without Supabase: production public snapshot.
+    if (canUseProductionPublicFallback()) {
+      const remote = await fetchProductionFundsBreakdown();
+      if (remote?.funds.length) return remote;
+    }
     return emptyBreakdownData();
   }
+}
+
+async function fetchProductionFundsBreakdown(): Promise<FundsBreakdownData | null> {
+  return fetchProductionPublicData<FundsBreakdownData>({
+    path: "/api/public/funds-breakdown",
+    refererPath: "/market/funds-breakdown",
+    isUsable: (data) => Boolean(data?.funds?.length),
+    label: "funds-breakdown",
+  });
 }
 
 async function loadFundsBreakdownData(): Promise<FundsBreakdownData> {
   const [holdingsData, fundsData, allQuotes] = await Promise.all([
     getLatestPublishedHoldingsAll().catch((error) => {
       console.warn("[funds-breakdown] holdings load failed:", error);
-      return { year: 0, month: 0, funds: [] as Awaited<ReturnType<typeof getLatestPublishedHoldingsAll>>["funds"] };
+      return {
+        year: 0,
+        month: 0,
+        funds: [] as Awaited<ReturnType<typeof getLatestPublishedHoldingsAll>>["funds"],
+      };
     }),
     getMufapFunds().catch(() => null),
     getAllQuotes().catch(() => [] as Awaited<ReturnType<typeof getAllQuotes>>),
   ]);
 
   const { year, month, funds: holdingsFunds } = holdingsData;
+
+  // Local demo / missing service-role: don't write an empty payload into cache.
+  if (!holdingsFunds.length) {
+    if (canUseProductionPublicFallback()) {
+      const remote = await fetchProductionFundsBreakdown();
+      if (remote?.funds.length) return remote;
+    }
+    throw new Error("No published fund holdings available");
+  }
 
   const quoteMap = new Map(allQuotes.map((q) => [q.symbol.toUpperCase(), q]));
 
@@ -101,7 +132,6 @@ async function loadFundsBreakdownData(): Promise<FundsBreakdownData> {
     const mufap = mufapByName.get(norm(hf.fundName)) ?? null;
     const brand = identifyAmcBrand(hf.amc);
 
-    // Extract equity allocation % from MUFAP asset allocation
     const equityPct =
       mufap?.assetAllocation.find(
         (a) => a.label.toLowerCase().includes("equity") || a.label.toLowerCase().includes("stock")
@@ -134,7 +164,6 @@ async function loadFundsBreakdownData(): Promise<FundsBreakdownData> {
           plAmount: pl,
         };
       }
-      // Soft-fail missing prices — keep the holding row, omit P/L.
       return {
         symbol: h.symbol,
         stockName: h.stockName,
@@ -144,8 +173,6 @@ async function loadFundsBreakdownData(): Promise<FundsBreakdownData> {
       };
     });
 
-    // Same weighted-average-over-priced-holdings formula used on /market/strategy
-    // and fund detail, so the three screens never independently drift.
     const estimate = computeFundReturnEstimate(hf.holdings, quoteMap, FUND_INVESTMENT_AMOUNT);
 
     return {
@@ -167,7 +194,6 @@ async function loadFundsBreakdownData(): Promise<FundsBreakdownData> {
     };
   });
 
-  // Sort: AMC alphabetical, then fund name
   breakdownFunds.sort(
     (a, b) => a.amc.localeCompare(b.amc) || a.fundName.localeCompare(b.fundName)
   );

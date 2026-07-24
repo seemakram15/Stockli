@@ -7,6 +7,10 @@ import {
   FUND_INVESTMENT_AMOUNT,
   profitOnInvestment,
 } from "@/lib/services/fund-return-estimate";
+import {
+  canUseProductionPublicFallback,
+  fetchProductionPublicData,
+} from "@/lib/services/production-public";
 
 const MUFAP_BASE = "https://www.mufap.com.pk";
 const INVESTMENT_AMOUNT = FUND_INVESTMENT_AMOUNT;
@@ -118,6 +122,15 @@ export async function getMufapFunds({
     return cached.value;
   } catch (error) {
     console.warn("[mufap] source unavailable:", error);
+    if (canUseProductionPublicFallback()) {
+      const remote = await fetchProductionPublicData<MufapFundsData>({
+        path: `/api/public/mufap?kind=${includeEtfs ? "etfs" : "mutual"}`,
+        refererPath: includeEtfs ? "/market/etfs" : "/market/mutual-funds",
+        isUsable: (data) => Boolean(data?.funds?.length),
+        label: "mufap",
+      });
+      if (remote?.funds.length) return remote;
+    }
     return emptyMufapFundsData(includeEtfs, error);
   }
 }

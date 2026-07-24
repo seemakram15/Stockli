@@ -16,10 +16,18 @@ export function IslamicMark({
   title = "Islamic / Shariah",
 }: {
   className?: string;
-  size?: "xs" | "sm" | "md";
+  /** xs≈16px, sm≈20px, md≈24px, lg≈28px — sized for clear visibility beside fund names. */
+  size?: "xs" | "sm" | "md" | "lg";
   title?: string;
 }) {
-  const dimension = size === "xs" ? "size-3.5" : size === "md" ? "size-5" : "size-4";
+  const dimension =
+    size === "xs"
+      ? "size-4"
+      : size === "md"
+        ? "size-6"
+        : size === "lg"
+          ? "size-7"
+          : "size-5";
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
@@ -37,17 +45,20 @@ export function IslamicMark({
   );
 }
 
-export function IslamicTag({ className }: { className?: string }) {
+/** Mosque icon for Islamic funds — place to the right of the fund name (no text badge). */
+export function FundIslamicIcon({
+  className,
+  size = "md",
+}: {
+  className?: string;
+  size?: "xs" | "sm" | "md" | "lg";
+}) {
   return (
     <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide",
-        "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
-        className
-      )}
+      className={cn("inline-flex shrink-0 items-center", className)}
+      aria-label="Islamic / Shariah"
     >
-      <IslamicMark size="xs" title="Islamic" />
-      Islamic
+      <IslamicMark size={size} title="Islamic / Shariah" />
     </span>
   );
 }

@@ -14,6 +14,10 @@ import {
   FUND_INVESTMENT_AMOUNT,
   computeFundReturnEstimate,
 } from "@/lib/services/fund-return-estimate";
+import {
+  canUseProductionPublicFallback,
+  fetchProductionPublicData,
+} from "@/lib/services/production-public";
 
 export interface FundHoldingsReturn {
   /** Holdings-weighted 1-day return%: Σ(weight × changePct) / Σ(weight). */
@@ -38,11 +42,12 @@ const EMPTY_HOLDINGS_RETURN: FundHoldingsReturn = {
 export async function getFundHoldingsReturn(fundName: string): Promise<FundHoldingsReturn> {
   try {
     const { value } = await getStaleCached({
-      key: `fund-return:${fundName}`,
+      key: `fund-return-v2:${fundName}`,
       ttlSeconds: shouldRefreshPsxData() ? 5 * 60 : psxLiveCacheTtlSeconds(),
       staleSeconds: shouldRefreshPsxData() ? 6 * 60 * 60 : psxLiveCacheTtlSeconds(),
       load: () => loadFundHoldingsReturn(fundName),
-      isUsable: () => true,
+      // Cache only once a published period resolved (demo may use production holdings).
+      isUsable: (data) => data.periodYear > 0,
     });
     return value;
   } catch (error) {
@@ -54,7 +59,9 @@ export async function getFundHoldingsReturn(fundName: string): Promise<FundHoldi
 async function loadFundHoldingsReturn(fundName: string): Promise<FundHoldingsReturn> {
   const periods = await getPublishedPeriods(fundName);
   const period = periods[0];
-  if (!period) return EMPTY_HOLDINGS_RETURN;
+  if (!period) {
+    throw new Error(`No published holdings period for ${fundName}`);
+  }
 
   const [holdings, allQuotes] = await Promise.all([
     getPublishedFundHoldings(fundName, period.year, period.month),
@@ -95,19 +102,37 @@ export interface FundsHoldingStockData {
   periodMonth: number;
 }
 
+async function fetchProductionStockFunds(
+  symbol: string
+): Promise<FundsHoldingStockData | null> {
+  return fetchProductionPublicData<FundsHoldingStockData>({
+    path: `/api/public/stock-funds/${encodeURIComponent(symbol)}`,
+    refererPath: `/stock/${encodeURIComponent(symbol)}`,
+    // periodYear > 0 means production resolved published holdings even if this
+    // symbol happens to have zero fund holders.
+    isUsable: (data) => Boolean(data && data.periodYear > 0),
+    label: "fund-returns",
+  });
+}
+
 export async function getFundsHoldingStock(symbol: string): Promise<FundsHoldingStockData> {
   const normalized = symbol.toUpperCase();
   try {
     const { value } = await getStaleCached({
-      key: `stock-funds-v2:${normalized}`,
+      // v3: demo/no-DB resolves via production public stock-funds snapshot.
+      key: `stock-funds-v3:${normalized}`,
       ttlSeconds: 30 * 60,
       staleSeconds: 24 * 60 * 60,
       load: () => loadFundsHoldingStock(normalized),
-      isUsable: () => true,
+      isUsable: (data) => data.periodYear > 0,
     });
     return value;
   } catch (error) {
     console.warn("[fund-returns] getFundsHoldingStock failed:", error);
+    if (canUseProductionPublicFallback()) {
+      const remote = await fetchProductionStockFunds(normalized);
+      if (remote) return remote;
+    }
     return { symbol: normalized, funds: [], periodYear: 0, periodMonth: 0 };
   }
 }
@@ -115,13 +140,25 @@ export async function getFundsHoldingStock(symbol: string): Promise<FundsHolding
 async function loadFundsHoldingStock(symbol: string): Promise<FundsHoldingStockData> {
   const period = await getLatestPublishedPeriod();
   if (!period) {
-    return { symbol, funds: [], periodYear: 0, periodMonth: 0 };
+    if (canUseProductionPublicFallback()) {
+      const remote = await fetchProductionStockFunds(symbol);
+      if (remote) return remote;
+    }
+    throw new Error("No published holdings period available");
   }
 
   const [fundGroups, mufapData] = await Promise.all([
     getPublishedHoldingsForPeriod(period.year, period.month),
     getMufapFunds().catch(() => null),
   ]);
+
+  if (!fundGroups.length) {
+    if (canUseProductionPublicFallback()) {
+      const remote = await fetchProductionStockFunds(symbol);
+      if (remote) return remote;
+    }
+    throw new Error("No published holdings groups available");
+  }
 
   const mufapByName = new Map<string, FundClassFilter>();
   if (mufapData) {

@@ -1,5 +1,9 @@
 import "server-only";
 import { getStaleCached } from "@/lib/cache/stale";
+import {
+  canUseProductionPublicFallback,
+  fetchProductionPublicData,
+} from "@/lib/services/production-public";
 
 const YOUTUBE_BASE = "https://www.youtube.com";
 const YOUTUBE_TTL_SECONDS = 10 * 60;
@@ -113,14 +117,28 @@ export const YOUTUBE_CHANNELS: YoutubeChannelConfig[] = [
 ];
 
 export async function getYoutubeVideos(): Promise<YoutubeVideosData> {
-  const cached = await getStaleCached({
-    key: "youtube:videos:selected",
-    ttlSeconds: YOUTUBE_TTL_SECONDS,
-    staleSeconds: YOUTUBE_STALE_SECONDS,
-    load: loadYoutubeVideos,
-    isUsable: (data) => data.videos.length > 0,
-  });
-  return cached.value;
+  try {
+    const cached = await getStaleCached({
+      key: "youtube:videos:selected",
+      ttlSeconds: YOUTUBE_TTL_SECONDS,
+      staleSeconds: YOUTUBE_STALE_SECONDS,
+      load: loadYoutubeVideos,
+      isUsable: (data) => data.videos.length > 0,
+    });
+    return cached.value;
+  } catch (error) {
+    console.warn("[youtube] source unavailable:", error);
+    if (canUseProductionPublicFallback()) {
+      const remote = await fetchProductionPublicData<YoutubeVideosData>({
+        path: "/api/public/youtubers",
+        refererPath: "/youtubers",
+        isUsable: (data) => Boolean(data?.videos?.length),
+        label: "youtubers",
+      });
+      if (remote?.videos.length) return remote;
+    }
+    throw error;
+  }
 }
 
 async function loadYoutubeVideos(): Promise<YoutubeVideosData> {

@@ -6,8 +6,8 @@ import { Building2, Search, X } from "lucide-react";
 import { amcIconUrl, identifyAmcBrand } from "@/lib/amc-brands";
 import { AmcBrandMark } from "@/components/market/amc-brand-mark";
 import {
+  FundIslamicIcon,
   IslamicMark,
-  IslamicTag,
   isIslamicOrShariahName,
   isShariahSymbol,
   useShariahSymbols,
@@ -323,25 +323,30 @@ function FundCard({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="mb-0.5 flex flex-wrap items-center gap-1">
-            {isIslamicFund ? <IslamicTag /> : null}
-            {fund.classFilter === "conventional" && !isIslamicFund ? (
+          {fund.classFilter === "conventional" && !isIslamicFund ? (
+            <div className="mb-0.5 flex flex-wrap items-center gap-1">
               <TypeBadge label="Conv." color="blue" />
-            ) : null}
+            </div>
+          ) : null}
+          <div className="flex min-w-0 items-center gap-1.5">
+            {fund.fundId ? (
+              <Link
+                href={`/market/mutual-funds/${fund.fundId}`}
+                className="min-w-0 truncate text-sm font-bold leading-tight hover:underline"
+                style={{ color: brand.color }}
+              >
+                {fund.fundName}
+              </Link>
+            ) : (
+              <p
+                className="min-w-0 truncate text-sm font-bold leading-tight"
+                style={{ color: brand.color }}
+              >
+                {fund.fundName}
+              </p>
+            )}
+            {isIslamicFund ? <FundIslamicIcon size="md" /> : null}
           </div>
-          {fund.fundId ? (
-            <Link
-              href={`/market/mutual-funds/${fund.fundId}`}
-              className="block truncate text-sm font-bold leading-tight hover:underline"
-              style={{ color: brand.color }}
-            >
-              {fund.fundName}
-            </Link>
-          ) : (
-            <p className="truncate text-sm font-bold leading-tight" style={{ color: brand.color }}>
-              {fund.fundName}
-            </p>
-          )}
           <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
             <AmcBrandMark
               label={fund.amc}
@@ -434,7 +439,7 @@ function HoldingRow({
     >
       <span className="flex min-w-0 items-center gap-1 text-foreground/80">
         <span className="min-w-0 truncate">{h.stockName}</span>
-        {isShariah ? <IslamicMark size="xs" className="shrink-0" title="Shariah stock" /> : null}
+        {isShariah ? <IslamicMark size="sm" className="shrink-0" title="Shariah stock" /> : null}
       </span>
       <span className="text-right tabular-nums text-muted-foreground">{h.percentage.toFixed(1)}%</span>
       <span className={cn("text-right font-semibold tabular-nums", plColorClass(h.plAmount))}>

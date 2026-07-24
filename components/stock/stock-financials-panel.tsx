@@ -2,15 +2,17 @@
 
 import * as React from "react";
 import {
+  AlertCircle,
+  ArrowRight,
   BarChart3,
   ChartColumn,
   CheckCircle2,
   ChevronsUpDown,
   Clock3,
+  CloudDownload,
   Database,
   LineChart as LineChartIcon,
   Loader2,
-  RefreshCw,
   TableProperties,
   UsersRound,
 } from "lucide-react";
@@ -28,6 +30,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -49,7 +52,9 @@ import {
 import { cn } from "@/lib/utils";
 import type {
   FinancialMetric,
+  StockFinancialPeerCandidate,
   StockFinancialPeerComparison,
+  StockFinancialPeerPrepareStatus,
   FinancialTable,
   FinancialTableRow,
   StockFinancialTabId,
@@ -65,34 +70,37 @@ const TAB_ORDER: Array<{ id: StockFinancialTabId; label: string }> = [
   { id: "ratios", label: "Ratios" },
 ];
 
-type PeerLoadingState = {
-  percent: number;
-  title: string;
-  description: string;
-};
+function peerStatusLabel(
+  status: StockFinancialPeerPrepareStatus,
+  phase: "review" | "fetching" | "compare" = "review"
+) {
+  switch (status) {
+    case "ready":
+    case "done":
+      return "Data available";
+    case "pending":
+      return phase === "fetching" ? "Queued" : "No data";
+    case "fetching":
+      return "Fetching…";
+    case "error":
+      return "Unavailable";
+    default:
+      return status;
+  }
+}
 
-const PEER_LOADING_STEPS: PeerLoadingState[] = [
-  {
-    percent: 12,
-    title: "Opening peer comparison",
-    description: "Starting the same-sector comparison for this metric.",
-  },
-  {
-    percent: 38,
-    title: "Reading cached fundamentals",
-    description: "Checking the archived snapshot for the selected company.",
-  },
-  {
-    percent: 68,
-    title: "Collecting same-sector peers",
-    description: "Finding companies with ready fundamentals in the same sector.",
-  },
-  {
-    percent: 88,
-    title: "Preparing the comparison table",
-    description: "Sorting the metric rows and getting the popup ready.",
-  },
-];
+function PeerStatusIcon({ status }: { status: StockFinancialPeerPrepareStatus }) {
+  if (status === "fetching") {
+    return <Loader2 className="size-4 animate-spin text-sky-600 dark:text-sky-400" />;
+  }
+  if (status === "pending") {
+    return <Clock3 className="size-4 text-muted-foreground" />;
+  }
+  if (status === "ready" || status === "done") {
+    return <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />;
+  }
+  return <AlertCircle className="size-4 text-amber-600 dark:text-amber-400" />;
+}
 
 export function StockFinancialsPanel({
   symbol,
@@ -103,13 +111,12 @@ export function StockFinancialsPanel({
 }) {
   const normalizedSymbol = symbol.toUpperCase();
   const cacheKey = `public:stock-financials:v4:${normalizedSymbol}`;
-  const { data, isRefreshing, isFromDeviceCache, cachedAt, mutate } =
-    usePersistentResource<StockFinancialsData>({
-      cacheKey,
-      url: `/api/public/stock-financials/${encodeURIComponent(normalizedSymbol)}`,
-      refreshInterval: 60 * 60 * 1000,
-      keepPreviousData: false,
-    });
+  const { data, mutate } = usePersistentResource<StockFinancialsData>({
+    cacheKey,
+    url: `/api/public/stock-financials/${encodeURIComponent(normalizedSymbol)}`,
+    refreshInterval: 60 * 60 * 1000,
+    keepPreviousData: false,
+  });
   const [refreshOpen, setRefreshOpen] = React.useState(false);
   const displayName = data?.company?.name ?? companyName ?? normalizedSymbol;
 
@@ -139,21 +146,24 @@ export function StockFinancialsPanel({
               </CardDescription>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusPill
-              cachedAt={cachedAt ?? data?.updatedAt ?? null}
-              isRefreshing={isRefreshing || refreshOpen}
-              isFromDeviceCache={isFromDeviceCache}
-            />
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <p className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:text-sm">
+              If data not available
+              <ArrowRight className="size-3.5 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
+            </p>
             <Button
               type="button"
-              variant="ghost"
+              variant="default"
               size="sm"
               onClick={() => setRefreshOpen(true)}
               disabled={refreshOpen}
+              className={cn(
+                "gap-1.5 bg-sky-600 text-white shadow-md shadow-sky-600/25 ring-2 ring-sky-500/30 hover:bg-sky-700",
+                "dark:bg-sky-500 dark:hover:bg-sky-400 dark:text-sky-950"
+              )}
             >
-              <RefreshCw className={cn("size-4", refreshOpen && "animate-spin")} />
-              Refresh snapshot
+              <CloudDownload className={cn("size-4", refreshOpen && "animate-pulse")} />
+              Fetch Live Data
             </Button>
           </div>
         </div>
@@ -674,7 +684,7 @@ function MetricRowActions({
   return (
     <div className="flex items-center gap-1.5">
       <MetricTrendDialog tableTitle={tableTitle} row={row} />
-      <PeerComparisonDialog tabId={tabId} symbol={symbol} company={company} row={row} />
+      <PeerComparisonDialog tabId={tabId} symbol={symbol} row={row} />
     </div>
   );
 }
@@ -743,83 +753,337 @@ function MetricTrendDialog({
 function PeerComparisonDialog({
   tabId,
   symbol,
-  company,
   row,
 }: {
   tabId: Exclude<StockFinancialTabId, "overview">;
   symbol: string;
-  company: StockFinancialsData["company"];
   row: FinancialTableRow;
 }) {
+  type Phase = "review" | "fetching" | "compare";
+
   const [open, setOpen] = React.useState(false);
+  const [phase, setPhase] = React.useState<Phase>("review");
   const [data, setData] = React.useState<StockFinancialPeerComparison | null>(null);
+  const [peers, setPeers] = React.useState<StockFinancialPeerCandidate[]>([]);
   const [error, setError] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(false);
-  const [progress, setProgress] = React.useState<PeerLoadingState>(PEER_LOADING_STEPS[0]);
+  const [listing, setListing] = React.useState(false);
+  const [comparing, setComparing] = React.useState(false);
+  const runIdRef = React.useRef(0);
+  const fetchControllerRef = React.useRef<AbortController | null>(null);
+
+  const peersQuery = React.useMemo(
+    () => `tab=${encodeURIComponent(tabId)}&metric=${encodeURIComponent(row.label)}`,
+    [row.label, tabId]
+  );
+
+  const readyPeers = React.useMemo(() => {
+    const ready = peers.filter(
+      (peer) => peer.ready || peer.status === "ready" || peer.status === "done"
+    );
+    return ready.slice().sort((a, b) => {
+      if (a.symbol === symbol) return -1;
+      if (b.symbol === symbol) return 1;
+      return a.companyName.localeCompare(b.companyName);
+    });
+  }, [peers, symbol]);
+  const missingPeers = React.useMemo(() => {
+    const missing = peers.filter(
+      (peer) => !(peer.ready || peer.status === "ready" || peer.status === "done")
+    );
+    return missing.slice().sort((a, b) => {
+      const rank = (status: StockFinancialPeerPrepareStatus) => {
+        if (status === "fetching") return 0;
+        if (status === "pending") return 1;
+        if (status === "error") return 2;
+        return 3;
+      };
+      const byStatus = rank(a.status) - rank(b.status);
+      if (byStatus !== 0) return byStatus;
+      return a.companyName.localeCompare(b.companyName);
+    });
+  }, [peers]);
+  const fetchingCount = peers.filter(
+    (peer) => peer.status === "fetching" || peer.status === "pending"
+  ).length;
+
+  function resetState() {
+    runIdRef.current += 1;
+    fetchControllerRef.current?.abort();
+    fetchControllerRef.current = null;
+    setPhase("review");
+    setData(null);
+    setPeers([]);
+    setError(null);
+    setListing(false);
+    setComparing(false);
+  }
+
+  async function loadCandidates(signal?: AbortSignal) {
+    const response = await fetch(
+      `/api/public/stock-financials/${encodeURIComponent(symbol)}/peers?${peersQuery}&mode=candidates`,
+      { cache: "no-store", signal }
+    );
+    const payload = (await response.json().catch(() => null)) as {
+      data?: {
+        sector: string;
+        peers: StockFinancialPeerCandidate[];
+        missingCount: number;
+      };
+      error?: string;
+    } | null;
+    if (!response.ok || !payload?.data?.peers?.length) {
+      throw new Error(payload?.error ?? "Peer companies unavailable");
+    }
+    return payload.data;
+  }
+
+  async function loadComparison(signal?: AbortSignal) {
+    const response = await fetch(
+      `/api/public/stock-financials/${encodeURIComponent(symbol)}/peers?${peersQuery}`,
+      { cache: "no-store", signal }
+    );
+    const payload = (await response.json().catch(() => null)) as {
+      data?: StockFinancialPeerComparison;
+      error?: string;
+    } | null;
+    if (!response.ok || !payload?.data) {
+      throw new Error(payload?.error ?? "Peer comparison unavailable");
+    }
+    return payload.data;
+  }
 
   React.useEffect(() => {
-    if (!open || data) return;
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 15_000);
-    const progressTimers: number[] = [];
-    let active = true;
-    setLoading(true);
-    setError(null);
-    setProgress(PEER_LOADING_STEPS[0]);
-    PEER_LOADING_STEPS.slice(1).forEach((step, index) => {
-      const timer = window.setTimeout(() => {
-        if (active) setProgress(step);
-      }, 450 + index * 650);
-      progressTimers.push(timer);
-    });
+    if (!open || phase !== "review" || peers.length > 0 || data) return;
 
-    fetch(
-      `/api/public/stock-financials/${encodeURIComponent(symbol)}/peers?tab=${encodeURIComponent(
-        tabId
-      )}&metric=${encodeURIComponent(row.label)}`,
-      { signal: controller.signal }
-      )
-      .then(async (response) => {
-        const payload = (await response.json()) as {
-          data?: StockFinancialPeerComparison;
-          error?: string;
-        };
-        if (!response.ok || !payload.data) {
-          throw new Error(payload.error ?? "Peer comparison unavailable");
-        }
-        setProgress({
-          percent: 96,
-          title: "Rendering peer companies",
-          description: `Loaded ${payload.data.peers.length} same-sector companies for comparison.`,
-        });
-        setData(payload.data);
+    const runId = ++runIdRef.current;
+    const controller = new AbortController();
+    setListing(true);
+    setError(null);
+
+    void loadCandidates(controller.signal)
+      .then((listed) => {
+        if (runId !== runIdRef.current) return;
+        setPeers(listed.peers);
       })
       .catch((fetchError: unknown) => {
-        if (!active) return;
-        if ((fetchError as Error).name === "AbortError") {
-          setError("Same-sector comparison is taking longer than expected. Please try again.");
-          return;
-        }
-        setError(fetchError instanceof Error ? fetchError.message : "Peer comparison unavailable");
+        if (runId !== runIdRef.current) return;
+        if ((fetchError as Error).name === "AbortError") return;
+        setError(
+          fetchError instanceof Error ? fetchError.message : "Peer companies unavailable"
+        );
       })
       .finally(() => {
-        window.clearTimeout(timeout);
-        progressTimers.forEach((timer) => window.clearTimeout(timer));
-        if (active) setLoading(false);
+        if (runId === runIdRef.current) setListing(false);
       });
 
     return () => {
-      active = false;
-      window.clearTimeout(timeout);
-      progressTimers.forEach((timer) => window.clearTimeout(timer));
       controller.abort();
     };
-  }, [data, open, row.label, symbol, tabId]);
+    // Bootstrap review list only when the dialog opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  async function startComparison() {
+    const runId = ++runIdRef.current;
+    fetchControllerRef.current?.abort();
+    fetchControllerRef.current = null;
+    setComparing(true);
+    setError(null);
+    try {
+      const comparison = await loadComparison();
+      if (runId !== runIdRef.current) return;
+      setData(comparison);
+      setPhase("compare");
+    } catch (fetchError: unknown) {
+      if (runId !== runIdRef.current) return;
+      setError(
+        fetchError instanceof Error ? fetchError.message : "Peer comparison unavailable"
+      );
+    } finally {
+      if (runId === runIdRef.current) setComparing(false);
+    }
+  }
+
+  async function startFetch() {
+    const runId = ++runIdRef.current;
+    fetchControllerRef.current?.abort();
+    const controller = new AbortController();
+    fetchControllerRef.current = controller;
+    setPhase("fetching");
+    setError(null);
+    setData(null);
+    setPeers((current) =>
+      current.map((peer) =>
+        peer.ready || peer.status === "ready" || peer.status === "done"
+          ? { ...peer, status: "ready", ready: true }
+          : { ...peer, status: "pending", ready: false }
+      )
+    );
+
+    try {
+      const response = await fetch(
+        `/api/public/stock-financials/${encodeURIComponent(symbol)}/peers?${peersQuery}`,
+        {
+          method: "POST",
+          headers: { Accept: "application/x-ndjson" },
+          cache: "no-store",
+          signal: controller.signal,
+        }
+      );
+
+      if (!response.ok && !response.body) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Peer fetch unavailable");
+      }
+      if (!response.body) throw new Error("Peer fetch stream unavailable.");
+
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/x-ndjson")) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        if (!response.ok) {
+          throw new Error(payload?.error ?? "Peer fetch unavailable");
+        }
+        throw new Error("Peer fetch stream was not returned.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let streamError: string | null = null;
+      let comparison: StockFinancialPeerComparison | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (runId !== runIdRef.current) {
+          reader.cancel().catch(() => undefined);
+          return;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          let event: unknown;
+          try {
+            event = JSON.parse(trimmed);
+          } catch {
+            continue;
+          }
+          if (!event || typeof event !== "object") continue;
+          const typed = event as {
+            type?: string;
+            error?: string;
+            sector?: string;
+            peers?: StockFinancialPeerCandidate[];
+            symbol?: string;
+            status?: StockFinancialPeerPrepareStatus;
+            data?: StockFinancialPeerComparison;
+          };
+
+          if (typed.type === "peers" && Array.isArray(typed.peers)) {
+            setPeers(typed.peers);
+            continue;
+          }
+
+          if (typed.type === "peer" && typed.symbol && typed.status) {
+            setPeers((current) =>
+              current.map((peer) =>
+                peer.symbol === typed.symbol
+                  ? {
+                      ...peer,
+                      status: typed.status as StockFinancialPeerPrepareStatus,
+                      ready:
+                        typed.status === "done" || typed.status === "ready"
+                          ? true
+                          : peer.ready,
+                    }
+                  : peer
+              )
+            );
+            continue;
+          }
+
+          if (typed.type === "result" && typed.data) {
+            comparison = typed.data;
+            continue;
+          }
+
+          if (typed.type === "error") {
+            streamError = typed.error ?? "Peer fetch unavailable";
+          }
+        }
+      }
+
+      if (runId !== runIdRef.current) return;
+      if (streamError) {
+        setError(streamError);
+        setPhase("review");
+        return;
+      }
+      if (comparison) {
+        setData(comparison);
+        setPhase("compare");
+        return;
+      }
+      const fallback = await loadComparison();
+      if (runId !== runIdRef.current) return;
+      setData(fallback);
+      setPhase("compare");
+    } catch (fetchError: unknown) {
+      if (runId !== runIdRef.current) return;
+      if ((fetchError as Error).name === "AbortError") return;
+      setError(fetchError instanceof Error ? fetchError.message : "Peer fetch unavailable");
+      setPhase("review");
+    } finally {
+      if (fetchControllerRef.current === controller) {
+        fetchControllerRef.current = null;
+      }
+    }
+  }
+
+  async function completeEarly() {
+    const runId = ++runIdRef.current;
+    fetchControllerRef.current?.abort();
+    fetchControllerRef.current = null;
+    setComparing(true);
+    setError(null);
+    setPeers((current) =>
+      current.map((peer) =>
+        peer.status === "fetching" || peer.status === "pending"
+          ? { ...peer, status: "error" as const }
+          : peer
+      )
+    );
+    try {
+      const comparison = await loadComparison();
+      if (runId !== runIdRef.current) return;
+      setData(comparison);
+      setPhase("compare");
+    } catch (fetchError: unknown) {
+      if (runId !== runIdRef.current) return;
+      setError(
+        fetchError instanceof Error ? fetchError.message : "Peer comparison unavailable"
+      );
+      setPhase("review");
+    } finally {
+      if (runId === runIdRef.current) setComparing(false);
+    }
+  }
 
   const periods = React.useMemo(() => data?.periods.slice(-5) ?? [], [data]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) resetState();
+      }}
+    >
       <Button
         type="button"
         variant="ghost"
@@ -830,63 +1094,217 @@ function PeerComparisonDialog({
       >
         <UsersRound className="size-4" />
       </Button>
-      <DialogContent className="gap-0 p-0 sm:max-w-[min(1200px,calc(100vw-2rem))]">
-        <DialogHeader className="border-b p-5 pr-12">
-          <DialogTitle className="text-xl">Peer comparison</DialogTitle>
+      <DialogContent
+        className={cn(
+          "flex max-h-[calc(100dvh-1rem)] w-full flex-col gap-0 overflow-hidden p-0",
+          "sm:max-w-[min(1200px,calc(100vw-2rem))]",
+          "[touch-action:manipulation]"
+        )}
+      >
+        <DialogHeader className="shrink-0 border-b bg-popover px-4 py-4 pr-12 sm:px-5 sm:py-5">
+          <DialogTitle className="text-xl">
+            {phase === "compare" ? "Peer comparison" : "Peer companies"}
+          </DialogTitle>
           <DialogDescription>
-            {row.label} across {data?.sector ?? company?.sector ?? "same sector"} companies.
+            {row.label}
+            {peers.length || data?.peers.length
+              ? ` · ${data?.peers.length ?? peers.length} peer compan${
+                  (data?.peers.length ?? peers.length) === 1 ? "y" : "ies"
+                }`
+              : " · peer companies"}
           </DialogDescription>
         </DialogHeader>
-        <div className="p-5">
-          {loading ? (
-            <div className="space-y-5 rounded-2xl border border-sky-500/20 bg-sky-500/5 p-5">
-              <div className="flex items-start gap-3">
-                <IconChip accent="sky" variant="gradient" size="lg">
-                  <Loader2 className="animate-spin" />
-                </IconChip>
-                <div className="min-w-0">
-                  <p className="text-lg font-semibold text-foreground">{progress.title}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{progress.description}</p>
-                  <p className="mt-2 text-xs font-medium uppercase tracking-wide text-sky-600 dark:text-sky-400">
-                    Metric: {row.label}
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Peer comparison progress</span>
-                  <span className="font-semibold tabular-nums text-foreground">
-                    {progress.percent}%
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-background">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-sky-500 to-indigo-400 transition-all duration-500"
-                    style={{ width: `${progress.percent}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          ) : error ? (
-            <EmptyState
-              icon={<UsersRound className="size-6" />}
-              title="Peer comparison unavailable"
-              description={error}
-              className="border-solid"
-            />
-          ) : data?.peers.length ? (
-            <PeerComparisonTable rows={data.peers} periods={periods} currentSymbol={symbol} />
+
+        <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-4 sm:p-5 [-webkit-overflow-scrolling:touch]">
+          {phase === "compare" ? (
+            data?.peers.length ? (
+              <PeerComparisonTable rows={data.peers} periods={periods} currentSymbol={symbol} />
+            ) : (
+              <EmptyState
+                icon={<UsersRound className="size-6" />}
+                title="No peer rows yet"
+                description="Peer companies did not return this metric."
+                className="border-solid"
+              />
+            )
           ) : (
-            <EmptyState
-              icon={<UsersRound className="size-6" />}
-              title="No peer rows yet"
-              description="Same-sector companies did not return this metric."
-              className="border-solid"
-            />
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-sky-500/20 bg-sky-500/5 p-4">
+                <div className="flex items-start gap-3">
+                  <IconChip accent="sky" variant="gradient" size="lg">
+                    {phase === "fetching" || listing ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <UsersRound />
+                    )}
+                  </IconChip>
+                  <div className="min-w-0">
+                    <p className="text-lg font-semibold text-foreground">
+                      {phase === "fetching"
+                        ? "Fetching missing peer fundamentals"
+                        : listing
+                          ? "Loading peer companies"
+                          : "Review peer data availability"}
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {phase === "fetching"
+                        ? `Loading live data for ${fetchingCount || missingPeers.length} compan${
+                            (fetchingCount || missingPeers.length) === 1 ? "y" : "ies"
+                          }. Click Completed? anytime to open comparison with what is ready.`
+                        : "Companies with cached data are listed first. Fetch missing peers, or start comparison with ready data only."}
+                    </p>
+                    {peers.length > 0 ? (
+                      <p className="mt-2 text-xs font-medium uppercase tracking-wide text-sky-600 dark:text-sky-400">
+                        {readyPeers.length} ready · {missingPeers.length} missing · {row.label}
+                      </p>
+                    ) : null}
+                    {error ? (
+                      <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{error}</p>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              {listing && !peers.length ? (
+                <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" />
+                  Resolving peer companies…
+                </div>
+              ) : peers.length ? (
+                <div className="space-y-4">
+                  {readyPeers.length ? (
+                    <PeerCompanyGroup
+                      title="Data available"
+                      count={readyPeers.length}
+                      peers={readyPeers}
+                      currentSymbol={symbol}
+                      phase={phase}
+                    />
+                  ) : null}
+                  {missingPeers.length ? (
+                    <PeerCompanyGroup
+                      title="Data not available"
+                      count={missingPeers.length}
+                      peers={missingPeers}
+                      currentSymbol={symbol}
+                      phase={phase}
+                    />
+                  ) : null}
+                </div>
+              ) : !listing ? (
+                <EmptyState
+                  icon={<UsersRound className="size-6" />}
+                  title="No peer companies found"
+                  description="We could not resolve peer companies for this stock."
+                  className="border-solid"
+                />
+              ) : null}
+            </div>
           )}
         </div>
+
+        {phase !== "compare" ? (
+          <DialogFooter className="shrink-0 gap-2 border-t bg-muted/20 px-4 py-3 sm:justify-between sm:px-5 sm:py-4">
+            <p className="hidden text-xs text-muted-foreground sm:block sm:max-w-sm">
+              {phase === "fetching"
+                ? "Ongoing fetches will stop when you click Completed?"
+                : "Start Comparison uses cached peers only."}
+            </p>
+            <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+              {phase === "fetching" ? (
+                <Button
+                  type="button"
+                  variant="default"
+                  className="bg-sky-600 text-white hover:bg-sky-700 dark:bg-sky-500 dark:text-sky-950 dark:hover:bg-sky-400"
+                  onClick={() => void completeEarly()}
+                  disabled={comparing}
+                >
+                  {comparing ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
+                  Completed?
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void startFetch()}
+                    disabled={listing || comparing || missingPeers.length === 0}
+                  >
+                    <CloudDownload className="size-4" />
+                    Start Fetch
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="default"
+                    onClick={() => void startComparison()}
+                    disabled={listing || comparing || readyPeers.length === 0}
+                  >
+                    {comparing ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <UsersRound className="size-4" />
+                    )}
+                    Start Comparison
+                  </Button>
+                </>
+              )}
+            </div>
+          </DialogFooter>
+        ) : null}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PeerCompanyGroup({
+  title,
+  count,
+  peers,
+  currentSymbol,
+  phase,
+}: {
+  title: string;
+  count: number;
+  peers: StockFinancialPeerCandidate[];
+  currentSymbol: string;
+  phase: "review" | "fetching" | "compare";
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2 px-1">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {title}
+        </p>
+        <Badge variant="outline" className="bg-background">
+          {count}
+        </Badge>
+      </div>
+      <ul className="space-y-2 rounded-xl border bg-background p-2">
+        {peers.map((peer) => (
+          <li
+            key={peer.symbol}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2.5",
+              peer.symbol === currentSymbol
+                ? "bg-sky-500/10 ring-1 ring-sky-500/20"
+                : "bg-muted/20"
+            )}
+          >
+            <StockIdentity
+              symbol={peer.symbol}
+              name={peer.companyName}
+              image={peer.image}
+              size="sm"
+              className="min-w-0 flex-1"
+            />
+            <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <PeerStatusIcon status={peer.status} />
+              {peerStatusLabel(peer.status, phase)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -899,7 +1317,7 @@ function PeerComparisonTable({
   periods: string[];
   currentSymbol: string;
 }) {
-  type SortKey = "companyName" | "symbol" | "sector" | "trend" | `period:${string}`;
+  type SortKey = "companyName" | "symbol" | "trend" | `period:${string}`;
   const [sort, setSort] = React.useState<{ key: SortKey; direction: "asc" | "desc" }>(() => ({
     key: periods.at(-1) ? `period:${periods.at(-1)}` : "companyName",
     direction: "desc",
@@ -921,8 +1339,6 @@ function PeerComparisonTable({
         result = a.companyName.localeCompare(b.companyName);
       } else if (sort.key === "symbol") {
         result = a.symbol.localeCompare(b.symbol);
-      } else if (sort.key === "sector") {
-        result = a.sector.localeCompare(b.sector);
       } else if (sort.key === "trend") {
         result = getSparklineChange(a.sparkline) - getSparklineChange(b.sparkline);
       } else {
@@ -937,50 +1353,43 @@ function PeerComparisonTable({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-muted/30 px-3 py-2 text-sm">
         <span className="text-muted-foreground">
-          Showing {rows.length} same-sector companies with this metric ready.
+          Showing {rows.length} peer compan{rows.length === 1 ? "y" : "ies"} with this metric ready.
         </span>
         <Badge variant="outline" className="bg-background">
           {currentSymbol} selected
         </Badge>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] border-collapse text-sm">
-          <thead>
-            <tr className="border-b bg-muted/50">
+      <table className="w-full min-w-[720px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b bg-muted/50">
+            <SortableHeader
+              label="Company"
+              active={sort.key === "companyName" || sort.key === "symbol"}
+              direction={sort.direction}
+              onClick={() => toggleSort("symbol")}
+            />
+            <SortableHeader
+              label="Trend"
+              active={sort.key === "trend"}
+              direction={sort.direction}
+              onClick={() => toggleSort("trend")}
+            />
+            {periods.map((period) => (
               <SortableHeader
-                label="Company"
-                active={sort.key === "companyName" || sort.key === "symbol"}
+                key={period}
+                label={period}
+                align="right"
+                active={sort.key === `period:${period}`}
                 direction={sort.direction}
-                onClick={() => toggleSort("symbol")}
+                onClick={() => toggleSort(`period:${period}`)}
               />
-              <SortableHeader
-                label="Sector"
-                active={sort.key === "sector"}
-                direction={sort.direction}
-                onClick={() => toggleSort("sector")}
-              />
-              <SortableHeader
-                label="Trend"
-                active={sort.key === "trend"}
-                direction={sort.direction}
-                onClick={() => toggleSort("trend")}
-              />
-              {periods.map((period) => (
-                <SortableHeader
-                  key={period}
-                  label={period}
-                  align="right"
-                  active={sort.key === `period:${period}`}
-                  direction={sort.direction}
-                  onClick={() => toggleSort(`period:${period}`)}
-                />
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sortedRows.map((peer) => {
-              const isSelected = peer.symbol === currentSymbol;
-              return (
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {sortedRows.map((peer) => {
+            const isSelected = peer.symbol === currentSymbol;
+            return (
               <tr
                 key={peer.symbol}
                 className={cn(
@@ -1005,11 +1414,6 @@ function PeerComparisonTable({
                   </div>
                 </td>
                 <td className="px-3 py-2">
-                  <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">
-                    {peer.sector}
-                  </span>
-                </td>
-                <td className="px-3 py-2">
                   <Sparkline values={peer.sparkline} />
                 </td>
                 {periods.map((period) => (
@@ -1018,11 +1422,10 @@ function PeerComparisonTable({
                   </td>
                 ))}
               </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -1248,24 +1651,6 @@ function Sparkline({ values }: { values: number[] }) {
     <svg viewBox="0 0 72 32" className="h-8 w-20" aria-hidden>
       <polyline fill="none" stroke={color} strokeWidth="2.5" points={points} />
     </svg>
-  );
-}
-
-function StatusPill({
-  cachedAt,
-  isRefreshing,
-  isFromDeviceCache,
-}: {
-  cachedAt: string | null;
-  isRefreshing: boolean;
-  isFromDeviceCache: boolean;
-}) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground shadow-sm">
-      <Database className="size-3" />
-      {isRefreshing ? "Refreshing fundamentals..." : cachedAt ? "Fundamentals cached" : "Loading cache..."}
-      {isFromDeviceCache ? <span className="text-sky-600 dark:text-sky-400">device</span> : null}
-    </span>
   );
 }
 

@@ -10,6 +10,10 @@ import {
   computeFundReturnEstimate,
 } from "@/lib/services/fund-return-estimate";
 import type { FundClassFilter } from "@/lib/services/mufap";
+import {
+  canUseProductionPublicFallback,
+  fetchProductionPublicData,
+} from "@/lib/services/production-public";
 
 export interface HoldingsStrategyFund {
   fundName: string;
@@ -67,18 +71,32 @@ function emptyHoldingsStrategyData(): HoldingsStrategyData {
   };
 }
 
+async function fetchProductionHoldingsStrategy(): Promise<HoldingsStrategyData | null> {
+  return fetchProductionPublicData<HoldingsStrategyData>({
+    path: "/api/public/market-strategy-holdings",
+    refererPath: "/market/strategy",
+    isUsable: (data) => Boolean(data?.funds?.length),
+    label: "market-strategy-holdings",
+  });
+}
+
 export async function getHoldingsStrategyData(): Promise<HoldingsStrategyData> {
   try {
     const { value } = await getStaleCached({
-      key: "market-strategy:holdings-v1",
+      // v2: never cache empty boards; demo falls back to production when local DB is empty.
+      key: "market-strategy:holdings-v2",
       ttlSeconds: shouldRefreshPsxData() ? 5 * 60 : psxLiveCacheTtlSeconds(),
       staleSeconds: shouldRefreshPsxData() ? 6 * 60 * 60 : psxLiveCacheTtlSeconds(),
       load: loadHoldingsStrategyData,
-      isUsable: () => true,
+      isUsable: (data) => data.funds.length > 0,
     });
     return value;
   } catch (error) {
     console.warn("[market-strategy-holdings] unavailable:", error);
+    if (canUseProductionPublicFallback()) {
+      const remote = await fetchProductionHoldingsStrategy();
+      if (remote?.funds.length) return remote;
+    }
     return emptyHoldingsStrategyData();
   }
 }
@@ -98,6 +116,14 @@ async function loadHoldingsStrategyData(): Promise<HoldingsStrategyData> {
   ]);
 
   const { year, month, funds: holdingsFunds } = holdingsData;
+
+  if (!holdingsFunds.length) {
+    if (canUseProductionPublicFallback()) {
+      const remote = await fetchProductionHoldingsStrategy();
+      if (remote?.funds.length) return remote;
+    }
+    throw new Error("No published fund holdings available for strategy");
+  }
 
   // Build a quote map for O(1) symbol lookup
   const quoteMap = new Map(allQuotes.map((q) => [q.symbol.toUpperCase(), q]));

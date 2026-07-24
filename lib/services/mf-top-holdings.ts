@@ -2,6 +2,10 @@ import "server-only";
 import { getStaleCached } from "@/lib/cache/stale";
 import { getFundsBreakdownData } from "@/lib/services/funds-breakdown";
 import { identifyAmcBrand } from "@/lib/amc-brands";
+import {
+  canUseProductionPublicFallback,
+  fetchProductionPublicData,
+} from "@/lib/services/production-public";
 
 export interface TopHoldingFund {
   fundName: string;
@@ -40,18 +44,32 @@ function emptyMFTopHoldingsData(): MFTopHoldingsData {
   };
 }
 
+async function fetchProductionMFTopHoldings(): Promise<MFTopHoldingsData | null> {
+  return fetchProductionPublicData<MFTopHoldingsData>({
+    path: "/api/public/mf-top-holdings",
+    refererPath: "/market/mf-top-holdings",
+    isUsable: (data) => Boolean(data?.holdings?.length),
+    label: "mf-top-holdings",
+  });
+}
+
 export async function getMFTopHoldingsData(): Promise<MFTopHoldingsData> {
   try {
     const { value } = await getStaleCached({
-      key: "market:mf-top-holdings-v1",
+      // v2: never cache empty boards; demo falls back to production when local data is empty.
+      key: "market:mf-top-holdings-v2",
       ttlSeconds: 15 * 60,
       staleSeconds: 6 * 60 * 60,
       load: loadMFTopHoldingsData,
-      isUsable: () => true,
+      isUsable: (data) => data.holdings.length > 0,
     });
     return value;
   } catch (error) {
     console.warn("[mf-top-holdings] unavailable:", error);
+    if (canUseProductionPublicFallback()) {
+      const remote = await fetchProductionMFTopHoldings();
+      if (remote?.holdings.length) return remote;
+    }
     return emptyMFTopHoldingsData();
   }
 }
@@ -59,17 +77,23 @@ export async function getMFTopHoldingsData(): Promise<MFTopHoldingsData> {
 async function loadMFTopHoldingsData(): Promise<MFTopHoldingsData> {
   const breakdown = await getFundsBreakdownData();
 
-  const map = new Map<
-    string,
-    {
-      symbol: string;
-      stockName: string;
-      changePct: number | null;
-      amcs: Set<string>;
-      funds: TopHoldingFund[];
-      totalWeight: number;
+  if (!breakdown.funds.length) {
+    if (canUseProductionPublicFallback()) {
+      const remote = await fetchProductionMFTopHoldings();
+      if (remote?.holdings.length) return remote;
     }
-  >();
+    throw new Error("No funds breakdown available for top holdings");
+  }
+
+  type HoldingAgg = {
+    symbol: string;
+    stockName: string;
+    changePct: number | null;
+    amcs: Set<string>;
+    funds: TopHoldingFund[];
+    totalWeight: number;
+  };
+  const map = new Map<string, HoldingAgg>();
 
   for (const fund of breakdown.funds) {
     const brand = identifyAmcBrand(fund.amc);
@@ -123,6 +147,10 @@ async function loadMFTopHoldingsData(): Promise<MFTopHoldingsData> {
       funds: entry.funds.sort((a, b) => b.percentage - a.percentage),
     }))
     .sort((a, b) => b.fundCount - a.fundCount || b.totalWeight - a.totalWeight);
+
+  if (!holdings.length) {
+    throw new Error("No priced holdings derived from funds breakdown");
+  }
 
   return {
     holdings,

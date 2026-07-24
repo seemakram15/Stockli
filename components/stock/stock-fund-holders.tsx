@@ -11,7 +11,7 @@ import { IconChip } from "@/components/ui/accent";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePersistentResource } from "@/lib/hooks/use-persistent-resource";
 import { AmcBrandMark } from "@/components/market/amc-brand-mark";
-import { IslamicMark, isIslamicOrShariahName } from "@/components/market/islamic-mark";
+import { FundIslamicIcon, isIslamicOrShariahName } from "@/components/market/islamic-mark";
 import { identifyAmcBrand } from "@/lib/amc-brands";
 import type { FundHoldingStock, FundsHoldingStockData } from "@/lib/services/fund-returns";
 
@@ -54,7 +54,7 @@ function groupByAmc(funds: FundHoldingStock[]): AmcGroup[] {
 export function StockFundHolders({ symbol }: { symbol: string }) {
   const normalized = symbol.toUpperCase();
   const { data, isLoading } = usePersistentResource<FundsHoldingStockData>({
-    cacheKey: `public:stock-funds-v2:${normalized}`,
+    cacheKey: `public:stock-funds-v3:${normalized}`,
     url: `/api/public/stock-funds/${encodeURIComponent(normalized)}`,
     refreshInterval: 30 * 60_000,
   });
@@ -160,14 +160,7 @@ export function StockFundHolders({ symbol }: { symbol: string }) {
                             <p className="min-w-0 truncate text-sm text-foreground/80">
                               {fund.fundName}
                             </p>
-                            {islamic ? (
-                              <span
-                                className="inline-flex shrink-0"
-                                aria-label="Islamic / Shariah"
-                              >
-                                <IslamicMark size="md" title="Islamic / Shariah" />
-                              </span>
-                            ) : null}
+                            {islamic ? <FundIslamicIcon size="md" /> : null}
                           </div>
                           <p className="text-right text-sm font-semibold tabular-nums">
                             {fund.percentage.toFixed(1)}%

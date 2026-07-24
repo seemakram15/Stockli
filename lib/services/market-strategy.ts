@@ -3,6 +3,10 @@ import { getStaleCached } from "@/lib/cache/stale";
 import { psxLiveCacheTtlSeconds, shouldRefreshPsxData } from "@/lib/psx/market-hours";
 import { getIndexCards } from "@/lib/services/market";
 import { getMufapFunds, type MufapFund } from "@/lib/services/mufap";
+import {
+  canUseProductionPublicFallback,
+  fetchProductionPublicData,
+} from "@/lib/services/production-public";
 
 export interface StrategyFundRow {
   fundId: string | null;
@@ -38,14 +42,29 @@ export interface MarketStrategyData {
 }
 
 export async function getMarketStrategyData(): Promise<MarketStrategyData> {
-  const cached = await getStaleCached({
-    key: "market-strategy:stock-funds",
-    ttlSeconds: shouldRefreshPsxData() ? 5 * 60 : psxLiveCacheTtlSeconds(),
-    staleSeconds: shouldRefreshPsxData() ? 6 * 60 * 60 : psxLiveCacheTtlSeconds(),
-    load: loadMarketStrategyData,
-    isUsable: (data) => data.islamic.length + data.conventional.length > 0,
-  });
-  return cached.value;
+  try {
+    const cached = await getStaleCached({
+      key: "market-strategy:stock-funds",
+      ttlSeconds: shouldRefreshPsxData() ? 5 * 60 : psxLiveCacheTtlSeconds(),
+      staleSeconds: shouldRefreshPsxData() ? 6 * 60 * 60 : psxLiveCacheTtlSeconds(),
+      load: loadMarketStrategyData,
+      isUsable: (data) => data.islamic.length + data.conventional.length > 0,
+    });
+    return cached.value;
+  } catch (error) {
+    console.warn("[market-strategy] unavailable:", error);
+    if (canUseProductionPublicFallback()) {
+      const remote = await fetchProductionPublicData<MarketStrategyData>({
+        path: "/api/public/market-strategy",
+        refererPath: "/market/strategy",
+        isUsable: (data) =>
+          Boolean(data && data.islamic.length + data.conventional.length > 0),
+        label: "market-strategy",
+      });
+      if (remote) return remote;
+    }
+    throw error;
+  }
 }
 
 async function loadMarketStrategyData(): Promise<MarketStrategyData> {

@@ -14,7 +14,7 @@ import {
 import { formatNumber, formatPercent, plColorClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { AmcBrandMark } from "@/components/market/amc-brand-mark";
-import { IslamicTag, isIslamicOrShariahName } from "@/components/market/islamic-mark";
+import { FundIslamicIcon, isIslamicOrShariahName } from "@/components/market/islamic-mark";
 import type { MufapFund, MufapFundsData } from "@/lib/services/mufap";
 
 type SortKey = "name" | "nav" | "d1" | "mtd" | "ytd" | "d365";
@@ -46,16 +46,18 @@ export function EtfTable({ data }: { data: MufapFundsData }) {
             <div className="flex items-center gap-2.5">
               <AmcBrandMark label={fund.amc} size="sm" logoUrl={fund.amcLogoUrl} />
               <div className="min-w-0">
-                {fund.classFilter === "islamic" || isIslamicOrShariahName(fund.name) ? (
-                  <div className="mb-0.5"><IslamicTag /></div>
-                ) : null}
-                {fund.fundId ? (
-                  <Link href={`/market/etfs/${fund.fundId}`} className="font-semibold leading-snug hover:underline">
-                    {fund.name}
-                  </Link>
-                ) : (
-                  <span className="font-semibold leading-snug">{fund.name}</span>
-                )}
+                <div className="flex min-w-0 items-center gap-1.5">
+                  {fund.fundId ? (
+                    <Link href={`/market/etfs/${fund.fundId}`} className="min-w-0 truncate font-semibold leading-snug hover:underline">
+                      {fund.name}
+                    </Link>
+                  ) : (
+                    <span className="min-w-0 truncate font-semibold leading-snug">{fund.name}</span>
+                  )}
+                  {fund.classFilter === "islamic" || isIslamicOrShariahName(fund.name) ? (
+                    <FundIslamicIcon size="md" />
+                  ) : null}
+                </div>
                 <AmcBrandMark
                   label={fund.amc}
                   size="sm"
@@ -103,19 +105,21 @@ export function EtfTable({ data }: { data: MufapFundsData }) {
                   <div className="flex items-center gap-2.5">
                     <AmcBrandMark label={fund.amc} size="sm" logoUrl={fund.amcLogoUrl} />
                     <div className="min-w-0">
-                      {fund.classFilter === "islamic" || isIslamicOrShariahName(fund.name) ? (
-                        <div className="mb-0.5"><IslamicTag /></div>
-                      ) : null}
-                      {fund.fundId ? (
-                        <Link
-                          href={`/market/etfs/${fund.fundId}`}
-                          className="font-semibold hover:underline"
-                        >
-                          {fund.name}
-                        </Link>
-                      ) : (
-                        <span className="font-semibold">{fund.name}</span>
-                      )}
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        {fund.fundId ? (
+                          <Link
+                            href={`/market/etfs/${fund.fundId}`}
+                            className="min-w-0 truncate font-semibold hover:underline"
+                          >
+                            {fund.name}
+                          </Link>
+                        ) : (
+                          <span className="min-w-0 truncate font-semibold">{fund.name}</span>
+                        )}
+                        {fund.classFilter === "islamic" || isIslamicOrShariahName(fund.name) ? (
+                          <FundIslamicIcon size="md" />
+                        ) : null}
+                      </div>
                       <p className="text-xs text-muted-foreground">{fund.amcShort || fund.amc}</p>
                     </div>
                   </div>

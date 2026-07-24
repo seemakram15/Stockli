@@ -20,7 +20,7 @@ const FUND_CACHE_JOBS = [
   { key: "public:market-strategy-holdings", url: "/api/public/market-strategy-holdings?fresh=1" },
   { key: "public:mufap:mutual", url: "/api/public/mufap?kind=mutual&fresh=1" },
   { key: "public:mufap:etfs", url: "/api/public/mufap?kind=etfs&fresh=1" },
-  { key: "public:funds-breakdown", url: "/api/public/funds-breakdown?fresh=1" },
+  { key: "public:funds-breakdown:v2", url: "/api/public/funds-breakdown?fresh=1" },
 ];
 
 const GLOBAL_CACHE_JOBS = [

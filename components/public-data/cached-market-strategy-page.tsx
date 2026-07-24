@@ -73,7 +73,7 @@ export function CachedMarketStrategyPage() {
         }
       />
 
-      {data ? (
+      {data && data.funds.length > 0 ? (
         <>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatCard

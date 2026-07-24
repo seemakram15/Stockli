@@ -90,6 +90,42 @@ export interface StockFinancialPeerComparison {
   updatedAt: string;
 }
 
+export type StockFinancialPeerPrepareStatus =
+  | "ready"
+  | "pending"
+  | "fetching"
+  | "done"
+  | "error";
+
+export interface StockFinancialPeerCandidate {
+  symbol: string;
+  companyName: string;
+  sector: string;
+  image?: string | null;
+  /** True when a complete fundamentals snapshot is already cached. */
+  ready: boolean;
+  status: StockFinancialPeerPrepareStatus;
+}
+
+export type StockFinancialPeerPrepareProgress =
+  | {
+      type: "peers";
+      sector: string;
+      metricLabel: string;
+      peers: StockFinancialPeerCandidate[];
+      missingCount: number;
+    }
+  | {
+      type: "peer";
+      symbol: string;
+      status: Exclude<StockFinancialPeerPrepareStatus, "ready" | "pending">;
+      detail?: string;
+    }
+  | {
+      type: "result";
+      data: StockFinancialPeerComparison;
+    };
+
 export type StockFinancialsRefreshStepId =
   | "ready"
   | "overview"

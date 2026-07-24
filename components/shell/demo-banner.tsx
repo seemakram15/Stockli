@@ -29,14 +29,20 @@ export function DemoBanner({ variant = "demo" }: { variant?: "demo" | "guest" })
           </Button>
         </>
       ) : (
-        <p className="flex-1">
-          <span className="font-medium">Demo mode.</span>{" "}
-          <span className="text-muted-foreground">
-            Showing sample data with live-style PSX prices. Add your Supabase &
-            Upstash keys to <code className="rounded bg-muted px-1">.env.local</code>{" "}
-            to enable accounts and persistence.
-          </span>
-        </p>
+        <>
+          <p className="flex-1">
+            <span className="font-medium">You&apos;re browsing with sample data.</span>{" "}
+            <span className="text-muted-foreground">
+              Sign in or create a free account to track your own portfolio.
+            </span>
+          </p>
+          <Button asChild variant="outline" size="sm" className="shrink-0">
+            <Link href="/login">Log in</Link>
+          </Button>
+          <Button asChild size="sm" className="shrink-0">
+            <Link href="/signup">Sign up</Link>
+          </Button>
+        </>
       )}
       <button
         onClick={() => setHidden(true)}

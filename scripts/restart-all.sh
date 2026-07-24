@@ -8,6 +8,7 @@ PORT="${PORT:-3001}"
 NODE_VERSION="$(tr -d '[:space:]' < "$ROOT_DIR/.nvmrc")"
 LOG_DIR="$ROOT_DIR/.omx/logs"
 LOG_FILE="$LOG_DIR/dev-server.log"
+NEXT_BIN="$ROOT_DIR/node_modules/.bin/next"
 
 mkdir -p "$LOG_DIR"
 
@@ -43,6 +44,29 @@ fi
 nvm use "$NODE_VERSION" >/dev/null 2>&1 || nvm install "$NODE_VERSION" >/dev/null
 nvm use "$NODE_VERSION" >/dev/null
 
+# Keep local binaries first after nvm rewrites PATH.
+export PATH="$ROOT_DIR/node_modules/.bin:$PATH"
+
+ensure_next() {
+  if [ -x "$NEXT_BIN" ]; then
+    return 0
+  fi
+
+  echo "Installing npm dependencies (next was not found in node_modules/.bin)..."
+  if [ -f "$ROOT_DIR/package-lock.json" ]; then
+    npm ci
+  else
+    npm install
+  fi
+
+  if [ ! -x "$NEXT_BIN" ]; then
+    echo "Still could not find $NEXT_BIN after install." >&2
+    exit 1
+  fi
+}
+
+ensure_next
+
 if lsof -tiTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   echo "Stopping existing Stockli process on port $PORT..."
   lsof -tiTCP:"$PORT" -sTCP:LISTEN | xargs kill -9
@@ -50,15 +74,17 @@ if lsof -tiTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
 fi
 
 echo "Using Node $(node -v)"
+echo "Using Next $($NEXT_BIN --version 2>/dev/null || echo unknown)"
 
 if [ "${DETACH:-0}" = "1" ]; then
-  nohup env PORT="$PORT" "$ROOT_DIR/node_modules/.bin/next" dev --turbopack \
+  # npm run adds node_modules/.bin to PATH for the script lifecycle.
+  nohup env PORT="$PORT" npm run dev \
     >"$LOG_FILE" 2>&1 </dev/null &
   SERVER_PID=$!
   disown "$SERVER_PID" 2>/dev/null || true
 
   for _ in {1..60}; do
-    if curl -s -o /dev/null "http://localhost:$PORT"; then
+    if curl -s -o /dev/null -A "Mozilla/5.0" "http://localhost:$PORT"; then
       echo "Stockli restarted on http://localhost:$PORT"
       echo "PID: $SERVER_PID"
       echo "Logs: $LOG_FILE"

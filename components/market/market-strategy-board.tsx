@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { amcIconUrl, identifyAmcBrand } from "@/lib/amc-brands";
-import { IslamicTag, isIslamicOrShariahName } from "@/components/market/islamic-mark";
+import { FundIslamicIcon, isIslamicOrShariahName } from "@/components/market/islamic-mark";
 import { formatPercent, formatPKR, plColorClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { HoldingsStrategyData, HoldingsStrategyFund } from "@/lib/services/market-strategy-holdings";
@@ -227,8 +227,8 @@ function FundRow({ fund: f, compact = false }: { fund: HoldingsStrategyFund; com
       }}
     >
       <span className="flex min-w-0 items-center gap-1.5 text-foreground/80">
-        {isIslamic ? <IslamicTag className="shrink-0" /> : null}
         <span className="min-w-0 truncate">{name}</span>
+        {isIslamic ? <FundIslamicIcon size="md" /> : null}
       </span>
       <span
         className={cn(

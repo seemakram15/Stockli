@@ -37,7 +37,7 @@ import {
 import { amcIconUrl, identifyAmcBrand } from "@/lib/amc-brands";
 import { cn } from "@/lib/utils";
 import { AmcBrandMark } from "@/components/market/amc-brand-mark";
-import { IslamicMark, IslamicTag, isIslamicOrShariahName } from "@/components/market/islamic-mark";
+import { FundIslamicIcon, IslamicMark, isIslamicOrShariahName } from "@/components/market/islamic-mark";
 import type { FundClassFilter, MufapFund, MufapFundsData } from "@/lib/services/mufap";
 
 type SortKey =
@@ -361,21 +361,21 @@ export function MufapFundsBoard({
                     {group.funds.map((fund) => (
                       <TableRow key={`${fund.fundId ?? fund.name}-${fund.type}`}>
                         <TableCell>
-                          <div className="flex flex-wrap items-center gap-1.5">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            {fund.fundId ? (
+                              <Link
+                                href={`/${etfMode ? "market/etfs" : "market/mutual-funds"}/${fund.fundId}`}
+                                className="min-w-0 truncate font-semibold hover:text-primary"
+                              >
+                                {fund.name}
+                              </Link>
+                            ) : (
+                              <p className="min-w-0 truncate font-semibold">{fund.name}</p>
+                            )}
                             {fund.classFilter === "islamic" || isIslamicOrShariahName(fund.name) ? (
-                              <IslamicTag />
+                              <FundIslamicIcon size="md" />
                             ) : null}
                           </div>
-                          {fund.fundId ? (
-                            <Link
-                              href={`/${etfMode ? "market/etfs" : "market/mutual-funds"}/${fund.fundId}`}
-                              className="font-semibold hover:text-primary"
-                            >
-                              {fund.name}
-                            </Link>
-                          ) : (
-                            <p className="font-semibold">{fund.name}</p>
-                          )}
                           <p className="text-xs text-muted-foreground">
                             {fund.validityDate ?? "—"} · {fund.riskProfile ?? "Risk N/A"}
                           </p>
@@ -416,17 +416,19 @@ function FundMobileCard({ fund, etfMode, brandColor }: { fund: MufapFund; etfMod
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          {islamic ? <div className="mb-1"><IslamicTag /></div> : null}
-          {fund.fundId ? (
-            <Link
-              href={`/${etfMode ? "market/etfs" : "market/mutual-funds"}/${fund.fundId}`}
-              className="block truncate font-semibold hover:text-primary"
-            >
-              {fund.name}
-            </Link>
-          ) : (
-            <p className="truncate font-semibold">{fund.name}</p>
-          )}
+          <div className="flex min-w-0 items-center gap-1.5">
+            {fund.fundId ? (
+              <Link
+                href={`/${etfMode ? "market/etfs" : "market/mutual-funds"}/${fund.fundId}`}
+                className="min-w-0 truncate font-semibold hover:text-primary"
+              >
+                {fund.name}
+              </Link>
+            ) : (
+              <p className="min-w-0 truncate font-semibold">{fund.name}</p>
+            )}
+            {islamic ? <FundIslamicIcon size="md" /> : null}
+          </div>
           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{fund.type}</p>
         </div>
         <div className="shrink-0 text-right">

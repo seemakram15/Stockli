@@ -9,6 +9,10 @@ import {
 } from "@/lib/psx/market-hours";
 import { getSeedTicker } from "@/lib/psx/symbols";
 import { getMarketRows } from "@/lib/services/prices";
+import {
+  canUseProductionPublicFallback,
+  fetchProductionPublicData,
+} from "@/lib/services/production-public";
 
 const USER_AGENT =
   "Mozilla/5.0 (compatible; MyStockli/1.0; +https://mystockli.com)";
@@ -656,16 +660,24 @@ export async function getUsefulLinksData(): Promise<UsefulLinksData> {
 export async function getBoardMeetingsData(): Promise<BoardMeetingsData> {
   try {
     const cached = await getStaleCached({
-      key: "explore:board-meetings:v3",
+      key: "explore:board-meetings:v4",
       ttlSeconds: DAILY_TTL_SECONDS,
       staleSeconds: DAILY_STALE_SECONDS,
       load: loadBoardMeetingsData,
-      // Empty rows are usable so a total primary+fallback miss does not throw.
-      isUsable: (data) => Array.isArray(data.rows),
+      isUsable: (data) => data.rows.length > 0,
     });
     return cached.value;
   } catch (error) {
     softWarnResource("board meetings unavailable", error);
+    if (canUseProductionPublicFallback()) {
+      const remote = await fetchProductionPublicData<BoardMeetingsData>({
+        path: "/api/public/board-meetings",
+        refererPath: "/explore/board-meetings",
+        isUsable: (data) => Boolean(data?.rows?.length),
+        label: "board-meetings",
+      });
+      if (remote?.rows.length) return remote;
+    }
     return emptyBoardMeetingsData();
   }
 }
@@ -673,16 +685,24 @@ export async function getBoardMeetingsData(): Promise<BoardMeetingsData> {
 export async function getBookClosuresData(): Promise<BookClosuresData> {
   try {
     const cached = await getStaleCached({
-      key: "explore:book-closures:v2",
+      key: "explore:book-closures:v3",
       ttlSeconds: DAILY_TTL_SECONDS,
       staleSeconds: DAILY_STALE_SECONDS,
       load: loadBookClosuresData,
-      // Empty rows are usable so a total primary+fallback miss does not throw.
-      isUsable: (data) => Array.isArray(data.rows),
+      isUsable: (data) => data.rows.length > 0,
     });
     return cached.value;
   } catch (error) {
     softWarnResource("book closures unavailable", error);
+    if (canUseProductionPublicFallback()) {
+      const remote = await fetchProductionPublicData<BookClosuresData>({
+        path: "/api/public/book-closures",
+        refererPath: "/explore/book-closures",
+        isUsable: (data) => Boolean(data?.rows?.length),
+        label: "book-closures",
+      });
+      if (remote?.rows.length) return remote;
+    }
     return emptyBookClosuresData();
   }
 }
@@ -690,16 +710,24 @@ export async function getBookClosuresData(): Promise<BookClosuresData> {
 export async function getDividendHistoryData(): Promise<DividendHistoryData> {
   try {
     const cached = await getStaleCached({
-      key: "explore:dividend-history:v1",
+      key: "explore:dividend-history:v2",
       ttlSeconds: DAILY_TTL_SECONDS,
       staleSeconds: DAILY_STALE_SECONDS,
       load: loadDividendHistoryData,
-      // Empty rows are usable so a total primary+fallback miss does not throw.
-      isUsable: (data) => Array.isArray(data.rows),
+      isUsable: (data) => data.rows.length > 0,
     });
     return cached.value;
   } catch (error) {
     softWarnResource("dividend history unavailable", error);
+    if (canUseProductionPublicFallback()) {
+      const remote = await fetchProductionPublicData<DividendHistoryData>({
+        path: "/api/public/dividend-history",
+        refererPath: "/explore/dividend-history",
+        isUsable: (data) => Boolean(data?.rows?.length),
+        label: "dividend-history",
+      });
+      if (remote?.rows.length) return remote;
+    }
     return emptyDividendHistoryData();
   }
 }

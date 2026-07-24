@@ -20,7 +20,7 @@ import type {
 
 async function invalidateDerivedFundCaches(): Promise<void> {
   await Promise.allSettled([
-    invalidateStaleCache("market:funds-breakdown-v1"),
+    invalidateStaleCache("market:funds-breakdown-v2"),
     invalidateStaleCache("market-strategy:holdings-v1"),
   ]);
 }

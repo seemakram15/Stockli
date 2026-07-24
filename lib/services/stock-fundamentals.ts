@@ -14,7 +14,9 @@ import type {
   FinancialTabData,
   FinancialTable,
   FinancialTableRow,
+  StockFinancialPeerCandidate,
   StockFinancialPeerComparison,
+  StockFinancialPeerPrepareProgress,
   StockFinancialPeerRow,
   StockFinancialsAvailability,
   StockFinancialsData,
@@ -355,6 +357,101 @@ export async function getStockFinancialPeerComparison({
   } satisfies { value: StockFinancialPeerComparison; status: CacheStatus; storedAt: string };
 }
 
+const PEER_ENSURE_CONCURRENCY = 3;
+const PEER_COMPARE_LIMIT = 24;
+
+/** Same-sector peers with cached-vs-missing status (no live fetch). */
+export async function getStockFinancialPeerCandidates(symbolRaw: string): Promise<{
+  sector: string;
+  peers: StockFinancialPeerCandidate[];
+  missingCount: number;
+} | null> {
+  const symbol = normalizeSymbol(symbolRaw);
+  if (!symbol) return null;
+  const peers = await listSectorPeerCandidates(symbol);
+  if (!peers.length) return null;
+  return {
+    sector: peers[0]?.sector ?? "Unknown",
+    peers,
+    missingCount: peers.filter((peer) => !peer.ready).length,
+  };
+}
+
+/**
+ * Resolve same-sector peers and optionally refresh missing fundamentals,
+ * streaming per-peer progress, then return the metric comparison.
+ * Pass `signal` to stop early (e.g. user clicks Completed?).
+ */
+export async function ensureStockFinancialPeerComparison({
+  symbol: symbolRaw,
+  tabId,
+  metricLabel,
+  onProgress,
+  signal,
+  fetchMissing = true,
+}: {
+  symbol: string;
+  tabId: Exclude<StockFinancialTabId, "overview">;
+  metricLabel: string;
+  onProgress?: (progress: StockFinancialPeerPrepareProgress) => void | Promise<void>;
+  signal?: AbortSignal;
+  fetchMissing?: boolean;
+}): Promise<StockFinancialPeerComparison | null> {
+  const symbol = normalizeSymbol(symbolRaw);
+  const metric = metricLabel.trim().slice(0, 120);
+  if (!symbol || !metric) return null;
+
+  const candidates = await listSectorPeerCandidates(symbol);
+  if (!candidates.length) return null;
+
+  const missing = candidates.filter((peer) => !peer.ready);
+  await onProgress?.({
+    type: "peers",
+    sector: candidates[0]?.sector ?? "Unknown",
+    metricLabel: metric,
+    peers: candidates,
+    missingCount: missing.length,
+  });
+
+  if (fetchMissing && missing.length) {
+    await mapLimit(missing, PEER_ENSURE_CONCURRENCY, async (peer) => {
+      if (signal?.aborted) return;
+      await onProgress?.({ type: "peer", symbol: peer.symbol, status: "fetching" });
+      if (signal?.aborted) return;
+      try {
+        const refreshed = await refreshStockFinancials(peer.symbol);
+        if (signal?.aborted) return;
+        if (!refreshed?.complete && !refreshed?.hadMeaningfulFreshData) {
+          await onProgress?.({
+            type: "peer",
+            symbol: peer.symbol,
+            status: "error",
+            detail: "Data not available yet",
+          });
+          return;
+        }
+        await onProgress?.({ type: "peer", symbol: peer.symbol, status: "done" });
+      } catch (error) {
+        if (signal?.aborted) return;
+        await onProgress?.({
+          type: "peer",
+          symbol: peer.symbol,
+          status: "error",
+          detail: error instanceof Error ? error.message : "Data not available yet",
+        });
+      }
+    });
+  }
+
+  if (signal?.aborted) {
+    // Still return whatever comparison we can build from current cache.
+  }
+
+  const value = await buildCachedStockFinancialPeerComparison(symbol, tabId, metric);
+  await onProgress?.({ type: "result", data: value });
+  return value;
+}
+
 export async function getStockFundamentalsCompanies({
   readyOnly = false,
 }: {
@@ -624,14 +721,67 @@ async function fetchStockFinancials(
   };
 }
 
+async function listSectorPeerCandidates(symbol: string): Promise<StockFinancialPeerCandidate[]> {
+  const currentSnapshot = await readStockFinancialsSnapshot(symbol);
+  const currentCompany = currentSnapshot?.value.company ?? (await resolveCompany(symbol));
+  if (!currentCompany) return [];
+
+  const companies = normalizeFundamentalsCompanies(await getFundamentalsCompanies());
+  const sectorId =
+    typeof currentCompany.sector_id === "number" ? currentCompany.sector_id : null;
+  const currentSector = (currentCompany.sector || "").trim().toUpperCase();
+
+  const peers: Array<{
+    symbol: string;
+    name: string;
+    sector: string;
+    image: string | null;
+  }> = [
+    {
+      symbol,
+      name: currentCompany.name || currentCompany.label || symbol,
+      sector: currentCompany.sector || "Unknown",
+      image: currentCompany.image ?? null,
+    },
+    ...companies
+      .filter((candidate) => {
+        if (candidate.symbol === symbol) return false;
+        if (sectorId != null) return candidate.sectorId === sectorId;
+        if (!currentSector) return false;
+        return candidate.sector.trim().toUpperCase() === currentSector;
+      })
+      .map((candidate) => ({
+        symbol: candidate.symbol,
+        name: candidate.name,
+        sector: candidate.sector,
+        image: candidate.image,
+      })),
+  ].slice(0, PEER_COMPARE_LIMIT);
+
+  return mapLimit(peers, 8, async (peer): Promise<StockFinancialPeerCandidate> => {
+    const peerSymbol = normalizeSymbol(peer.symbol) || peer.symbol;
+    const snapshot = await readStockFinancialsSnapshot(peerSymbol);
+    const ready = Boolean(snapshot?.value && hasCompleteFinancialData(snapshot.value));
+    return {
+      symbol: peerSymbol,
+      companyName: peer.name || peerSymbol,
+      sector: peer.sector || "Unknown",
+      image: peer.image ?? snapshot?.value.company?.image ?? null,
+      ready,
+      status: ready ? "ready" : "pending",
+    };
+  });
+}
+
 async function buildCachedStockFinancialPeerComparison(
   symbol: string,
   tabId: Exclude<StockFinancialTabId, "overview">,
   metricLabel: string
 ): Promise<StockFinancialPeerComparison> {
-  const currentSnapshot = await readStockFinancialsSnapshot(symbol);
-  const currentCompany = currentSnapshot?.value.company ?? (await resolveCompany(symbol));
-  if (!currentCompany) {
+  const candidates = await listSectorPeerCandidates(symbol);
+  const current = candidates.find((peer) => peer.symbol === symbol) ?? null;
+
+  if (!candidates.length) {
     return {
       symbol,
       companyName: symbol,
@@ -644,27 +794,8 @@ async function buildCachedStockFinancialPeerComparison(
     };
   }
 
-  const companies = normalizeFundamentalsCompanies(await getFundamentalsCompanies());
-  const readySymbols = new Set(await getReadyFundamentalsCompanySymbols(companies));
-  const currentSectorId = currentCompany.sector_id ?? null;
-  const currentSector = (currentCompany.sector || "").trim().toUpperCase();
-  const peers = [
-    {
-      id: currentCompany.id,
-      symbol,
-      name: currentCompany.name || currentCompany.label || symbol,
-      sector: currentCompany.sector || "Unknown",
-      image: currentCompany.image ?? currentSnapshot?.value.company?.image ?? null,
-    },
-    ...companies.filter((candidate) => {
-      if (candidate.symbol === symbol || !readySymbols.has(candidate.symbol)) return false;
-      if (currentSectorId) return candidate.sectorId === currentSectorId;
-      return candidate.sector.trim().toUpperCase() === currentSector;
-    }),
-  ].slice(0, 24);
-
   const peerRows = (
-    await mapLimit(peers, 8, async (peer): Promise<StockFinancialPeerRow | null> => {
+    await mapLimit(candidates, 8, async (peer): Promise<StockFinancialPeerRow | null> => {
       const peerSymbol = normalizeSymbol(peer.symbol);
       if (!peerSymbol) return null;
       const snapshot = await readStockFinancialsSnapshot(peerSymbol);
@@ -674,7 +805,7 @@ async function buildCachedStockFinancialPeerComparison(
 
       return {
         symbol: peerSymbol,
-        companyName: peer.name || peerSymbol,
+        companyName: peer.companyName || peerSymbol,
         sector: peer.sector || "Unknown",
         image: peer.image ?? snapshot?.value.company?.image ?? null,
         values: row.values,
@@ -685,8 +816,8 @@ async function buildCachedStockFinancialPeerComparison(
 
   return {
     symbol,
-    companyName: currentCompany.name || currentCompany.label || symbol,
-    sector: currentCompany.sector || "Unknown",
+    companyName: current?.companyName || symbol,
+    sector: current?.sector || candidates[0]?.sector || "Unknown",
     tabId,
     metricLabel,
     periods: collectPeerPeriods(peerRows),

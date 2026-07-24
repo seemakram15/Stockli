@@ -13,7 +13,7 @@ import type { FundsBreakdownData } from "@/lib/services/funds-breakdown";
 export function CachedFundsBreakdownPage() {
   const { data, error, isLoading, refreshNow } =
     usePersistentResource<FundsBreakdownData>({
-      cacheKey: "public:funds-breakdown",
+      cacheKey: "public:funds-breakdown:v2",
       url: "/api/public/funds-breakdown",
       refreshInterval: 5 * 60_000,
     });
