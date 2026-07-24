@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 import { config } from "@/lib/config";
 import { PUBLIC_ROBOTS, SEO_KEYWORDS } from "@/lib/seo";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const googleVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
 
@@ -111,6 +112,7 @@ export default function RootLayout({
       <body className="antialiased" suppressHydrationWarning>
         <Providers>{children}</Providers>
         <Toaster richColors closeButton position="top-right" />
+        <SpeedInsights />
       </body>
     </html>
   );
